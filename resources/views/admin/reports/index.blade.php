@@ -1,0 +1,265 @@
+@extends('layouts.admin')
+
+@section('title', 'Reports')
+
+@section('content')
+<style>
+    .filter-card {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        border: 1px solid #e3e6e8;
+        margin-bottom: 24px;
+    }
+    .filter-header {
+        padding: 16px 24px;
+        border-bottom: 1px solid #e3e6e8;
+        background: #f9f9f9;
+        border-radius: 8px 8px 0 0;
+    }
+    .filter-body {
+        padding: 24px;
+    }
+    .form-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #232f3e;
+        margin-bottom: 8px;
+    }
+    .form-select, .form-control {
+        border: 1px solid #d5d9d9;
+        border-radius: 4px;
+        padding: 8px 12px;
+        font-size: 14px;
+    }
+    .form-select:focus, .form-control:focus {
+        border-color: #ff9900;
+        box-shadow: 0 0 0 3px rgba(255,153,0,0.1);
+        outline: none;
+    }
+    .btn-primary {
+        background: #ff9900;
+        border: 1px solid #ff9900;
+        color: #fff;
+        padding: 8px 24px;
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 14px;
+    }
+    .btn-primary:hover {
+        background: #ec8b00;
+        border-color: #ec8b00;
+    }
+    .btn-secondary {
+        background: #fff;
+        border: 1px solid #d5d9d9;
+        color: #232f3e;
+        padding: 8px 24px;
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 14px;
+    }
+    .btn-secondary:hover {
+        background: #f7f7f7;
+    }
+    .btn-success {
+        background: #067d62;
+        border: 1px solid #067d62;
+        color: #fff;
+        padding: 8px 20px;
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 13px;
+    }
+    .btn-success:hover {
+        background: #055a47;
+    }
+    .stat-card-report {
+        background: #fff;
+        border-radius: 8px;
+        padding: 24px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        border: 1px solid #e3e6e8;
+        text-align: center;
+    }
+    .stat-card-report h5 {
+        font-size: 13px;
+        color: #666;
+        margin-bottom: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .stat-card-report h2 {
+        font-size: 32px;
+        font-weight: 700;
+        color: #232f3e;
+        margin: 0;
+    }
+    .alert-info {
+        background: #d1ecf1;
+        border: 1px solid #bee5eb;
+        color: #0c5460;
+        padding: 16px 20px;
+        border-radius: 4px;
+    }
+</style>
+
+<div class="filter-card">
+    <div class="filter-header">
+        <h5 class="mb-0" style="font-weight: 600; color: #232f3e;">
+            <i class="fas fa-filter me-2"></i>Filter Orders
+        </h5>
+    </div>
+    <div class="filter-body">
+        <form method="GET" action="{{ route('admin.reports.index') }}" id="filterForm">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Filter Type</label>
+                    <select name="filter_type" class="form-select" id="filterType" required>
+                        <option value="">Select Filter</option>
+                        <option value="date" {{ request('filter_type') === 'date' ? 'selected' : '' }}>By Date</option>
+                        <option value="month" {{ request('filter_type') === 'month' ? 'selected' : '' }}>By Month</option>
+                        <option value="year" {{ request('filter_type') === 'year' ? 'selected' : '' }}>By Year</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3" id="dateFilter" style="display: none;">
+                    <label class="form-label">Select Date</label>
+                    <input type="date" name="date" class="form-control" value="{{ request('date') }}">
+                </div>
+
+                <div class="col-md-3" id="monthFilter" style="display: none;">
+                    <label class="form-label">Select Month</label>
+                    <input type="month" name="month" class="form-control" value="{{ request('month') }}">
+                </div>
+
+                <div class="col-md-3" id="yearFilter" style="display: none;">
+                    <label class="form-label">Select Year</label>
+                    <input type="number" name="year" class="form-control" min="2020" max="2099" value="{{ request('year') }}">
+                </div>
+
+                <div class="col-md-3 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn-primary">Apply Filter</button>
+                    <a href="{{ route('admin.reports.index') }}" class="btn-secondary">Clear</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if(request()->has('filter_type'))
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="stat-card-report" style="border-left: 4px solid #4facfe;">
+            <h5>Total Orders</h5>
+            <h2>{{ $totalOrders }}</h2>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="stat-card-report" style="border-left: 4px solid #43e97b;">
+            <h5>Total Revenue (Paid Orders)</h5>
+            <h2>₹{{ number_format($totalRevenue, 2) }}</h2>
+        </div>
+    </div>
+</div>
+
+<div class="content-card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-table me-2"></i>Orders Report
+        </h5>
+        <form method="GET" action="{{ route('admin.reports.export') }}" class="d-inline">
+            <input type="hidden" name="filter_type" value="{{ request('filter_type') }}">
+            <input type="hidden" name="date" value="{{ request('date') }}">
+            <input type="hidden" name="month" value="{{ request('month') }}">
+            <input type="hidden" name="year" value="{{ request('year') }}">
+            <button type="submit" class="btn-success">
+                <i class="fas fa-download me-1"></i> Download Excel
+            </button>
+        </form>
+    </div>
+    <div>
+        <div class="table-responsive">
+            <table class="table-custom">
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Table</th>
+                        <th>Items</th>
+                        <th>Total Amount</th>
+                        <th>Status</th>
+                        <th>Payment Mode</th>
+                        <th>Created By</th>
+                        <th>Date & Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($orders as $order)
+                    <tr>
+                        <td><strong>#{{ $order->id }}</strong></td>
+                        <td>Table {{ $order->table->table_number }}</td>
+                        <td>
+                            @foreach($order->orderItems as $item)
+                                <div style="font-size: 13px;">{{ $item->menuItem->name }} ({{ $item->quantity }})</div>
+                            @endforeach
+                        </td>
+                        <td><strong>₹{{ number_format($order->total_amount, 2) }}</strong></td>
+                        <td>
+                            <span class="badge-custom badge-{{ $order->status }}">
+                                {{ ucfirst($order->status) }}
+                            </span>
+                        </td>
+                        <td>{{ $order->payment_mode ? ucfirst($order->payment_mode) : '-' }}</td>
+                        <td>{{ $order->user->name ?? '-' }}</td>
+                        <td style="font-size: 13px; color: #666;">{{ $order->created_at->format('d-m-Y h:i A') }}</td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="8" class="text-center py-5" style="color: #666;">
+                            <i class="fas fa-inbox" style="font-size: 48px; color: #ddd; margin-bottom: 16px; display: block;"></i>
+                            No orders found
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+@else
+<div class="alert-info">
+    <i class="fas fa-info-circle me-2"></i> Please select a filter type to view reports
+</div>
+@endif
+
+<script>
+document.getElementById('filterType').addEventListener('change', function() {
+    const dateFilter = document.getElementById('dateFilter');
+    const monthFilter = document.getElementById('monthFilter');
+    const yearFilter = document.getElementById('yearFilter');
+    
+    dateFilter.style.display = 'none';
+    monthFilter.style.display = 'none';
+    yearFilter.style.display = 'none';
+    
+    if (this.value === 'date') {
+        dateFilter.style.display = 'block';
+    } else if (this.value === 'month') {
+        monthFilter.style.display = 'block';
+    } else if (this.value === 'year') {
+        yearFilter.style.display = 'block';
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const filterType = document.getElementById('filterType').value;
+    if (filterType === 'date') {
+        document.getElementById('dateFilter').style.display = 'block';
+    } else if (filterType === 'month') {
+        document.getElementById('monthFilter').style.display = 'block';
+    } else if (filterType === 'year') {
+        document.getElementById('yearFilter').style.display = 'block';
+    }
+});
+</script>
+@endsection
