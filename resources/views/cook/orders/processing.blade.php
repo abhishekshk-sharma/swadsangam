@@ -12,7 +12,7 @@
                 <div class="flex justify-between items-start mb-3">
                     <div>
                         <h3 class="font-bold text-lg">Order #{{ $order->id }}</h3>
-                        <p class="text-sm text-gray-500">{{ $order->table->name }} • {{ $order->created_at->format('h:i A') }}</p>
+                        <p class="text-sm text-gray-500">Table {{ $order->table->table_number }} • {{ $order->created_at->format('h:i A') }}</p>
                     </div>
                     <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-semibold">
                         Preparing
@@ -22,7 +22,7 @@
                 <div class="space-y-2 mb-4">
                     @foreach($order->orderItems as $item)
                         <div class="flex justify-between items-center py-2 border-b">
-                            <div>
+                            <div class="flex-1">
                                 <div class="font-semibold">{{ $item->menuItem->name }}</div>
                                 <div class="text-sm text-gray-600">Qty: {{ $item->quantity }}</div>
                             </div>
@@ -35,7 +35,7 @@
 
                 <div class="flex justify-between items-center pt-3 border-t">
                     <div class="font-bold text-lg">Total: ₹{{ number_format($order->total_amount, 2) }}</div>
-                    <form action="{{ route('cook.orders.updateStatus', $order) }}" method="POST">
+                    <form action="{{ route('cook.orders.updateAllItems', $order) }}" method="POST">
                         @csrf
                         @method('PATCH')
                         <input type="hidden" name="status" value="ready">

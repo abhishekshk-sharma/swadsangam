@@ -8,7 +8,7 @@ use App\Models\Concerns\BelongsToTenant;
 class OrderItem extends Model
 {
     use BelongsToTenant;
-    protected $fillable = ['order_id', 'menu_item_id', 'quantity', 'price'];
+    protected $fillable = ['order_id', 'menu_item_id', 'quantity', 'price', 'status'];
 
     public function order()
     {

@@ -6,7 +6,7 @@
     <title>@yield('title') - {{ $tenant->name }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="/js/order-updates.js"></script>
+    <script src="/js/waiter-notifications.js"></script>
 </head>
 <body class="bg-gray-100">
     <!-- Mobile Layout -->

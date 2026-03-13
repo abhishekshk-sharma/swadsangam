@@ -27,6 +27,7 @@ class DashboardController extends Controller
 
         $recentOrders = Order::with('table')
             ->where('user_id', auth()->id())
+            ->where('payment_status', '!=', 'paid')
             ->latest()
             ->take(5)
             ->get();

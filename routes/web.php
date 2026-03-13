@@ -69,6 +69,8 @@ Route::get('/telegram/test', function() {
 
 // API for real-time updates
 Route::get('/api/order-updates', [OrderUpdatesController::class, 'getUpdates'])->middleware('auth');
+Route::get('/api/waiter/order-updates', [App\Http\Controllers\Api\WaiterNotificationController::class, 'getUpdates'])->middleware('auth');
+Route::get('/api/chef/order-updates', [App\Http\Controllers\Api\ChefNotificationController::class, 'getUpdates'])->middleware('auth');
 
 // Profile Routes (for all authenticated users)
 Route::middleware('auth')->group(function () {
@@ -78,18 +80,25 @@ Route::middleware('auth')->group(function () {
 });
 
 // Super Admin Routes (no tenant middleware)
-Route::prefix('superadmin')->group(function () {
-    Route::get('login', [TenantController::class, 'login']);
+Route::prefix('superadmin')->name('superadmin.')->group(function () {
+    Route::get('login', [TenantController::class, 'login'])->name('login');
     Route::post('login', [TenantController::class, 'authenticate']);
-    Route::get('logout', [TenantController::class, 'logout']);
+    Route::post('logout', [TenantController::class, 'logout'])->name('logout');
     
     Route::middleware(\App\Http\Middleware\SuperAdminAuth::class)->group(function () {
-        Route::get('tenants', [TenantController::class, 'index']);
-        Route::get('tenants/create', [TenantController::class, 'create']);
-        Route::post('tenants', [TenantController::class, 'store']);
-        Route::get('tenants/{id}/edit', [TenantController::class, 'edit']);
-        Route::put('tenants/{id}', [TenantController::class, 'update']);
-        Route::delete('tenants/{id}', [TenantController::class, 'destroy']);
+        Route::get('dashboard', [App\Http\Controllers\SuperAdmin\DashboardController::class, 'index'])->name('dashboard');
+        
+        Route::resource('tenants', TenantController::class)->except(['show']);
+        
+        Route::resource('users', App\Http\Controllers\SuperAdmin\UserController::class)->except(['show']);
+        
+        Route::get('table-categories', [App\Http\Controllers\SuperAdmin\TableCategoryController::class, 'index'])->name('table-categories.index');
+        Route::post('table-categories', [App\Http\Controllers\SuperAdmin\TableCategoryController::class, 'store'])->name('table-categories.store');
+        Route::delete('table-categories/{id}', [App\Http\Controllers\SuperAdmin\TableCategoryController::class, 'destroy'])->name('table-categories.destroy');
+        
+        Route::get('menu-categories', [App\Http\Controllers\SuperAdmin\MenuCategoryController::class, 'index'])->name('menu-categories.index');
+        Route::post('menu-categories', [App\Http\Controllers\SuperAdmin\MenuCategoryController::class, 'store'])->name('menu-categories.store');
+        Route::delete('menu-categories/{id}', [App\Http\Controllers\SuperAdmin\MenuCategoryController::class, 'destroy'])->name('menu-categories.destroy');
     });
 });
 
@@ -138,6 +147,7 @@ Route::prefix('waiter')->name('waiter.')->middleware(['auth', 'role:waiter'])->g
     Route::get('orders/create', [WaiterOrderController::class, 'create'])->name('orders.create');
     Route::post('orders', [WaiterOrderController::class, 'store'])->name('orders.store');
     Route::post('orders/{id}/serve', [WaiterOrderController::class, 'markServed'])->name('orders.serve');
+    Route::post('orders/{id}/add-items', [WaiterOrderController::class, 'addItems'])->name('orders.addItems');
 });
 
 // Cook Routes
@@ -147,6 +157,8 @@ Route::prefix('cook')->name('cook.')->middleware(['auth', 'role:chef'])->group(f
     Route::get('orders/processing', [CookOrderController::class, 'processing'])->name('orders.processing');
     Route::get('orders/completed', [CookOrderController::class, 'completed'])->name('orders.completed');
     Route::patch('orders/{order}/status', [CookOrderController::class, 'updateStatus'])->name('orders.updateStatus');
+    Route::patch('orders/{order}/update-all-items', [CookOrderController::class, 'updateAllItems'])->name('orders.updateAllItems');
+    Route::patch('order-items/{orderItem}/status', [CookOrderController::class, 'updateItemStatus'])->name('orderItems.updateStatus');
 });
 
 // Cashier Routes

@@ -77,17 +77,29 @@ class TelegramService
             return false;
         }
 
-        $message = "🔔 *New Order Alert!*\n\n";
+        $isAdditional = $orderData['is_additional'] ?? false;
+        
+        if ($isAdditional) {
+            $message = "🔔 *Additional Items Added!*\n\n";
+        } else {
+            $message = "🔔 *New Order Alert!*\n\n";
+        }
+        
         $message .= "📋 Order #" . $orderData['order_id'] . "\n";
         $message .= "🪑 Table: " . $orderData['table_name'] . "\n";
         $message .= "⏰ Time: " . $orderData['time'] . "\n\n";
-        $message .= "*Items:*\n";
+        
+        if ($isAdditional) {
+            $message .= "*New Items:*\n";
+        } else {
+            $message .= "*Items:*\n";
+        }
         
         foreach ($orderData['items'] as $item) {
             $message .= "• {$item['quantity']}x {$item['name']}\n";
         }
         
-        $message .= "\n💰 Total: ₹" . number_format($orderData['total'], 2);
+        $message .= "\n💰 Order Total: ₹" . number_format($orderData['total'], 2);
 
         return $this->sendMessage($chatId, $message);
     }

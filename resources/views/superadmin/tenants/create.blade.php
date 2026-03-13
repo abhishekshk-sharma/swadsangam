@@ -1,52 +1,53 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Tenant</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100">
-    <nav class="bg-red-600 text-white p-4">
-        <div class="container mx-auto">
-            <h1 class="text-xl font-bold">🔐 Super Admin Panel</h1>
-        </div>
-    </nav>
+@extends('layouts.superadmin')
 
-    <div class="container mx-auto p-8">
-        <div class="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow">
-            <h2 class="text-2xl font-bold mb-6">Create New Tenant</h2>
+@section('title', 'Create Tenant')
+@section('header', 'Create New Tenant')
+
+@section('content')
+<div class="max-w-2xl">
+    <div class="bg-white rounded-lg shadow p-6">
+        <form action="/superadmin/tenants" method="POST">
+            @csrf
             
-            <form action="/superadmin/tenants" method="POST">
-                @csrf
-                <div class="mb-4">
-                    <label class="block text-gray-700 mb-2">Restaurant Name</label>
-                    <input type="text" name="name" class="w-full border rounded px-3 py-2" required>
-                    @error('name')
-                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                
-                <div class="mb-4">
-                    <label class="block text-gray-700 mb-2">Slug (URL identifier)</label>
-                    <input type="text" name="slug" class="w-full border rounded px-3 py-2" placeholder="e.g., mcdonalds" required>
-                    <p class="text-xs text-gray-500 mt-1">Will be used as: /?tenant=slug</p>
-                    @error('slug')
-                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                
-                <div class="mb-4">
-                    <label class="block text-gray-700 mb-2">Custom Domain (optional)</label>
-                    <input type="text" name="domain" class="w-full border rounded px-3 py-2" placeholder="e.g., orders.mcdonalds.com">
-                </div>
-                
-                <div class="flex gap-2">
-                    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Create</button>
-                    <a href="/superadmin/tenants" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Cancel</a>
-                </div>
-            </form>
-        </div>
+            <div class="mb-4">
+                <label class="block text-gray-700 mb-2">Restaurant Name *</label>
+                <input type="text" name="name" value="{{ old('name') }}" 
+                    class="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-600" required>
+                @error('name')
+                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 mb-2">Slug (URL identifier) *</label>
+                <input type="text" name="slug" value="{{ old('slug') }}" 
+                    class="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-600" 
+                    placeholder="e.g., demo, restaurant1" required>
+                <p class="text-gray-500 text-sm mt-1">Only letters, numbers, dashes and underscores</p>
+                @error('slug')
+                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-gray-700 mb-2">Domain (optional)</label>
+                <input type="text" name="domain" value="{{ old('domain') }}" 
+                    class="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-600" 
+                    placeholder="e.g., restaurant.com">
+                @error('domain')
+                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div class="flex space-x-3">
+                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                    Create Tenant
+                </button>
+                <a href="/superadmin/tenants" class="px-6 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400">
+                    Cancel
+                </a>
+            </div>
+        </form>
     </div>
-</body>
-</html>
+</div>
+@endsection

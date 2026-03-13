@@ -6,28 +6,35 @@ use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
 
 class TenantController extends Controller
 {
     public function login()
     {
-        return view('superadmin.login');
+        return view('superadmin.auth.login');
     }
 
     public function authenticate(Request $request)
     {
-        // Simple password: "superadmin123" (change this!)
-        if ($request->password === 'superadmin123') {
-            session(['super_admin_authenticated' => true]);
-            return redirect('/superadmin/tenants');
+        $credentials = $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
+
+        if (Auth::attempt(['email' => $credentials['email'], 'password' => $credentials['password'], 'role' => 'super_admin', 'is_active' => true])) {
+            $request->session()->regenerate();
+            return redirect('/superadmin/dashboard');
         }
         
-        return back()->withErrors(['password' => 'Invalid password']);
+        return back()->withErrors(['email' => 'Invalid credentials'])->withInput();
     }
 
-    public function logout()
+    public function logout(Request $request)
     {
-        session()->forget('super_admin_authenticated');
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
         return redirect('/superadmin/login');
     }
 

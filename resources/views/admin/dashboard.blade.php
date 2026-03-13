@@ -370,7 +370,7 @@
                                 {{ $employee->is_active ? 'Active' : 'Inactive' }}
                             </span>
                         </td>
-                        <td style="color: #666; font-size: 13px;">{{ $employee->created_at->diffForHumans() }}</td>
+                        <td style="color: #666; font-size: 13px;">{{ $employee->created_at ? $employee->created_at->diffForHumans() : 'N/A' }}</td>
                     </tr>
                     @endforeach
                 </tbody>
