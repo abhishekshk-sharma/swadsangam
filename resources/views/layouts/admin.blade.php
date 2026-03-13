@@ -404,11 +404,11 @@
             <a href="/admin/tables" class="nav-link {{ request()->is('admin/tables*') ? 'active' : '' }}">
                 <i class="fas fa-table"></i> Tables
             </a>
-            <a href="/admin/menu" class="nav-link {{ request()->is('admin/menu*') ? 'active' : '' }}">
+            <a href="/admin/menu" class="nav-link {{ request()->is('admin/menu') ? 'active' : '' }}">
                 <i class="fas fa-utensils"></i> Menu Items
             </a>
             <a href="/admin/cook" class="nav-link {{ request()->is('admin/cook*') ? 'active' : '' }}">
-                <i class="fas fa-fire-burner"></i> Kitchen
+                <i class="fas fa-fire-burner"></i> Manage Orders
             </a>
             <a href="/admin/employees" class="nav-link {{ request()->is('admin/employees*') ? 'active' : '' }}">
                 <i class="fas fa-users"></i> Employees
@@ -430,18 +430,16 @@
             <a href="/profile" class="nav-link {{ request()->is('profile*') ? 'active' : '' }}">
                 <i class="fas fa-user-circle"></i> Profile
             </a>
-            @if(auth()->user()->isSuperAdmin())
             <a href="/admin/categories" class="nav-link {{ request()->is('admin/categories*') ? 'active' : '' }}">
                 <i class="fas fa-layer-group"></i> Table Categories
             </a>
             <a href="/admin/menu-categories" class="nav-link {{ request()->is('admin/menu-categories*') ? 'active' : '' }}">
                 <i class="fas fa-tags"></i> Menu Categories
             </a>
-            @endif
         </div>
         
         <div class="sidebar-footer">
-            <form action="/admin/logout" method="POST">
+            <form action="/logout" method="POST">
                 @csrf
                 <button type="submit" class="logout-btn w-100">
                     <i class="fas fa-sign-out-alt"></i> Logout

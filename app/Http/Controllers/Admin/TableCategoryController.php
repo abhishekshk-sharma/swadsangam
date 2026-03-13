@@ -10,36 +10,41 @@ class TableCategoryController extends Controller
 {
     public function index()
     {
-        if (!auth()->user()->isSuperAdmin()) {
-            abort(403, 'Only super admin can manage categories');
-        }
+        // Get global categories (tenant_id = null) and tenant-specific categories
+        $categories = TableCategory::where(function($query) {
+            $query->whereNull('tenant_id')
+                  ->orWhere('tenant_id', session('tenant_id'));
+        })->withCount('tables')->get();
         
-        $categories = TableCategory::withCount('tables')->get();
         return view('admin.categories.index', compact('categories'));
     }
 
     public function store(Request $request)
     {
-        if (!auth()->user()->isSuperAdmin()) {
-            abort(403, 'Only super admin can manage categories');
-        }
-        
         $request->validate([
-            'name' => 'required|unique:table_categories',
-            'description' => 'nullable'
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string'
         ]);
 
-        TableCategory::create($request->all());
-        return redirect()->route('admin.categories.index')->with('success', 'Category created');
+        TableCategory::create([
+            'tenant_id' => session('tenant_id'),
+            'name' => $request->name,
+            'description' => $request->description,
+        ]);
+        
+        return redirect()->route('admin.categories.index')->with('success', 'Category created successfully');
     }
 
     public function destroy($id)
     {
-        if (!auth()->user()->isSuperAdmin()) {
-            abort(403, 'Only super admin can manage categories');
+        $category = TableCategory::findOrFail($id);
+        
+        // Only allow deletion of tenant-specific categories
+        if ($category->tenant_id !== session('tenant_id')) {
+            return redirect()->route('admin.categories.index')->with('error', 'You can only delete your own categories');
         }
         
-        TableCategory::findOrFail($id)->delete();
-        return redirect()->route('admin.categories.index')->with('success', 'Category deleted');
+        $category->delete();
+        return redirect()->route('admin.categories.index')->with('success', 'Category deleted successfully');
     }
 }

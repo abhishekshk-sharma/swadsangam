@@ -17,7 +17,7 @@
                     <h1 class="text-lg font-bold">Swad Sangam</h1>
                     <p class="text-xs text-blue-300">{{ auth()->user()->name }} - Cashier</p>
                 </div>
-                <form action="/admin/logout" method="POST">
+                <form action="/logout" method="POST">
                     @csrf
                     <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
                         Logout

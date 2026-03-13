@@ -36,7 +36,7 @@
                 </a>
                 <a href="/superadmin/users" class="flex items-center px-6 py-3 hover:bg-blue-800 {{ request()->is('superadmin/users*') ? 'bg-blue-800 border-l-4 border-white' : '' }}">
                     <i class="fas fa-user-shield w-5"></i>
-                    <span class="ml-3">Super Admins</span>
+                    <span class="ml-3">Admin Management</span>
                 </a>
                 <a href="/superadmin/table-categories" class="flex items-center px-6 py-3 hover:bg-blue-800 {{ request()->is('superadmin/table-categories*') ? 'bg-blue-800 border-l-4 border-white' : '' }}">
                     <i class="fas fa-layer-group w-5"></i>

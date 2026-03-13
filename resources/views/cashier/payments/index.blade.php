@@ -28,17 +28,36 @@
 
                 <div class="space-y-2 mb-4">
                     @foreach($order->orderItems as $item)
-                        <div class="flex justify-between items-center py-2 border-b">
-                            <div>
-                                <div class="font-semibold">{{ $item->menuItem->name }}</div>
-                                <div class="text-sm text-gray-600">Qty: {{ $item->quantity }}</div>
-                            </div>
-                            <div class="text-right">
-                                <div class="font-bold">₹{{ number_format($item->price * $item->quantity, 2) }}</div>
+                        <div class="py-2 border-b">
+                            <div class="flex justify-between items-center">
+                                <div class="flex-1">
+                                    <div class="font-semibold">{{ $item->menuItem->name }}</div>
+                                    <div class="text-sm text-gray-600">Qty: {{ $item->quantity }}</div>
+                                    @if($item->notes)
+                                        <div class="text-xs text-orange-600 italic mt-1 bg-orange-50 px-2 py-1 rounded">
+                                            → {{ $item->notes }}
+                                        </div>
+                                    @endif
+                                </div>
+                                <div class="text-right">
+                                    <div class="font-bold">₹{{ number_format($item->price * $item->quantity, 2) }}</div>
+                                </div>
                             </div>
                         </div>
                     @endforeach
                 </div>
+
+                @if($order->customer_notes)
+                <div class="mb-4 bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded">
+                    <h4 class="font-semibold mb-1 text-sm text-yellow-800 flex items-center">
+                        <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"/>
+                        </svg>
+                        Customer Request:
+                    </h4>
+                    <p class="text-sm text-gray-700 italic">{{ $order->customer_notes }}</p>
+                </div>
+                @endif
 
                 <div class="pt-3 border-t">
                     <div class="font-bold text-xl text-green-600 mb-4">Total: ₹{{ number_format($order->total_amount, 2) }}</div>

@@ -36,6 +36,8 @@ class OrderController extends Controller
             'items' => 'required|array',
             'items.*.menu_item_id' => 'required|exists:menu_items,id',
             'items.*.quantity' => 'required|integer|min:1',
+            'items.*.notes' => 'nullable|string|max:500',
+            'customer_notes' => 'nullable|string|max:500',
         ]);
 
         $total = 0;
@@ -50,6 +52,7 @@ class OrderController extends Controller
             'user_id' => auth()->id(),
             'status' => 'pending',
             'total_amount' => $total,
+            'customer_notes' => $request->customer_notes,
         ]);
 
         foreach ($request->items as $item) {
@@ -61,6 +64,7 @@ class OrderController extends Controller
                 'quantity' => $item['quantity'],
                 'price' => $menuItem->price,
                 'status' => 'pending',
+                'notes' => $item['notes'] ?? null,
             ]);
         }
 
@@ -123,6 +127,7 @@ class OrderController extends Controller
             'items' => 'required|array',
             'items.*.menu_item_id' => 'required|exists:menu_items,id',
             'items.*.quantity' => 'required|integer|min:1',
+            'items.*.notes' => 'nullable|string|max:500',
         ]);
 
         $additionalTotal = 0;
@@ -139,6 +144,7 @@ class OrderController extends Controller
                 'quantity' => $item['quantity'],
                 'price' => $menuItem->price,
                 'status' => 'pending',
+                'notes' => $item['notes'] ?? null,
             ]);
             
             $newItems[] = $orderItem;

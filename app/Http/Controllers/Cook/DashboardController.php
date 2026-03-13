@@ -11,8 +11,8 @@ class DashboardController extends Controller
     public function index()
     {
         $stats = [
-            'pending' => Order::where('status', 'pending')->count(),
-            'preparing' => Order::where('status', 'preparing')->count(),
+            'pending' => Order::whereDate('created_at', today())->where('status', 'pending')->count(),
+            'preparing' => Order::whereDate('created_at', today())->where('status', 'preparing')->count(),
             'ready' => Order::whereDate('created_at', today())->where('status', 'ready')->count(),
             'total_today' => Order::whereDate('created_at', today())->count(),
         ];
@@ -37,6 +37,7 @@ class DashboardController extends Controller
 
         $recentOrders = Order::with('table')
             ->whereIn('status', ['pending', 'processing'])
+            ->whereDate('created_at', today())
             ->latest()
             ->take(5)
             ->get();

@@ -90,6 +90,12 @@
         </div>
         
         <div class="p-4 border-t bg-gray-50">
+            <div class="mb-3">
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Customer Request/Notes (Optional)</label>
+                <textarea id="customerNotes" rows="2" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" 
+                    placeholder="e.g., Less spicy, No onions, Extra sauce..."></textarea>
+            </div>
             <div class="flex justify-between items-center mb-4">
                 <span class="text-lg font-semibold">Total:</span>
                 <span id="cartTotal" class="text-2xl font-bold text-blue-600">₹0.00</span>
@@ -140,7 +146,8 @@ function addToCart(itemId, itemName, itemPrice) {
             id: itemId,
             name: itemName,
             price: itemPrice,
-            quantity: 1
+            quantity: 1,
+            notes: ''
         });
     }
     
@@ -184,17 +191,23 @@ function renderCart() {
         total += itemTotal;
         
         html += `
-            <div class="flex items-center justify-between mb-4 pb-4 border-b">
-                <div class="flex-1">
-                    <h3 class="font-semibold text-gray-800">${item.name}</h3>
-                    <p class="text-sm text-gray-600">₹${item.price} each</p>
+            <div class="mb-4 pb-4 border-b">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex-1">
+                        <h3 class="font-semibold text-gray-800">${item.name}</h3>
+                        <p class="text-sm text-gray-600">₹${item.price} each</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button onclick="updateQuantity(${index}, -1)" class="w-8 h-8 bg-gray-200 rounded-full font-bold">-</button>
+                        <span class="font-bold text-lg w-8 text-center">${item.quantity}</span>
+                        <button onclick="updateQuantity(${index}, 1)" class="w-8 h-8 bg-blue-600 text-white rounded-full font-bold">+</button>
+                        <button onclick="removeFromCart(${index})" class="ml-2 text-red-500 text-xl">🗑️</button>
+                    </div>
                 </div>
-                <div class="flex items-center gap-3">
-                    <button onclick="updateQuantity(${index}, -1)" class="w-8 h-8 bg-gray-200 rounded-full font-bold">-</button>
-                    <span class="font-bold text-lg w-8 text-center">${item.quantity}</span>
-                    <button onclick="updateQuantity(${index}, 1)" class="w-8 h-8 bg-blue-600 text-white rounded-full font-bold">+</button>
-                    <button onclick="removeFromCart(${index})" class="ml-2 text-red-500 text-xl">🗑️</button>
-                </div>
+                <textarea id="itemNotes${index}" rows="1" 
+                    class="w-full px-2 py-1 border border-gray-300 rounded text-xs" 
+                    placeholder="Special request for this item..." 
+                    onchange="updateItemNotes(${index}, this.value)">${item.notes || ''}</textarea>
             </div>
         `;
     });
@@ -250,6 +263,12 @@ function submitOrder() {
     tableInput.value = selectedTableId;
     form.appendChild(tableInput);
     
+    const notesInput = document.createElement('input');
+    notesInput.type = 'hidden';
+    notesInput.name = 'customer_notes';
+    notesInput.value = document.getElementById('customerNotes').value;
+    form.appendChild(notesInput);
+    
     cart.forEach((item, index) => {
         const itemIdInput = document.createElement('input');
         itemIdInput.type = 'hidden';
@@ -262,6 +281,12 @@ function submitOrder() {
         quantityInput.name = `items[${index}][quantity]`;
         quantityInput.value = item.quantity;
         form.appendChild(quantityInput);
+        
+        const notesInput = document.createElement('input');
+        notesInput.type = 'hidden';
+        notesInput.name = `items[${index}][notes]`;
+        notesInput.value = item.notes || '';
+        form.appendChild(notesInput);
     });
     
     document.body.appendChild(form);
@@ -312,6 +337,10 @@ function showToast(message) {
     setTimeout(() => {
         toast.remove();
     }, 2000);
+}
+
+function updateItemNotes(index, notes) {
+    cart[index].notes = notes;
 }
 </script>
 

@@ -47,4 +47,26 @@ class CookController extends Controller
         
         return response()->json(['success' => true]);
     }
+
+    public function processPayment(Request $request, $id)
+    {
+        $order = Order::findOrFail($id);
+        
+        $request->validate([
+            'payment_mode' => 'required|in:cash,upi,card',
+            'cash_received' => 'nullable|numeric|min:0'
+        ]);
+
+        $order->update([
+            'status' => 'paid',
+            'payment_mode' => $request->payment_mode,
+            'paid_at' => now()
+        ]);
+
+        $order->table->update(['is_occupied' => false]);
+
+        event(new OrderStatusUpdated($order, 'served'));
+
+        return redirect('/admin/cook')->with('success', 'Payment received! Order closed.');
+    }
 }

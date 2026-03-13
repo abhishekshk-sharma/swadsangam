@@ -157,6 +157,12 @@
     </div>
 </div>
 
+@if(session('success'))
+    <div class="alert alert-success" style="margin-bottom: 24px;">
+        <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+    </div>
+@endif
+
 <div class="kitchen-tabs">
     <a href="#" class="kitchen-tab active" onclick="filterOrders('all'); return false;">
         <i class="fas fa-th me-2"></i>All Orders
@@ -201,11 +207,27 @@
                 </div>
                 @foreach($order->items as $item)
                 <div class="item-row">
-                    <span class="item-name">{{ $item->menuItem->name }}</span>
+                    <div class="flex-grow-1">
+                        <span class="item-name">{{ $item->menuItem->name }}</span>
+                        @if($item->notes)
+                            <div style="font-size: 11px; color: #ff9900; font-style: italic; margin-top: 2px;">
+                                → {{ $item->notes }}
+                            </div>
+                        @endif
+                    </div>
                     <span class="item-qty">x{{ $item->quantity }}</span>
                 </div>
                 @endforeach
             </div>
+            
+            @if($order->customer_notes)
+            <div class="mb-3" style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; border-radius: 4px;">
+                <div style="font-size: 12px; font-weight: 600; color: #856404; text-transform: uppercase; margin-bottom: 4px;">
+                    <i class="fas fa-info-circle me-1"></i>Customer Request:
+                </div>
+                <div style="font-size: 13px; color: #664d03; font-style: italic;">{{ $order->customer_notes }}</div>
+            </div>
+            @endif
             
             @if($order->status === 'pending')
             <button onclick="startPreparing({{ $order->id }})" class="btn-success w-100">
@@ -220,14 +242,19 @@
                 <i class="fas fa-utensils me-1"></i>Mark as Served
             </button>
             @elseif($order->status === 'served')
-            <div class="text-center py-3">
-                <i class="fas fa-utensils" style="font-size: 48px; color: #9333ea;"></i>
-                <div class="mt-2" style="color: #6b21a8; font-weight: 600;">Served to Customer</div>
+            <div class="mb-3">
+                <div style="font-size: 18px; font-weight: 700; color: #16a34a; text-align: center; margin-bottom: 12px;">
+                    Total: ₹{{ number_format($order->total_amount, 2) }}
+                </div>
+                <button onclick="openPaymentModal({{ $order->id }}, {{ $order->total_amount }}, '{{ $order->table->table_number }}')" class="btn-primary w-100">
+                    <i class="fas fa-money-bill me-1"></i>Take Payment
+                </button>
             </div>
             @else
             <div class="text-center py-3">
-                <i class="fas fa-check-circle" style="font-size: 48px; color: #6b7280;"></i>
-                <div class="mt-2" style="color: #4b5563; font-weight: 600;">Payment Completed</div>
+                <i class="fas fa-check-circle" style="font-size: 48px; color: #16a34a;"></i>
+                <div class="mt-2" style="color: #15803d; font-weight: 600;">Payment Completed</div>
+                <div style="font-size: 14px; color: #666; margin-top: 4px;">₹{{ number_format($order->total_amount, 2) }} - {{ ucfirst($order->payment_mode ?? 'cash') }}</div>
             </div>
             @endif
         </div>
@@ -241,6 +268,92 @@
     </div>
     @endforelse
 </div>
+
+<!-- Payment Modal -->
+<div id="paymentModal" class="modal fade" tabindex="-1" style="display: none;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+            <div class="modal-header" style="background: linear-gradient(135deg, #232f3e 0%, #37475a 100%); color: white; border-radius: 12px 12px 0 0;">
+                <div>
+                    <h5 class="modal-title" style="margin: 0; font-weight: 700;">Process Payment</h5>
+                    <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">Order #<span id="modalOrderId"></span> - Table <span id="modalTableNumber"></span></p>
+                </div>
+                <button type="button" class="btn-close btn-close-white" onclick="closePaymentModal()"></button>
+            </div>
+            <div class="modal-body" style="padding: 24px;">
+                <form id="paymentForm" method="POST">
+                    @csrf
+                    @method('PATCH')
+                    
+                    <div class="mb-4" style="background: #f0fdf4; border: 2px solid #86efac; border-radius: 8px; padding: 16px; text-align: center;">
+                        <div style="font-size: 14px; color: #166534; font-weight: 600; margin-bottom: 4px;">Total Amount</div>
+                        <div id="modalTotalAmount" style="font-size: 32px; font-weight: 700; color: #15803d;">₹0.00</div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label" style="font-weight: 600; color: #232f3e;">Payment Method</label>
+                        <div class="row g-2">
+                            <div class="col-4">
+                                <button type="button" onclick="selectPaymentMode('cash')" class="payment-mode-btn w-100" data-mode="cash" style="padding: 16px; border: 2px solid #d5d9d9; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;">
+                                    <div style="font-size: 32px; margin-bottom: 8px;">💵</div>
+                                    <div style="font-size: 13px; font-weight: 600;">Cash</div>
+                                </button>
+                            </div>
+                            <div class="col-4">
+                                <button type="button" onclick="selectPaymentMode('upi')" class="payment-mode-btn w-100" data-mode="upi" style="padding: 16px; border: 2px solid #d5d9d9; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;">
+                                    <div style="font-size: 32px; margin-bottom: 8px;">📱</div>
+                                    <div style="font-size: 13px; font-weight: 600;">UPI</div>
+                                </button>
+                            </div>
+                            <div class="col-4">
+                                <button type="button" onclick="selectPaymentMode('card')" class="payment-mode-btn w-100" data-mode="card" style="padding: 16px; border: 2px solid #d5d9d9; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;">
+                                    <div style="font-size: 32px; margin-bottom: 8px;">💳</div>
+                                    <div style="font-size: 13px; font-weight: 600;">Card</div>
+                                </button>
+                            </div>
+                        </div>
+                        <input type="hidden" name="payment_mode" id="paymentMode" required>
+                    </div>
+                    
+                    <div id="cashSection" style="display: none;">
+                        <label class="form-label" style="font-weight: 600; color: #232f3e;">Cash Received</label>
+                        <div class="input-group mb-3">
+                            <span class="input-group-text" style="background: #f7f8f9; border: 1px solid #d5d9d9;">₹</span>
+                            <input type="number" step="0.01" min="0" id="cashReceived" class="form-control" placeholder="Enter amount" style="border: 1px solid #d5d9d9; padding: 12px;">
+                            <button type="button" onclick="calculateChange()" class="btn-primary" style="padding: 12px 24px;">
+                                Calculate
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="changeSection" style="display: none; background: #fef3c7; border: 2px solid #fbbf24; border-radius: 8px; padding: 16px; text-align: center; margin-bottom: 16px;">
+                        <div style="font-size: 13px; color: #92400e; font-weight: 600; margin-bottom: 4px;">Change to Return</div>
+                        <div id="changeAmount" style="font-size: 28px; font-weight: 700; color: #b45309;">₹0.00</div>
+                    </div>
+                    
+                    <button type="submit" id="submitPaymentBtn" class="btn-success w-100" style="padding: 14px; font-size: 16px; font-weight: 600;" disabled>
+                        <i class="fas fa-check-circle me-2"></i>Complete Payment
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="modalBackdrop" class="modal-backdrop fade" style="display: none;"></div>
+
+<style>
+.payment-mode-btn:hover {
+    border-color: #ff9900 !important;
+    background: #fff3e0 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255,153,0,0.2);
+}
+.payment-mode-btn.selected {
+    border-color: #ff9900 !important;
+    background: #fff3e0 !important;
+    box-shadow: 0 0 0 3px rgba(255,153,0,0.2);
+}
+</style>
 
 <script>
 function filterOrders(status) {
@@ -295,5 +408,91 @@ function markServed(orderId) {
     .then(response => response.json())
     .then(() => location.reload());
 }
+
+let currentOrderId = null;
+let currentTotalAmount = 0;
+
+function openPaymentModal(orderId, totalAmount, tableNumber) {
+    currentOrderId = orderId;
+    currentTotalAmount = totalAmount;
+    
+    document.getElementById('modalOrderId').textContent = orderId;
+    document.getElementById('modalTableNumber').textContent = tableNumber;
+    document.getElementById('modalTotalAmount').textContent = '₹' + totalAmount.toFixed(2);
+    document.getElementById('paymentForm').action = `/admin/cook/${orderId}/payment`;
+    
+    // Reset form
+    document.getElementById('paymentMode').value = '';
+    document.getElementById('cashReceived').value = '';
+    document.getElementById('cashSection').style.display = 'none';
+    document.getElementById('changeSection').style.display = 'none';
+    document.getElementById('submitPaymentBtn').disabled = true;
+    
+    document.querySelectorAll('.payment-mode-btn').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+    
+    document.getElementById('paymentModal').style.display = 'block';
+    document.getElementById('paymentModal').classList.add('show');
+    document.getElementById('modalBackdrop').style.display = 'block';
+    document.getElementById('modalBackdrop').classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+function closePaymentModal() {
+    document.getElementById('paymentModal').style.display = 'none';
+    document.getElementById('paymentModal').classList.remove('show');
+    document.getElementById('modalBackdrop').style.display = 'none';
+    document.getElementById('modalBackdrop').classList.remove('show');
+    document.body.style.overflow = 'auto';
+}
+
+function selectPaymentMode(mode) {
+    document.querySelectorAll('.payment-mode-btn').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+    
+    event.target.closest('.payment-mode-btn').classList.add('selected');
+    document.getElementById('paymentMode').value = mode;
+    
+    const cashSection = document.getElementById('cashSection');
+    const changeSection = document.getElementById('changeSection');
+    const submitBtn = document.getElementById('submitPaymentBtn');
+    
+    if (mode === 'cash') {
+        cashSection.style.display = 'block';
+        changeSection.style.display = 'none';
+        submitBtn.disabled = true;
+    } else {
+        cashSection.style.display = 'none';
+        changeSection.style.display = 'none';
+        submitBtn.disabled = false;
+    }
+}
+
+function calculateChange() {
+    const cashReceived = parseFloat(document.getElementById('cashReceived').value);
+    
+    if (!cashReceived || cashReceived < currentTotalAmount) {
+        alert(`Cash received must be at least ₹${currentTotalAmount.toFixed(2)}`);
+        return;
+    }
+    
+    const change = cashReceived - currentTotalAmount;
+    document.getElementById('changeAmount').textContent = '₹' + change.toFixed(2);
+    document.getElementById('changeSection').style.display = 'block';
+    document.getElementById('submitPaymentBtn').disabled = false;
+}
+
+document.getElementById('paymentForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    if (!document.getElementById('paymentMode').value) {
+        alert('Please select a payment method');
+        return;
+    }
+    
+    this.submit();
+});
 </script>
 @endsection

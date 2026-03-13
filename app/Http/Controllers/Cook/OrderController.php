@@ -18,6 +18,7 @@ class OrderController extends Controller
                 $query->where('status', 'pending');
             })
             ->where('status', '!=', 'paid')
+            ->whereDate('created_at', today())
             ->latest()
             ->get();
 
@@ -33,6 +34,7 @@ class OrderController extends Controller
                 $query->where('status', 'preparing');
             })
             ->where('status', '!=', 'paid')
+            ->whereDate('created_at', today())
             ->latest()
             ->get();
 

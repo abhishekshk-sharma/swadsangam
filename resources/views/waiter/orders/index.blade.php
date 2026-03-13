@@ -36,10 +36,27 @@
             <h4 class="font-semibold mb-1 text-xs text-gray-600">Items:</h4>
             <ul class="space-y-1">
                 @foreach($order->items as $item)
-                <li class="text-sm">{{ $item->quantity }}x {{ $item->menuItem->name }}</li>
+                <li class="text-sm">
+                    {{ $item->quantity }}x {{ $item->menuItem->name }}
+                    @if($item->notes)
+                        <span class="block text-xs text-orange-600 italic ml-4">→ {{ $item->notes }}</span>
+                    @endif
+                </li>
                 @endforeach
             </ul>
         </div>
+        
+        @if($order->customer_notes)
+        <div class="mb-3 bg-yellow-50 border-l-4 border-yellow-400 p-2 rounded">
+            <h4 class="font-semibold mb-1 text-xs text-yellow-800 flex items-center">
+                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"/>
+                </svg>
+                Customer Request:
+            </h4>
+            <p class="text-xs text-gray-700 italic">{{ $order->customer_notes }}</p>
+        </div>
+        @endif
         
         <div class="border-t pt-2">
             <div class="flex justify-between items-center mb-2">
@@ -197,7 +214,8 @@ function addItemToExistingOrder(itemId, itemName, itemPrice) {
             id: itemId,
             name: itemName,
             price: itemPrice,
-            quantity: 1
+            quantity: 1,
+            notes: ''
         });
     }
     
@@ -219,17 +237,23 @@ function updateSelectedItemsList() {
     
     additionalItems.forEach((item, index) => {
         html += `
-            <div class="flex items-center justify-between bg-white p-3 rounded-lg shadow-sm border-b">
-                <div class="flex-1">
-                    <h3 class="font-semibold text-sm text-gray-800">${item.name}</h3>
-                    <p class="text-xs text-gray-600">₹${item.price} each</p>
+            <div class="bg-white p-3 rounded-lg shadow-sm border-b">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex-1">
+                        <h3 class="font-semibold text-sm text-gray-800">${item.name}</h3>
+                        <p class="text-xs text-gray-600">₹${item.price} each</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="updateAdditionalQuantity(${index}, -1)" class="w-7 h-7 bg-gray-200 rounded-full font-bold text-sm">-</button>
+                        <span class="font-bold text-base w-7 text-center">${item.quantity}</span>
+                        <button onclick="updateAdditionalQuantity(${index}, 1)" class="w-7 h-7 bg-blue-600 text-white rounded-full font-bold text-sm">+</button>
+                        <button onclick="removeAdditionalItem(${index})" class="ml-1 text-red-500 text-lg">🗑️</button>
+                    </div>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button onclick="updateAdditionalQuantity(${index}, -1)" class="w-7 h-7 bg-gray-200 rounded-full font-bold text-sm">-</button>
-                    <span class="font-bold text-base w-7 text-center">${item.quantity}</span>
-                    <button onclick="updateAdditionalQuantity(${index}, 1)" class="w-7 h-7 bg-blue-600 text-white rounded-full font-bold text-sm">+</button>
-                    <button onclick="removeAdditionalItem(${index})" class="ml-1 text-red-500 text-lg">🗑️</button>
-                </div>
+                <textarea id="additionalItemNotes${index}" rows="1" 
+                    class="w-full px-2 py-1 border border-gray-300 rounded text-xs" 
+                    placeholder="Special request for this item..." 
+                    onchange="updateAdditionalItemNotes(${index}, this.value)">${item.notes || ''}</textarea>
             </div>
         `;
     });
@@ -288,6 +312,12 @@ function submitAdditionalItems() {
         quantityInput.name = `items[${index}][quantity]`;
         quantityInput.value = item.quantity;
         form.appendChild(quantityInput);
+        
+        const notesInput = document.createElement('input');
+        notesInput.type = 'hidden';
+        notesInput.name = `items[${index}][notes]`;
+        notesInput.value = item.notes || '';
+        form.appendChild(notesInput);
     });
     
     document.body.appendChild(form);
@@ -352,6 +382,10 @@ function showToast(message) {
     setTimeout(() => {
         toast.remove();
     }, 1500);
+}
+
+function updateAdditionalItemNotes(index, notes) {
+    additionalItems[index].notes = notes;
 }
 </script>
 

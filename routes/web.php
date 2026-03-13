@@ -105,11 +105,10 @@ Route::prefix('superadmin')->name('superadmin.')->group(function () {
 // Login Routes
 Route::get('login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('login', [AuthController::class, 'login']);
+Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
 // Admin Routes
 Route::prefix('admin')->name('admin.')->group(function () {
-    Route::post('logout', [AuthController::class, 'logout'])->name('logout');
-    
     Route::middleware(['auth', 'role:admin,manager,super_admin'])->group(function () {
         Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::resource('employees', EmployeeController::class);
@@ -126,6 +125,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('cook/{id}/start', [CookController::class, 'startPreparing'])->name('cook.start');
         Route::post('cook/{id}/ready', [CookController::class, 'markReady'])->name('cook.ready');
         Route::post('cook/{id}/served', [CookController::class, 'markServed'])->name('cook.served');
+        Route::patch('cook/{id}/payment', [CookController::class, 'processPayment'])->name('cook.payment');
         Route::get('telegram', [TelegramIntegrationController::class, 'index'])->name('telegram.index');
         Route::post('telegram/link/{id}', [TelegramIntegrationController::class, 'linkUser'])->name('telegram.link');
         Route::delete('telegram/reject/{id}', [TelegramIntegrationController::class, 'reject'])->name('telegram.reject');
