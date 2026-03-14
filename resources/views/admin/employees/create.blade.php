@@ -59,8 +59,6 @@
                             <option value="waiter" {{ old('role') === 'waiter' ? 'selected' : '' }}>Waiter</option>
                             <option value="chef" {{ old('role') === 'chef' ? 'selected' : '' }}>Chef</option>
                             <option value="cashier" {{ old('role') === 'cashier' ? 'selected' : '' }}>Cashier</option>
-                            
-                            <option value="admin" {{ old('role') === 'admin' ? 'selected' : '' }}>Admin</option>
                         </select>
                         @error('role')
                             <div class="text-danger small mt-1">{{ $message }}</div>

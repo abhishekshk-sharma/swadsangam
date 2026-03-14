@@ -5,7 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
+use App\Models\Admin;
+use App\Models\Employee;
 
 class AuthController extends Controller
 {
@@ -21,28 +22,38 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        $tenantId = session('tenant_id');
-        
-        if (Auth::attempt(['email' => $credentials['email'], 'password' => $credentials['password'], 'tenant_id' => $tenantId, 'is_active' => true])) {
-            $request->session()->regenerate();
+        // Find admin by email first
+        $admin = Admin::where('email', $credentials['email'])->where('is_active', true)->first();
+        if ($admin) {
+            // Set correct tenant in session
+            session(['tenant_id' => $admin->tenant_id]);
             
-            // Redirect based on role
-            if (auth()->user()->role === 'waiter') {
-                return redirect('/waiter/dashboard');
-            }
-            
-            if (auth()->user()->role === 'chef') {
-                return redirect('/cook/dashboard');
-            }
-            
-            if (auth()->user()->role === 'cashier') {
-                return redirect('/cashier/dashboard');
-            }
-            if (auth()->user()->role === 'admin') {
+            if (Auth::guard('admin')->attempt(['email' => $credentials['email'], 'password' => $credentials['password'], 'is_active' => true])) {
+                $request->session()->regenerate();
                 return redirect('/admin/dashboard');
             }
+        }
+        
+        // Find employee by email
+        $employee = Employee::where('email', $credentials['email'])->where('is_active', true)->first();
+        if ($employee) {
+            // Set correct tenant in session
+            session(['tenant_id' => $employee->tenant_id]);
             
-            // return redirect()->intended('/admin/dashboard');
+            if (Auth::guard('employee')->attempt(['email' => $credentials['email'], 'password' => $credentials['password'], 'is_active' => true])) {
+                $request->session()->regenerate();
+                $employee = Auth::guard('employee')->user();
+                
+                if ($employee->isWaiter()) {
+                    return redirect('/waiter/dashboard');
+                }
+                if ($employee->isChef()) {
+                    return redirect('/cook/dashboard');
+                }
+                if ($employee->isCashier()) {
+                    return redirect('/cashier/dashboard');
+                }
+            }
         }
 
         return back()->withErrors(['email' => 'Invalid credentials'])->withInput();
@@ -50,7 +61,8 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        Auth::logout();
+        Auth::guard('admin')->logout();
+        Auth::guard('employee')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         return redirect('login');

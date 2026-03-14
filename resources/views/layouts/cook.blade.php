@@ -16,7 +16,7 @@
             <div class="flex justify-between items-center">
                 <div>
                     <h1 class="text-lg font-bold">Swad Sangam</h1>
-                    <p class="text-xs text-blue-300">{{ auth()->user()->name }} - Chef</p>
+                    <p class="text-xs text-blue-300">{{ current_user()->name ?? 'User' }} - Chef</p>
                 </div>
                 <form action="/logout" method="POST">
                     @csrf
@@ -49,11 +49,7 @@
                 </a>
                 <a href="{{ route('cook.orders.pending') }}" class="flex-1 text-center py-3 {{ request()->routeIs('cook.orders.pending') ? 'text-blue-600 bg-blue-50' : 'text-gray-600' }}">
                     <div class="text-2xl">⏱</div>
-                    <div class="text-xs">Pending</div>
-                </a>
-                <a href="{{ route('cook.orders.processing') }}" class="flex-1 text-center py-3 {{ request()->routeIs('cook.orders.processing') ? 'text-blue-600 bg-blue-50' : 'text-gray-600' }}">
-                    <div class="text-2xl">🔥</div>
-                    <div class="text-xs">Cooking</div>
+                    <div class="text-xs">Orders</div>
                 </a>
                 <a href="{{ route('cook.orders.completed') }}" class="flex-1 text-center py-3 {{ request()->routeIs('cook.orders.completed') ? 'text-blue-600 bg-blue-50' : 'text-gray-600' }}">
                     <div class="text-2xl">✓</div>

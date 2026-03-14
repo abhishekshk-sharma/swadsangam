@@ -25,13 +25,13 @@ class TableController extends Controller
         }
         
         $tables = $query->get();
-        $categories = TableCategory::all();
+        $categories = TableCategory::accessibleByTenant()->get();
         return view('admin.tables.index', compact('tables', 'categories'));
     }
 
     public function create()
     {
-        $categories = TableCategory::all();
+        $categories = TableCategory::accessibleByTenant()->get();
         return view('admin.tables.create', compact('categories'));
     }
 

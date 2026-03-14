@@ -56,7 +56,7 @@
                 <div class="flex items-center justify-between px-6 py-4">
                     <h2 class="text-xl font-semibold text-gray-800">@yield('header', 'Dashboard')</h2>
                     <div class="flex items-center space-x-4">
-                        <span class="text-gray-600">{{ auth()->user()->name }}</span>
+                        <span class="text-gray-600">{{ Auth::guard('super_admin')->user()->name ?? 'Super Admin' }}</span>
                         <form action="{{ route('superadmin.logout') }}" method="POST">
                             @csrf
                             <button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">

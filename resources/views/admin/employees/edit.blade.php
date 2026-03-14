@@ -55,12 +55,9 @@
                     <div class="mb-3">
                         <label class="form-label">Role <span class="text-danger">*</span></label>
                         <select name="role" class="form-select" required>
-                            <option value="staff" {{ old('role', $employee->role) === 'staff' ? 'selected' : '' }}>Staff</option>
                             <option value="waiter" {{ old('role', $employee->role) === 'waiter' ? 'selected' : '' }}>Waiter</option>
                             <option value="chef" {{ old('role', $employee->role) === 'chef' ? 'selected' : '' }}>Chef</option>
                             <option value="cashier" {{ old('role', $employee->role) === 'cashier' ? 'selected' : '' }}>Cashier</option>
-                            <option value="manager" {{ old('role', $employee->role) === 'manager' ? 'selected' : '' }}>Manager</option>
-                            <option value="admin" {{ old('role', $employee->role) === 'admin' ? 'selected' : '' }}>Admin</option>
                         </select>
                         @error('role')
                             <div class="text-danger small mt-1">{{ $message }}</div>

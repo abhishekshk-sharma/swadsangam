@@ -393,7 +393,7 @@
     <div class="sidebar">
         <div class="sidebar-header">
             <h1 class="sidebar-brand">Swad Sangam</h1>
-            <p class="sidebar-subtitle">{{ ucfirst(auth()->user()->role) }} Panel</p>
+            <p class="sidebar-subtitle">{{ ucfirst(current_user()->role ?? 'Admin') }} Panel</p>
         </div>
         
         <div class="nav-section">
@@ -456,10 +456,10 @@
             </div>
             <div class="user-info">
                 <div>
-                    <div style="font-size: 14px; font-weight: 600; color: var(--primary-color);">{{ auth()->user()->name }}</div>
-                    <div style="font-size: 12px; color: #666;">{{ auth()->user()->email }}</div>
+                    <div style="font-size: 14px; font-weight: 600; color: var(--primary-color);">{{ current_user()->name ?? 'User' }}</div>
+                    <div style="font-size: 12px; color: #666;">{{ current_user()->email ?? '' }}</div>
                 </div>
-                <div class="user-avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
+                <div class="user-avatar">{{ strtoupper(substr(current_user()->name ?? 'U', 0, 1)) }}</div>
             </div>
         </div>
         

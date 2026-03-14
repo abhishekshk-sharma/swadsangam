@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title') - {{ $tenant->name }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -15,7 +16,7 @@
             <div class="flex justify-between items-center">
                 <div>
                     <h1 class="text-lg font-bold">Swad Sangam</h1>
-                    <p class="text-xs text-blue-300">{{ auth()->user()->name }} - Cashier</p>
+                    <p class="text-xs text-blue-300">{{ current_user()->name ?? 'User' }} - Cashier</p>
                 </div>
                 <form action="/logout" method="POST">
                     @csrf

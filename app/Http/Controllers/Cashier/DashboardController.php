@@ -17,23 +17,22 @@ class DashboardController extends Controller
             'cash_collected' => Order::whereDate('created_at', today())->where('status', 'closed')->where('payment_mode', 'cash')->sum('total_amount'),
         ];
 
-        // Last 7 days revenue
-        $chartData = Order::where('created_at', '>=', now()->subDays(6))
+        // Today's hourly revenue
+        $chartData = Order::whereDate('created_at', today())
             ->where('status', 'closed')
             ->select(
-                DB::raw('DATE(created_at) as date'),
+                DB::raw('HOUR(created_at) as hour'),
                 DB::raw('SUM(total_amount) as revenue')
             )
-            ->groupBy('date')
-            ->orderBy('date')
+            ->groupBy('hour')
+            ->orderBy('hour')
             ->get();
 
-        $dates = [];
+        $hours = [];
         $revenues = [];
-        for ($i = 6; $i >= 0; $i--) {
-            $date = now()->subDays($i)->format('Y-m-d');
-            $dates[] = now()->subDays($i)->format('M d');
-            $revenues[] = $chartData->firstWhere('date', $date)->revenue ?? 0;
+        for ($i = 0; $i < 24; $i++) {
+            $hours[] = sprintf('%02d:00', $i);
+            $revenues[] = $chartData->firstWhere('hour', $i)->revenue ?? 0;
         }
 
         $recentPayments = Order::with('table')
@@ -43,6 +42,6 @@ class DashboardController extends Controller
             ->take(5)
             ->get();
 
-        return view('cashier.dashboard', compact('stats', 'dates', 'revenues', 'recentPayments'));
+        return view('cashier.dashboard', compact('stats', 'hours', 'revenues', 'recentPayments'));
     }
 }

@@ -26,7 +26,7 @@
 
     <!-- Chart -->
     <div class="bg-white p-4 rounded-lg shadow">
-        <h3 class="font-bold mb-3 text-sm">Last 7 Days Orders</h3>
+        <h3 class="font-bold mb-3 text-sm">Today's Orders (Hourly)</h3>
         <canvas id="ordersChart" style="max-height: 200px;"></canvas>
     </div>
 
@@ -65,7 +65,7 @@
     new Chart(ctx, {
         type: 'line',
         data: {
-            labels: @json($dates),
+            labels: @json($hours),
             datasets: [{
                 label: 'Orders',
                 data: @json($counts),
@@ -82,7 +82,8 @@
                 legend: { display: false }
             },
             scales: {
-                y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                y: { beginAtZero: true, ticks: { stepSize: 1 } },
+                x: { ticks: { maxRotation: 45, minRotation: 45 } }
             }
         }
     });

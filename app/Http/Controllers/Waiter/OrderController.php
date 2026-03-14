@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Waiter;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Order, OrderItem, RestaurantTable, MenuItem, User};
+use App\Models\{Order, OrderItem, RestaurantTable, MenuItem, Employee};
 use Illuminate\Http\Request;
 
 class OrderController extends Controller
@@ -49,7 +49,7 @@ class OrderController extends Controller
         $order = Order::create([
             'tenant_id' => session('tenant_id'),
             'table_id' => $request->table_id,
-            'user_id' => auth()->id(),
+            'user_id' => current_user_id(),
             'status' => 'pending',
             'total_amount' => $total,
             'customer_notes' => $request->customer_notes,
@@ -88,7 +88,7 @@ class OrderController extends Controller
 
     protected function notifyChefs($order, $specificItems = null)
     {
-        $chefs = User::where('tenant_id', session('tenant_id'))
+        $chefs = Employee::where('tenant_id', session('tenant_id'))
             ->where('role', 'chef')
             ->where('is_active', true)
             ->whereNotNull('telegram_chat_id')
@@ -118,9 +118,9 @@ class OrderController extends Controller
     public function addItems(Request $request, $id)
     {
         $order = Order::findOrFail($id);
-        
-        if ($order->payment_status === 'paid') {
-            return redirect()->back()->with('error', 'Cannot add items to paid order');
+
+        if ($order->status === 'paid') {
+            return redirect()->back()->with('error', 'This order has already been paid. Cannot add items.');
         }
 
         $request->validate([
@@ -151,12 +151,69 @@ class OrderController extends Controller
         }
 
         $order->update([
-            'total_amount' => $order->total_amount + $additionalTotal
+            'total_amount' => $order->total_amount + $additionalTotal,
+            'status' => in_array($order->status, ['ready', 'served']) ? 'preparing' : $order->status,
         ]);
 
         $order->refresh();
         $this->notifyChefs($order, $newItems);
 
         return redirect('/waiter/orders')->with('success', 'Items added successfully');
+    }
+
+    public function updateItem(Request $request, $id)
+    {
+        $item = OrderItem::findOrFail($id);
+        if ($item->status !== 'pending') {
+            return back()->with('error', 'Only pending items can be edited.');
+        }
+        $request->validate([
+            'quantity' => 'required|integer|min:1',
+            'notes'    => 'nullable|string|max:500',
+        ]);
+        $oldTotal = $item->price * $item->quantity;
+        $item->update(['quantity' => $request->quantity, 'notes' => $request->notes]);
+        $newTotal = $item->price * $request->quantity;
+        $item->order->increment('total_amount', $newTotal - $oldTotal);
+        return back()->with('success', 'Item updated.');
+    }
+
+    public function cancelOrder($id)
+    {
+        $order = Order::findOrFail($id);
+        if ($order->status === 'paid') {
+            return back()->with('error', 'Cannot cancel a paid order.');
+        }
+        if ($order->orderItems()->where('status', 'prepared')->exists()) {
+            return back()->with('error', 'Cannot cancel order — some items are already prepared. Cancel individual items instead.');
+        }
+        $order->orderItems()->update(['status' => 'cancelled']);
+        $order->update(['status' => 'cancelled']);
+        $order->table->update(['is_occupied' => false]);
+        return back()->with('success', 'Order cancelled.');
+    }
+
+    public function cancelItem($id)
+    {
+        $item = OrderItem::findOrFail($id);
+        $item->update(['status' => 'cancelled']);
+        $item->order->decrement('total_amount', $item->price * $item->quantity);
+        $this->syncOrderStatus($item->order);
+        return back()->with('success', 'Item cancelled.');
+    }
+
+
+    private function syncOrderStatus(Order $order)
+    {
+        $order->refresh();
+        $nonCancelled = $order->orderItems()->where('status', '!=', 'cancelled');
+        if ($nonCancelled->count() === 0) {
+            $order->update(['status' => 'cancelled']);
+            $order->table->update(['is_occupied' => false]);
+        } elseif ($nonCancelled->where('status', '!=', 'prepared')->count() === 0) {
+            $order->update(['status' => 'ready']);
+        } elseif (in_array($order->status, ['cancelled', 'pending'])) {
+            $order->update(['status' => 'preparing']);
+        }
     }
 }

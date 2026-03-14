@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckRole::class,
+            'multi.auth' => \App\Http\Middleware\MultiGuardAuth::class,
         ]);
         $middleware->redirectGuestsTo(fn() => route('login'));
     })

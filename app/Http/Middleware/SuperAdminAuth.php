@@ -10,7 +10,7 @@ class SuperAdminAuth
 {
     public function handle(Request $request, Closure $next)
     {
-        if (!Auth::check() || Auth::user()->role !== 'super_admin') {
+        if (!Auth::guard('super_admin')->check()) {
             return redirect('/superadmin/login');
         }
 

@@ -11,10 +11,9 @@ class TableCategoryController extends Controller
     public function index()
     {
         // Get global categories (tenant_id = null) and tenant-specific categories
-        $categories = TableCategory::where(function($query) {
-            $query->whereNull('tenant_id')
-                  ->orWhere('tenant_id', session('tenant_id'));
-        })->withCount('tables')->get();
+        $categories = TableCategory::accessibleByTenant()
+            ->withCount('tables')
+            ->get();
         
         return view('admin.categories.index', compact('categories'));
     }

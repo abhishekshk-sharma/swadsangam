@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\{TelegramRequest, User};
+use App\Models\{TelegramRequest, Employee};
 use Illuminate\Http\Request;
 
 class TelegramIntegrationController extends Controller
@@ -14,7 +14,7 @@ class TelegramIntegrationController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
         
-        $linkedUsers = User::where('tenant_id', session('tenant_id'))
+        $linkedUsers = Employee::where('tenant_id', session('tenant_id'))
             ->whereNotNull('telegram_chat_id')
             ->get();
 
@@ -26,10 +26,10 @@ class TelegramIntegrationController extends Controller
         $telegramRequest = TelegramRequest::findOrFail($requestId);
         
         $request->validate([
-            'user_id' => 'required|exists:users,id'
+            'user_id' => 'required|exists:employees,id'
         ]);
 
-        $user = User::find($request->user_id);
+        $user = Employee::find($request->user_id);
         $user->update([
             'telegram_chat_id' => $telegramRequest->chat_id,
             'telegram_username' => $telegramRequest->username
@@ -50,7 +50,7 @@ class TelegramIntegrationController extends Controller
 
     public function unlink($userId)
     {
-        $user = User::findOrFail($userId);
+        $user = Employee::findOrFail($userId);
         $user->update([
             'telegram_chat_id' => null,
             'telegram_username' => null

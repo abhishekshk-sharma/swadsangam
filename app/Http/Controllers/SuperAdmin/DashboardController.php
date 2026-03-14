@@ -3,10 +3,7 @@
 namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Tenant;
-use App\Models\User;
-use App\Models\TableCategory;
-use App\Models\MenuCategory;
+use App\Models\{Tenant, SuperAdmin, Admin};
 
 class DashboardController extends Controller
 {
@@ -15,8 +12,8 @@ class DashboardController extends Controller
         $stats = [
             'tenants' => Tenant::count(),
             'active_tenants' => Tenant::where('status', 'active')->count(),
-            'total_users' => User::count(),
-            'super_admins' => User::where('role', 'super_admin')->count(),
+            'total_admins' => Admin::count(),
+            'super_admins' => SuperAdmin::count(),
         ];
         
         $recentTenants = Tenant::latest()->take(5)->get();

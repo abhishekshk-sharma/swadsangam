@@ -24,13 +24,13 @@ class MenuController extends Controller
         }
         
         $menuItems = $query->get();
-        $menuCategories = MenuCategory::all();
+        $menuCategories = MenuCategory::accessibleByTenant()->get();
         return view('admin.menu.index', compact('menuItems', 'menuCategories'));
     }
 
     public function create()
     {
-        $menuCategories = MenuCategory::all();
+        $menuCategories = MenuCategory::accessibleByTenant()->get();
         return view('admin.menu.create', compact('menuCategories'));
     }
 
@@ -59,7 +59,7 @@ class MenuController extends Controller
     public function edit($id)
     {
         $menuItem = MenuItem::findOrFail($id);
-        $menuCategories = MenuCategory::all();
+        $menuCategories = MenuCategory::accessibleByTenant()->get();
         return view('admin.menu.edit', compact('menuItem', 'menuCategories'));
     }
 

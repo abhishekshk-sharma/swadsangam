@@ -12,24 +12,29 @@ class WaiterNotificationController extends Controller
     {
         $lastCheck = $request->input('last_check', now()->subMinutes(5)->toISOString());
         $tenantId = session('tenant_id');
-        
-        // Get orders that became ready after last check
+
         $readyOrders = Order::with('table')
             ->where('tenant_id', $tenantId)
             ->where('status', 'ready')
             ->where('updated_at', '>', $lastCheck)
             ->whereDate('created_at', today())
             ->get()
-            ->map(function($order) {
-                return [
-                    'id' => $order->id,
-                    'table_number' => $order->table->table_number,
-                    'total_amount' => $order->total_amount
-                ];
-            });
+            ->map(fn($order) => [
+                'id' => $order->id,
+                'table_number' => $order->table->table_number,
+                'total_amount' => $order->total_amount
+            ]);
+
+        // Orders that went back to preparing (new items added) — remove from notified set on client
+        $reactivatedOrders = Order::where('tenant_id', $tenantId)
+            ->where('status', 'preparing')
+            ->where('updated_at', '>', $lastCheck)
+            ->whereDate('created_at', today())
+            ->pluck('id');
 
         return response()->json([
             'ready_orders' => $readyOrders,
+            'reactivated_orders' => $reactivatedOrders,
             'timestamp' => now()->toISOString()
         ]);
     }

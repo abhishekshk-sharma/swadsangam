@@ -68,12 +68,12 @@ Route::get('/telegram/test', function() {
 });
 
 // API for real-time updates
-Route::get('/api/order-updates', [OrderUpdatesController::class, 'getUpdates'])->middleware('auth');
-Route::get('/api/waiter/order-updates', [App\Http\Controllers\Api\WaiterNotificationController::class, 'getUpdates'])->middleware('auth');
-Route::get('/api/chef/order-updates', [App\Http\Controllers\Api\ChefNotificationController::class, 'getUpdates'])->middleware('auth');
+Route::get('/api/order-updates', [OrderUpdatesController::class, 'getUpdates'])->middleware('multi.auth');
+Route::get('/api/waiter/order-updates', [App\Http\Controllers\Api\WaiterNotificationController::class, 'getUpdates'])->middleware('multi.auth');
+Route::get('/api/chef/order-updates', [App\Http\Controllers\Api\ChefNotificationController::class, 'getUpdates'])->middleware('multi.auth');
 
 // Profile Routes (for all authenticated users)
-Route::middleware('auth')->group(function () {
+Route::middleware('multi.auth')->group(function () {
     Route::get('/profile', [App\Http\Controllers\ProfileController::class, 'show'])->name('profile.show');
     Route::get('/profile/edit', [App\Http\Controllers\ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
@@ -109,7 +109,7 @@ Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
 // Admin Routes
 Route::prefix('admin')->name('admin.')->group(function () {
-    Route::middleware(['auth', 'role:admin,manager,super_admin'])->group(function () {
+    Route::middleware(['multi.auth', 'role:admin,manager,super_admin'])->group(function () {
         Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::resource('employees', EmployeeController::class);
         Route::resource('tables', TableController::class);
@@ -126,6 +126,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('cook/{id}/ready', [CookController::class, 'markReady'])->name('cook.ready');
         Route::post('cook/{id}/served', [CookController::class, 'markServed'])->name('cook.served');
         Route::patch('cook/{id}/payment', [CookController::class, 'processPayment'])->name('cook.payment');
+        Route::patch('cook/orders/{id}/cancel', [CookController::class, 'cancelOrder'])->name('cook.orders.cancel');
+        Route::patch('cook/order-items/{id}/cancel', [CookController::class, 'cancelItem'])->name('cook.orderItems.cancel');
+        Route::patch('cook/order-items/{id}/update', [CookController::class, 'updateItem'])->name('cook.orderItems.update');
         Route::get('telegram', [TelegramIntegrationController::class, 'index'])->name('telegram.index');
         Route::post('telegram/link/{id}', [TelegramIntegrationController::class, 'linkUser'])->name('telegram.link');
         Route::delete('telegram/reject/{id}', [TelegramIntegrationController::class, 'reject'])->name('telegram.reject');
@@ -141,28 +144,31 @@ Route::post('table/{qrCode}/order', [OrderController::class, 'placeOrder'])->nam
 Route::get('order/{orderId}/status', [OrderController::class, 'getOrderStatus'])->name('order.status');
 
 // Waiter Routes
-Route::prefix('waiter')->name('waiter.')->middleware(['auth', 'role:waiter'])->group(function () {
+Route::prefix('waiter')->name('waiter.')->middleware(['multi.auth', 'role:waiter'])->group(function () {
     Route::get('dashboard', [WaiterDashboardController::class, 'index'])->name('dashboard');
     Route::get('orders', [WaiterOrderController::class, 'index'])->name('orders.index');
     Route::get('orders/create', [WaiterOrderController::class, 'create'])->name('orders.create');
     Route::post('orders', [WaiterOrderController::class, 'store'])->name('orders.store');
     Route::post('orders/{id}/serve', [WaiterOrderController::class, 'markServed'])->name('orders.serve');
     Route::post('orders/{id}/add-items', [WaiterOrderController::class, 'addItems'])->name('orders.addItems');
+    Route::patch('orders/{id}/cancel', [WaiterOrderController::class, 'cancelOrder'])->name('orders.cancel');
+    Route::patch('order-items/{id}/cancel', [WaiterOrderController::class, 'cancelItem'])->name('orderItems.cancel');
+    Route::patch('order-items/{id}/update', [WaiterOrderController::class, 'updateItem'])->name('orderItems.update');
 });
 
 // Cook Routes
-Route::prefix('cook')->name('cook.')->middleware(['auth', 'role:chef'])->group(function () {
+Route::prefix('cook')->name('cook.')->middleware(['multi.auth', 'role:chef'])->group(function () {
     Route::get('dashboard', [CookDashboardController::class, 'index'])->name('dashboard');
     Route::get('orders/pending', [CookOrderController::class, 'pending'])->name('orders.pending');
-    Route::get('orders/processing', [CookOrderController::class, 'processing'])->name('orders.processing');
     Route::get('orders/completed', [CookOrderController::class, 'completed'])->name('orders.completed');
-    Route::patch('orders/{order}/status', [CookOrderController::class, 'updateStatus'])->name('orders.updateStatus');
-    Route::patch('orders/{order}/update-all-items', [CookOrderController::class, 'updateAllItems'])->name('orders.updateAllItems');
     Route::patch('order-items/{orderItem}/status', [CookOrderController::class, 'updateItemStatus'])->name('orderItems.updateStatus');
+    Route::patch('orders/{id}/cancel', [CookOrderController::class, 'cancelOrder'])->name('orders.cancel');
+    Route::patch('order-items/{id}/cancel', [CookOrderController::class, 'cancelItem'])->name('orderItems.cancel');
+    Route::patch('order-items/{id}/update', [CookOrderController::class, 'updateItem'])->name('orderItems.update');
 });
 
 // Cashier Routes
-Route::prefix('cashier')->name('cashier.')->middleware(['auth', 'role:cashier'])->group(function () {
+Route::prefix('cashier')->name('cashier.')->middleware(['multi.auth', 'role:cashier'])->group(function () {
     Route::get('dashboard', [CashierDashboardController::class, 'index'])->name('dashboard');
     Route::get('payments', [CashierPaymentController::class, 'index'])->name('payments.index');
     Route::patch('payments/{order}/process', [CashierPaymentController::class, 'processPayment'])->name('payments.process');

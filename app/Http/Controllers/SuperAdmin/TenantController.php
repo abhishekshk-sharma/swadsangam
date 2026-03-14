@@ -22,7 +22,7 @@ class TenantController extends Controller
             'password' => 'required',
         ]);
 
-        if (Auth::attempt(['email' => $credentials['email'], 'password' => $credentials['password'], 'role' => 'super_admin', 'is_active' => true])) {
+        if (Auth::guard('super_admin')->attempt(['email' => $credentials['email'], 'password' => $credentials['password'], 'is_active' => true])) {
             $request->session()->regenerate();
             return redirect('/superadmin/dashboard');
         }
@@ -32,7 +32,7 @@ class TenantController extends Controller
 
     public function logout(Request $request)
     {
-        Auth::logout();
+        Auth::guard('super_admin')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         return redirect('/superadmin/login');

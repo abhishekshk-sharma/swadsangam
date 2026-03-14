@@ -11,13 +11,8 @@ class OrderController extends Controller
 {
     public function pending()
     {
-        $orders = Order::with(['table', 'orderItems' => function($query) {
-                $query->where('status', 'pending');
-            }, 'orderItems.menuItem'])
-            ->whereHas('orderItems', function($query) {
-                $query->where('status', 'pending');
-            })
-            ->where('status', '!=', 'paid')
+        $orders = Order::with(['table', 'orderItems.menuItem'])
+            ->whereIn('status', ['pending', 'preparing'])
             ->whereDate('created_at', today())
             ->latest()
             ->get();
@@ -25,31 +20,10 @@ class OrderController extends Controller
         return view('cook.orders.pending', compact('orders'));
     }
 
-    public function processing()
-    {
-        $orders = Order::with(['table', 'orderItems' => function($query) {
-                $query->where('status', 'preparing');
-            }, 'orderItems.menuItem'])
-            ->whereHas('orderItems', function($query) {
-                $query->where('status', 'preparing');
-            })
-            ->where('status', '!=', 'paid')
-            ->whereDate('created_at', today())
-            ->latest()
-            ->get();
-
-        return view('cook.orders.processing', compact('orders'));
-    }
-
     public function completed()
     {
-        $orders = Order::with(['table', 'orderItems' => function($query) {
-                $query->where('status', 'ready');
-            }, 'orderItems.menuItem'])
-            ->whereHas('orderItems', function($query) {
-                $query->where('status', 'ready');
-            })
-            ->where('status', '!=', 'paid')
+        $orders = Order::with(['table', 'orderItems.menuItem'])
+            ->where('status', 'ready')
             ->whereDate('created_at', today())
             ->latest()
             ->get();
@@ -59,62 +33,79 @@ class OrderController extends Controller
 
     public function updateItemStatus(Request $request, OrderItem $orderItem)
     {
-        $request->validate([
-            'status' => 'required|in:pending,preparing,ready'
-        ]);
+        $request->validate(['status' => 'required|in:pending,prepared']);
 
         $orderItem->update(['status' => $request->status]);
 
-        // Update order status based on all items
         $order = $orderItem->order;
-        $allItemsReady = $order->orderItems()->where('status', '!=', 'ready')->count() === 0;
-        
-        if ($allItemsReady) {
+        $oldStatus = $order->status;
+
+        $allPrepared = $order->orderItems()->where('status', '!=', 'prepared')->where('status', '!=', 'cancelled')->count() === 0;
+
+        if ($allPrepared) {
             $order->update(['status' => 'ready']);
-        } elseif ($order->orderItems()->where('status', 'preparing')->count() > 0) {
+            event(new \App\Events\OrderStatusUpdated($order, $oldStatus));
+        } elseif (in_array($order->status, ['pending', 'ready'])) {
             $order->update(['status' => 'preparing']);
         }
 
-        return back()->with('success', 'Item status updated!');
+        return back()->with('success', 'Item updated!');
     }
 
-    public function updateAllItems(Request $request, Order $order)
+    public function updateItem(Request $request, $id)
     {
-        $request->validate([
-            'status' => 'required|in:pending,preparing,ready'
-        ]);
-
-        // Get current status to determine which items to update
-        $currentStatus = $request->status === 'preparing' ? 'pending' : 'preparing';
-        
-        // Update all items with current status to new status
-        $order->orderItems()->where('status', $currentStatus)->update(['status' => $request->status]);
-
-        // Update order status
-        $order->update(['status' => $request->status]);
-
-        event(new \App\Events\OrderStatusUpdated($order, $currentStatus));
-
-        return back()->with('success', 'All items updated!');
-    }
-
-    public function updateStatus(Request $request, Order $order)
-    {
-        $request->validate([
-            'status' => 'required|in:pending,preparing,ready'
-        ]);
-
-        $oldStatus = $order->status;
-        $order->update(['status' => $request->status]);
-
-        // Update all pending items to preparing when order is marked as preparing
-        if ($request->status === 'preparing') {
-            $order->orderItems()->where('status', 'pending')->update(['status' => 'preparing']);
+        $item = OrderItem::findOrFail($id);
+        if ($item->status !== 'pending') {
+            return back()->with('error', 'Only pending items can be edited.');
         }
+        $request->validate([
+            'quantity' => 'required|integer|min:1',
+            'notes'    => 'nullable|string|max:500',
+        ]);
+        $oldTotal = $item->price * $item->quantity;
+        $item->update(['quantity' => $request->quantity, 'notes' => $request->notes]);
+        $newTotal = $item->price * $request->quantity;
+        $item->order->increment('total_amount', $newTotal - $oldTotal);
+        return back()->with('success', 'Item updated.');
+    }
 
-        // Broadcast event
-        event(new \App\Events\OrderStatusUpdated($order, $oldStatus));
+    public function cancelOrder($id)
+    {
+        $order = Order::findOrFail($id);
+        if ($order->status === 'paid') {
+            return back()->with('error', 'Cannot cancel a paid order.');
+        }
+        if ($order->orderItems()->where('status', 'prepared')->exists()) {
+            return back()->with('error', 'Cannot cancel order — some items are already prepared. Cancel individual items instead.');
+        }
+        $order->orderItems()->update(['status' => 'cancelled']);
+        $order->update(['status' => 'cancelled']);
+        $order->table->update(['is_occupied' => false]);
+        return back()->with('success', 'Order cancelled.');
+    }
 
-        return back()->with('success', 'Order status updated!');
+    public function cancelItem($id)
+    {
+        $item = OrderItem::findOrFail($id);
+        $item->update(['status' => 'cancelled']);
+        $item->order->decrement('total_amount', $item->price * $item->quantity);
+        $this->syncOrderStatus($item->order);
+        return back()->with('success', 'Item cancelled.');
+    }
+
+
+    private function syncOrderStatus(Order $order)
+    {
+        $order->refresh();
+        $nonCancelled = $order->orderItems()->where('status', '!=', 'cancelled');
+        if ($nonCancelled->count() === 0) {
+            $order->update(['status' => 'cancelled']);
+            $order->table->update(['is_occupied' => false]);
+        } elseif ($nonCancelled->where('status', '!=', 'prepared')->count() === 0) {
+            $order->update(['status' => 'ready']);
+            event(new \App\Events\OrderStatusUpdated($order, 'preparing'));
+        } elseif (in_array($order->status, ['cancelled', 'pending'])) {
+            $order->update(['status' => 'preparing']);
+        }
     }
 }

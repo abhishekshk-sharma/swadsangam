@@ -10,8 +10,8 @@ class IdentifyTenant
 {
     public function handle(Request $request, Closure $next)
     {
-        // Skip tenant identification for super admin routes
-        if ($request->is('superadmin') || $request->is('superadmin/*')) {
+        // Skip tenant identification for super admin and login routes
+        if ($request->is('superadmin') || $request->is('superadmin/*') || $request->is('login') || $request->is('logout')) {
             return $next($request);
         }
         
@@ -26,10 +26,10 @@ class IdentifyTenant
             $slug = $matches[1];
             // Skip if it's localhost or www
             if (in_array($slug, ['localhost', 'www', '127'])) {
-                $slug = 'demo'; // default for local
+                $slug = 'first-one'; // default for local
             }
         } else {
-            $slug = 'demo'; // default
+            $slug = 'first-one'; // default
         }
         
         $tenant = Tenant::where('slug', $slug)->first();

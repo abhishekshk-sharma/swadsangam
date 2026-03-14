@@ -11,10 +11,9 @@ class MenuCategoryController extends Controller
     public function index()
     {
         // Get global categories (tenant_id = null) and tenant-specific categories
-        $categories = MenuCategory::where(function($query) {
-            $query->whereNull('tenant_id')
-                  ->orWhere('tenant_id', session('tenant_id'));
-        })->withCount('menuItems')->get();
+        $categories = MenuCategory::accessibleByTenant()
+            ->withCount('menuItems')
+            ->get();
         
         return view('admin.menu-categories.index', compact('categories'));
     }

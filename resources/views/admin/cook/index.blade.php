@@ -182,11 +182,14 @@
     <a href="#" class="kitchen-tab" onclick="filterOrders('paid'); return false;">
         <i class="fas fa-check me-2"></i>Paid
     </a>
+    <a href="#" class="kitchen-tab" onclick="filterOrders('cancelled'); return false;">
+        <i class="fas fa-ban me-2"></i>Cancelled
+    </a>
 </div>
 
 <div id="orders-container" class="row g-4">
     @forelse($orders as $order)
-    <div class="col-md-6 col-lg-4 order-item" data-order-id="{{ $order->id }}" data-status="{{ $order->status }}">
+    <div class="col-md-6 col-lg-4 order-item" data-order-id="{{ $order->id }}" data-order-status="{{ $order->status }}" data-status="{{ $order->status }}">
         <div class="order-card {{ $order->status }}">
             <div class="order-header">
                 <div>
@@ -196,7 +199,7 @@
                         <i class="fas fa-clock me-1"></i>{{ $order->created_at->diffForHumans() }}
                     </div>
                 </div>
-                <span class="status-badge-kitchen status-{{ $order->status }}">
+                <span class="status-badge-kitchen status-{{ $order->status }}" data-order-status-badge>
                     {{ ucfirst($order->status) }}
                 </span>
             </div>
@@ -206,17 +209,50 @@
                     <i class="fas fa-utensils me-2"></i>Order Items
                 </div>
                 @foreach($order->items as $item)
-                <div class="item-row">
+                <div class="item-row" data-item-id="{{ $item->id }}" data-item-status="{{ $item->status }}">
                     <div class="flex-grow-1">
-                        <span class="item-name">{{ $item->menuItem->name }}</span>
+                        <span class="item-name {{ $item->status === 'cancelled' ? 'text-decoration-line-through text-muted' : '' }}" data-item-name>{{ $item->menuItem->name }}</span>
+                        @if($item->status === 'cancelled')
+                            <span style="font-size:11px;color:#dc3545;"> (cancelled)</span>
+                        @endif
                         @if($item->notes)
                             <div style="font-size: 11px; color: #ff9900; font-style: italic; margin-top: 2px;">
                                 → {{ $item->notes }}
                             </div>
                         @endif
                     </div>
-                    <span class="item-qty">x{{ $item->quantity }}</span>
+                    <div class="d-flex align-items-center gap-1" data-item-actions>
+                        <span class="item-qty">x{{ $item->quantity }}</span>
+                        @if(!in_array($order->status, ['paid','cancelled']))
+                            @if($item->status === 'pending')
+                                <button onclick="toggleAdminEdit('aedit-{{ $item->id }}')" 
+                                        style="font-size:11px;padding:2px 6px;border:1px solid #3b82f6;background:#eff6ff;color:#1d4ed8;border-radius:4px;cursor:pointer;">Edit</button>
+                                <form action="{{ route('cook.orderItems.cancel', $item->id) }}" method="POST" class="mb-0">
+                                    @csrf @method('PATCH')
+                                    <button class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size:11px;">Cancel</button>
+                                </form>
+                            @endif
+                        @endif
+                    </div>
                 </div>
+                @if($item->status === 'pending' && !in_array($order->status, ['paid','cancelled']))
+                <div id="aedit-{{ $item->id }}" style="display:none;background:#f8fafc;border-radius:6px;padding:8px;margin-top:4px;">
+                    <form action="{{ route('cook.orderItems.update', $item->id) }}" method="POST" class="d-flex flex-column gap-2">
+                        @csrf @method('PATCH')
+                        <div class="d-flex align-items-center gap-2">
+                            <label style="font-size:12px;color:#666;min-width:40px;">Qty:</label>
+                            <input type="number" name="quantity" value="{{ $item->quantity }}" min="1"
+                                   style="width:70px;border:1px solid #d5d9d9;border-radius:4px;padding:4px 8px;font-size:13px;">
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <label style="font-size:12px;color:#666;min-width:40px;">Note:</label>
+                            <input type="text" name="notes" value="{{ $item->notes }}"
+                                   style="flex:1;border:1px solid #d5d9d9;border-radius:4px;padding:4px 8px;font-size:13px;" placeholder="Special request...">
+                        </div>
+                        <button style="align-self:flex-end;background:#2563eb;color:white;border:none;padding:4px 12px;border-radius:4px;font-size:12px;cursor:pointer;">Save</button>
+                    </form>
+                </div>
+                @endif
                 @endforeach
             </div>
             
@@ -250,12 +286,25 @@
                     <i class="fas fa-money-bill me-1"></i>Take Payment
                 </button>
             </div>
+            @elseif($order->status === 'cancelled')
+            <div class="text-center py-2">
+                <span style="color:#dc3545;font-weight:600;"><i class="fas fa-times-circle me-1"></i>Order Cancelled</span>
+            </div>
             @else
             <div class="text-center py-3">
                 <i class="fas fa-check-circle" style="font-size: 48px; color: #16a34a;"></i>
                 <div class="mt-2" style="color: #15803d; font-weight: 600;">Payment Completed</div>
                 <div style="font-size: 14px; color: #666; margin-top: 4px;">₹{{ number_format($order->total_amount, 2) }} - {{ ucfirst($order->payment_mode ?? 'cash') }}</div>
             </div>
+            @endif
+            @if(!in_array($order->status, ['paid','cancelled']))
+            <form action="{{ route('cook.orders.cancel', $order->id) }}" method="POST" class="mt-2"
+                  onsubmit="return confirm('Cancel entire order #{{ $order->id }}?')">
+                @csrf @method('PATCH')
+                <button class="w-100" style="background:#fee2e2;color:#dc2626;border:none;padding:8px;border-radius:6px;font-size:13px;font-weight:600;">
+                    <i class="fas fa-ban me-1"></i>Cancel Order
+                </button>
+            </form>
             @endif
         </div>
     </div>
@@ -356,8 +405,12 @@
 </style>
 
 <script>
+function toggleAdminEdit(id) {
+    const el = document.getElementById(id);
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
 function filterOrders(status) {
-    // Update active tab
     document.querySelectorAll('.kitchen-tab').forEach(tab => {
         tab.classList.remove('active');
     });
@@ -495,4 +548,7 @@ document.getElementById('paymentForm').addEventListener('submit', function(e) {
     this.submit();
 });
 </script>
+
+<script>window.ORDER_POLL = { panel: 'admin' };</script>
+<script src="/js/order-poll.js"></script>
 @endsection

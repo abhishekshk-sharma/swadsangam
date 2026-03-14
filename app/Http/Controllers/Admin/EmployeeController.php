@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
+use App\Models\Employee;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -11,7 +11,7 @@ class EmployeeController extends Controller
 {
     public function index()
     {
-        $employees = User::where('tenant_id', session('tenant_id'))->get();
+        $employees = Employee::where('tenant_id', session('tenant_id'))->get();
         return view('admin.employees.index', compact('employees'));
     }
 
@@ -24,18 +24,19 @@ class EmployeeController extends Controller
     {
         $request->validate([
             'name' => 'required',
-            'email' => 'required|email',
+            'email' => 'required|email|unique:employees,email,NULL,id,tenant_id,' . session('tenant_id'),
             'password' => 'required|min:6',
-            'role' => 'required|in:admin,manager,waiter,chef,cashier,staff',
+            'role' => 'required|in:waiter,chef,cashier',
         ]);
 
-        User::create([
+        Employee::create([
             'tenant_id' => session('tenant_id'),
             'name' => $request->name,
             'email' => $request->email,
             'phone' => $request->phone,
             'password' => Hash::make($request->password),
             'role' => $request->role,
+            'is_active' => true,
         ]);
 
         return redirect('/admin/employees')->with('success', 'Employee added');
@@ -43,18 +44,18 @@ class EmployeeController extends Controller
 
     public function edit($id)
     {
-        $employee = User::where('tenant_id', session('tenant_id'))->findOrFail($id);
+        $employee = Employee::where('tenant_id', session('tenant_id'))->findOrFail($id);
         return view('admin.employees.edit', compact('employee'));
     }
 
     public function update(Request $request, $id)
     {
-        $employee = User::where('tenant_id', session('tenant_id'))->findOrFail($id);
+        $employee = Employee::where('tenant_id', session('tenant_id'))->findOrFail($id);
         
         $request->validate([
             'name' => 'required',
-            'email' => 'required|email',
-            'role' => 'required|in:admin,manager,waiter,chef,cashier,staff',
+            'email' => 'required|email|unique:employees,email,' . $id . ',id,tenant_id,' . session('tenant_id'),
+            'role' => 'required|in:waiter,chef,cashier',
         ]);
 
         $data = $request->only(['name', 'email', 'phone', 'role', 'is_active']);
@@ -70,7 +71,7 @@ class EmployeeController extends Controller
 
     public function destroy($id)
     {
-        User::where('tenant_id', session('tenant_id'))->findOrFail($id)->delete();
+        Employee::where('tenant_id', session('tenant_id'))->findOrFail($id)->delete();
         return redirect('/admin/employees')->with('success', 'Employee deleted');
     }
 }

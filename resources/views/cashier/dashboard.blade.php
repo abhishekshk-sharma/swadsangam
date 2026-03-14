@@ -26,7 +26,7 @@
 
     <!-- Chart -->
     <div class="bg-white p-4 rounded-lg shadow">
-        <h3 class="font-bold mb-3 text-sm">Last 7 Days Revenue</h3>
+        <h3 class="font-bold mb-3 text-sm">Today's Revenue (Hourly)</h3>
         <canvas id="revenueChart" style="max-height: 200px;"></canvas>
     </div>
 
@@ -59,7 +59,7 @@
     new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: @json($dates),
+            labels: @json($hours),
             datasets: [{
                 label: 'Revenue (₹)',
                 data: @json($revenues),
@@ -75,7 +75,8 @@
                 legend: { display: false }
             },
             scales: {
-                y: { beginAtZero: true }
+                y: { beginAtZero: true },
+                x: { ticks: { maxRotation: 45, minRotation: 45 } }
             }
         }
     });

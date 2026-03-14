@@ -7,18 +7,14 @@
     <!-- Stats Grid -->
     <div class="grid grid-cols-2 gap-3">
         <div class="bg-yellow-500 text-white p-4 rounded-lg shadow">
-            <div class="text-2xl font-bold">{{ $stats['pending'] }}</div>
-            <div class="text-sm opacity-90">Pending Orders</div>
-        </div>
-        <div class="bg-blue-500 text-white p-4 rounded-lg shadow">
-            <div class="text-2xl font-bold">{{ $stats['preparing'] }}</div>
-            <div class="text-sm opacity-90">Preparing</div>
+            <div class="text-2xl font-bold">{{ $stats['active'] }}</div>
+            <div class="text-sm opacity-90">Active Orders</div>
         </div>
         <div class="bg-green-500 text-white p-4 rounded-lg shadow">
             <div class="text-2xl font-bold">{{ $stats['ready'] }}</div>
             <div class="text-sm opacity-90">Ready Orders</div>
         </div>
-        <div class="bg-purple-500 text-white p-4 rounded-lg shadow">
+        <div class="bg-purple-500 text-white p-4 rounded-lg shadow col-span-2">
             <div class="text-2xl font-bold">{{ $stats['total_today'] }}</div>
             <div class="text-sm opacity-90">Total Today</div>
         </div>
@@ -26,7 +22,7 @@
 
     <!-- Chart -->
     <div class="bg-white p-4 rounded-lg shadow">
-        <h3 class="font-bold mb-3 text-sm">Last 7 Days Orders</h3>
+        <h3 class="font-bold mb-3 text-sm">Today's Orders (Hourly)</h3>
         <canvas id="ordersChart" style="max-height: 200px;"></canvas>
     </div>
 
@@ -62,7 +58,7 @@
     new Chart(ctx, {
         type: 'line',
         data: {
-            labels: @json($dates),
+            labels: @json($hours),
             datasets: [{
                 label: 'Orders',
                 data: @json($counts),
@@ -79,7 +75,8 @@
                 legend: { display: false }
             },
             scales: {
-                y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                y: { beginAtZero: true, ticks: { stepSize: 1 } },
+                x: { ticks: { maxRotation: 45, minRotation: 45 } }
             }
         }
     });

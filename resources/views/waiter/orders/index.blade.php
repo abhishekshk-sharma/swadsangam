@@ -3,9 +3,14 @@
 @section('title', 'Today\'s Orders')
 
 @section('content')
-<div class="mb-4">
-    <h1 class="text-2xl font-bold">Today's Orders</h1>
-    <p class="text-sm text-gray-600">{{ now()->format('l, F j, Y') }}</p>
+<div class="mb-4 flex justify-between items-center">
+    <div>
+        <h1 class="text-2xl font-bold">Today's Orders</h1>
+        <p class="text-sm text-gray-600">{{ now()->format('l, F j, Y') }}</p>
+    </div>
+    <button onclick="location.reload()" class="flex items-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-semibold">
+        🔄 Refresh
+    </button>
 </div>
 
 @if(session('success'))
@@ -14,20 +19,28 @@
     </div>
 @endif
 
+@if(session('error'))
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-sm">
+        {{ session('error') }}
+    </div>
+@endif
+
 <div class="space-y-3">
     @forelse($orders as $order)
-    <div class="bg-white p-4 rounded-lg shadow">
+    <div class="order-card bg-white p-4 rounded-lg shadow" data-order-id="{{ $order->id }}" data-order-status="{{ $order->status }}" data-table-number="{{ $order->table->table_number }}">
         <div class="flex justify-between items-start mb-3">
             <div>
                 <h3 class="text-lg font-bold">Order #{{ $order->id }}</h3>
                 <p class="text-xs text-gray-500">Table {{ $order->table->table_number }}</p>
                 <p class="text-xs text-gray-400">{{ $order->created_at->format('h:i A') }}</p>
             </div>
-            <span class="px-2 py-1 rounded text-xs font-semibold 
+            <span class="order-status-badge px-2 py-1 rounded text-xs font-semibold 
                 {{ $order->status === 'pending' ? 'bg-yellow-100 text-yellow-800' : '' }}
                 {{ $order->status === 'preparing' ? 'bg-blue-100 text-blue-800' : '' }}
                 {{ $order->status === 'ready' ? 'bg-green-100 text-green-800' : '' }}
-                {{ $order->status === 'served' ? 'bg-purple-100 text-purple-800' : '' }}">
+                {{ $order->status === 'served' ? 'bg-purple-100 text-purple-800' : '' }}
+                {{ $order->status === 'cancelled' ? 'bg-red-100 text-red-800' : '' }}"
+                data-order-status-badge>
                 {{ ucfirst($order->status) }}
             </span>
         </div>
@@ -36,10 +49,49 @@
             <h4 class="font-semibold mb-1 text-xs text-gray-600">Items:</h4>
             <ul class="space-y-1">
                 @foreach($order->items as $item)
-                <li class="text-sm">
-                    {{ $item->quantity }}x {{ $item->menuItem->name }}
-                    @if($item->notes)
-                        <span class="block text-xs text-orange-600 italic ml-4">→ {{ $item->notes }}</span>
+                <li class="text-sm flex flex-col gap-1" data-item-id="{{ $item->id }}" data-item-status="{{ $item->status }}">
+                    <div class="flex justify-between items-start gap-2">
+                        <div class="flex-1">
+                            <span class="{{ $item->status === 'cancelled' ? 'line-through text-gray-400' : '' }}" data-item-name>{{ $item->quantity }}x {{ $item->menuItem->name }}</span>
+                            @if($item->status === 'cancelled')
+                                <span class="text-xs text-red-500 ml-1">(cancelled)</span>
+                            @endif
+                            @if($item->notes)
+                                <span class="block text-xs text-orange-600 italic ml-4">→ {{ $item->notes }}</span>
+                            @endif
+                        </div>
+                        @if(!in_array($order->status, ['paid', 'cancelled']))
+                            <div class="flex gap-1 flex-shrink-0" data-item-actions>
+                                @if($item->status === 'pending')
+                                    <button onclick="toggleEdit('edit-{{ $item->id }}')"
+                                            class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Edit</button>
+                                @endif
+                                @if($item->status !== 'prepared' && $item->status !== 'cancelled')
+                                    <form action="{{ route('waiter.orderItems.cancel', $item->id) }}" method="POST">
+                                        @csrf @method('PATCH')
+                                        <button class="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded">Cancel</button>
+                                    </form>
+                                @endif
+                            </div>
+                        @endif
+                    </div>
+                    @if($item->status === 'pending')
+                    <div id="edit-{{ $item->id }}" class="hidden mt-1 bg-gray-50 rounded p-2">
+                        <form action="{{ route('waiter.orderItems.update', $item->id) }}" method="POST" class="flex flex-col gap-1">
+                            @csrf @method('PATCH')
+                            <div class="flex gap-2 items-center">
+                                <label class="text-xs text-gray-500">Qty:</label>
+                                <input type="number" name="quantity" value="{{ $item->quantity }}" min="1"
+                                       class="w-16 border rounded px-2 py-0.5 text-sm">
+                            </div>
+                            <div class="flex gap-2 items-center">
+                                <label class="text-xs text-gray-500">Note:</label>
+                                <input type="text" name="notes" value="{{ $item->notes }}"
+                                       class="flex-1 border rounded px-2 py-0.5 text-sm" placeholder="Special request...">
+                            </div>
+                            <button class="self-end bg-blue-600 text-white px-3 py-0.5 rounded text-xs">Save</button>
+                        </form>
+                    </div>
                     @endif
                 </li>
                 @endforeach
@@ -62,23 +114,31 @@
             <div class="flex justify-between items-center mb-2">
                 <div class="font-bold">
                     <span>Total:</span>
-                    <span>₹{{ number_format($order->total_amount, 2) }}</span>
+                    <span data-order-total>₹{{ number_format($order->total_amount, 2) }}</span>
                 </div>
             </div>
             
-            <div class="flex gap-2">
-                @if($order->payment_status !== 'paid')
+            <div class="order-actions flex gap-2">
+                @if(!in_array($order->status, ['paid', 'cancelled']))
                 <button onclick="addItemsToOrder({{ $order->id }}, '{{ $order->table->table_number }}')" 
+                        data-add-items-btn
                         class="flex-1 bg-blue-500 text-white px-4 py-2 rounded text-sm font-semibold">
                     + Add Items
                 </button>
                 @endif
-                
                 @if($order->status === 'ready')
                 <button onclick="markServed({{ $order->id }})" 
+                        data-serve-btn
                         class="flex-1 bg-green-500 text-white px-4 py-2 rounded text-sm font-semibold">
                     Mark as Served
                 </button>
+                @endif
+                @if(!in_array($order->status, ['paid', 'cancelled', 'served']) && $order->items->where('status', 'prepared')->count() === 0)
+                <form action="{{ route('waiter.orders.cancel', $order->id) }}" method="POST"
+                      onsubmit="return confirm('Cancel entire order #{{ $order->id }}?')">
+                    @csrf @method('PATCH')
+                    <button class="bg-red-500 text-white px-4 py-2 rounded text-sm font-semibold">Cancel Order</button>
+                </form>
                 @endif
             </div>
         </div>
@@ -168,7 +228,19 @@
 let currentOrderId = null;
 let additionalItems = [];
 
+function toggleEdit(id) {
+    const el = document.getElementById(id);
+    el.classList.toggle('hidden');
+}
+
 function addItemsToOrder(orderId, tableNumber) {
+    const card = document.querySelector(`.order-card[data-order-id="${orderId}"]`);
+    const status = card ? card.dataset.orderStatus : '';
+    if (status === 'paid' || status === 'cancelled') {
+        alert('Cannot add items to this order.');
+        return;
+    }
+
     currentOrderId = orderId;
     additionalItems = [];
     document.getElementById('modalOrderId').textContent = orderId;
@@ -177,19 +249,21 @@ function addItemsToOrder(orderId, tableNumber) {
     document.getElementById('itemSearch').value = '';
     updateNewItemsTotal();
     
-    // Reset category filter to 'All'
-    const items = document.querySelectorAll('.modal-menu-item');
-    items.forEach(item => {
+    // Reset all menu items visible
+    document.querySelectorAll('.modal-menu-item').forEach(item => {
         item.style.display = 'block';
     });
     
+    // Reset category filter to 'All'
     const buttons = document.querySelectorAll('.modal-category-btn');
     buttons.forEach(btn => {
         btn.classList.remove('bg-blue-600', 'text-white');
         btn.classList.add('bg-gray-200', 'text-gray-700');
     });
-    buttons[0].classList.remove('bg-gray-200', 'text-gray-700');
-    buttons[0].classList.add('bg-blue-600', 'text-white');
+    if (buttons.length > 0) {
+        buttons[0].classList.remove('bg-gray-200', 'text-gray-700');
+        buttons[0].classList.add('bg-blue-600', 'text-white');
+    }
     
     document.getElementById('addItemsModal').classList.remove('hidden');
 }
@@ -388,6 +462,9 @@ function updateAdditionalItemNotes(index, notes) {
     additionalItems[index].notes = notes;
 }
 </script>
+
+<script>window.ORDER_POLL = { panel: 'waiter' };</script>
+<script src="/js/order-poll.js"></script>
 
 <style>
 .line-clamp-2 {

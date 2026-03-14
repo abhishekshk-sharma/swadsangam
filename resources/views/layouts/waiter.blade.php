@@ -16,7 +16,7 @@
             <div class="flex justify-between items-center">
                 <div>
                     <h1 class="text-lg font-bold">Swad Sangam</h1>
-                    <p class="text-xs text-indigo-300">{{ auth()->user()->name }}</p>
+                    <p class="text-xs text-indigo-300">{{ current_user()->name ?? 'User' }}</p>
                 </div>
                 <form action="/logout" method="POST">
                     @csrf

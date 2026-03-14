@@ -10,43 +10,38 @@ class OrderUpdatesController extends Controller
 {
     public function getUpdates(Request $request)
     {
-        $lastCheck = $request->input('last_check');
-        
-        $newOrders = Order::where('tenant_id', session('tenant_id'))
-            ->where('created_at', '>', $lastCheck)
-            ->with('table', 'orderItems.menuItem')
-            ->get()
-            ->map(function($order) {
-                return [
-                    'id' => $order->id,
-                    'table_name' => 'Table ' . $order->table->table_number,
-                    'status' => $order->status,
-                    'total_amount' => $order->total_amount,
-                    'items_count' => $order->orderItems->count(),
-                    'created_at' => $order->created_at->format('h:i A'),
-                    'type' => 'new_order'
-                ];
-            });
+        $tenantId = session('tenant_id');
+        $panel    = $request->query('panel', 'all');
 
-        $updatedOrders = Order::where('tenant_id', session('tenant_id'))
-            ->where('updated_at', '>', $lastCheck)
-            ->where('created_at', '<=', $lastCheck)
-            ->with('table', 'orderItems.menuItem')
-            ->get()
-            ->map(function($order) {
-                return [
-                    'id' => $order->id,
-                    'table_name' => 'Table ' . $order->table->table_number,
-                    'status' => $order->status,
-                    'total_amount' => $order->total_amount,
-                    'type' => 'status_update'
-                ];
-            });
+        $query = Order::with(['table', 'orderItems.menuItem'])
+            ->where('tenant_id', $tenantId)
+            ->whereDate('created_at', today());
 
-        return response()->json([
-            'new_orders' => $newOrders,
-            'updated_orders' => $updatedOrders,
-            'timestamp' => now()->toIso8601String()
+        // Scope to only statuses each panel cares about
+        match ($panel) {
+            'cook'    => $query->whereIn('status', ['pending', 'preparing']),
+            'cashier' => $query->whereIn('status', ['served']),
+            'waiter'  => $query->whereNotIn('status', ['paid']),
+            default   => null, // admin gets all
+        };
+
+        $orders = $query->get()->map(fn($order) => [
+            'id'             => $order->id,
+            'status'         => $order->status,
+            'total_amount'   => (float) $order->total_amount,
+            'table_number'   => $order->table->table_number,
+            'created_at'     => $order->created_at->format('h:i A'),
+            'customer_notes' => $order->customer_notes,
+            'items'          => $order->orderItems->map(fn($item) => [
+                'id'       => $item->id,
+                'status'   => $item->status,
+                'name'     => $item->menuItem->name,
+                'quantity' => $item->quantity,
+                'price'    => (float) $item->price,
+                'notes'    => $item->notes,
+            ])->values(),
         ]);
+
+        return response()->json(['orders' => $orders]);
     }
 }

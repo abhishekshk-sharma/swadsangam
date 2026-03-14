@@ -4,7 +4,12 @@
 
 @section('content')
 <div class="space-y-3">
+<div class="flex justify-between items-center">
     <h2 class="text-xl font-bold">Pending Payments ({{ $orders->count() }})</h2>
+    <button onclick="location.reload()" class="flex items-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-semibold">
+        🔄 Refresh
+    </button>
+</div>
 
     @if(session('success'))
         <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
@@ -13,7 +18,8 @@
     @endif
 
     @forelse($orders as $order)
-        <div class="bg-white rounded-lg shadow-md overflow-hidden border-l-4 border-red-500">
+        <div class="bg-white rounded-lg shadow-md overflow-hidden border-l-4 border-red-500"
+             data-order-id="{{ $order->id }}" data-order-status="{{ $order->status }}">
             <div class="p-4">
                 <div class="flex justify-between items-start mb-3">
                     <div>
@@ -28,11 +34,16 @@
 
                 <div class="space-y-2 mb-4">
                     @foreach($order->orderItems as $item)
-                        <div class="py-2 border-b">
+                        <div class="py-2 border-b" data-item-id="{{ $item->id }}" data-item-status="{{ $item->status }}">
                             <div class="flex justify-between items-center">
                                 <div class="flex-1">
-                                    <div class="font-semibold">{{ $item->menuItem->name }}</div>
-                                    <div class="text-sm text-gray-600">Qty: {{ $item->quantity }}</div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-semibold {{ $item->status === 'cancelled' ? 'line-through text-gray-400' : '' }}">{{ $item->menuItem->name }}</span>
+                                        @if($item->status === 'cancelled')
+                                            <span class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded">Cancelled</span>
+                                        @endif
+                                    </div>
+                                    <div class="text-sm text-gray-{{ $item->status === 'cancelled' ? '400' : '600' }}">Qty: {{ $item->quantity }}</div>
                                     @if($item->notes)
                                         <div class="text-xs text-orange-600 italic mt-1 bg-orange-50 px-2 py-1 rounded">
                                             → {{ $item->notes }}
@@ -40,7 +51,11 @@
                                     @endif
                                 </div>
                                 <div class="text-right">
-                                    <div class="font-bold">₹{{ number_format($item->price * $item->quantity, 2) }}</div>
+                                    @if($item->status === 'cancelled')
+                                        <div class="text-gray-400 line-through text-sm">₹{{ number_format($item->price * $item->quantity, 2) }}</div>
+                                    @else
+                                        <div class="font-bold">₹{{ number_format($item->price * $item->quantity, 2) }}</div>
+                                    @endif
                                 </div>
                             </div>
                         </div>
@@ -60,7 +75,7 @@
                 @endif
 
                 <div class="pt-3 border-t">
-                    <div class="font-bold text-xl text-green-600 mb-4">Total: ₹{{ number_format($order->total_amount, 2) }}</div>
+                    <div class="font-bold text-xl text-green-600 mb-4" data-order-total>Total: ₹{{ number_format($order->total_amount, 2) }}</div>
                     
                     <form action="{{ route('cashier.payments.process', $order) }}" method="POST" id="paymentForm{{ $order->id }}">
                         @csrf
@@ -174,4 +189,7 @@ function calculateChange(orderId, totalAmount) {
     document.getElementById(`submitBtn${orderId}`).disabled = false;
 }
 </script>
+
+<script>window.ORDER_POLL = { panel: 'cashier' };</script>
+<script src="/js/order-poll.js"></script>
 @endsection

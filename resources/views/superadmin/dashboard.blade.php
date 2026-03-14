@@ -32,8 +32,8 @@
     <div class="bg-white rounded-lg shadow p-6">
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-gray-500 text-sm">Total Users</p>
-                <h3 class="text-3xl font-bold text-blue-600 mt-2">{{ $stats['total_users'] }}</h3>
+                <p class="text-gray-500 text-sm">Total Admins</p>
+                <h3 class="text-3xl font-bold text-blue-600 mt-2">{{ $stats['total_admins'] }}</h3>
             </div>
             <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                 <i class="fas fa-users text-blue-600 text-xl"></i>
