@@ -11,20 +11,19 @@ class UserController extends Controller
 {
     public function index()
     {
-        // Get both super admins and admins
-        $superAdmins = SuperAdmin::latest()->get()->map(function($user) {
-            $user->role = 'super_admin';
+        $superAdmins = SuperAdmin::latest()->get()->map(function ($user) {
+            $user->role   = 'super_admin';
             $user->tenant = null;
             return $user;
         });
-        
-        $admins = Admin::with('tenant')->latest()->get()->map(function($user) {
+
+        $admins = Admin::withoutGlobalScope('tenant')->with('tenant')->latest()->get()->map(function ($user) {
             $user->role = 'admin';
             return $user;
         });
-        
+
         $users = $superAdmins->concat($admins);
-        
+
         return view('superadmin.users.index', compact('users'));
     }
 
@@ -36,42 +35,37 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
+        // Build rules based on role so everything is validated in one call
+        $tenantId = $request->input('tenant_id');
+
+        $emailUnique = $request->role === 'super_admin'
+            ? 'unique:super_admins,email'
+            : 'unique:admins,email,NULL,id,tenant_id,' . $tenantId;
+
         $request->validate([
-            'name' => 'required',
-            'email' => 'required|email',
-            'password' => 'required|min:6',
-            'role' => 'required|in:super_admin,admin',
-            'tenant_id' => 'required_if:role,admin|exists:tenants,id',
+            'name'      => 'required|string|max:255',
+            'email'     => ['required', 'email', $emailUnique],
+            'password'  => 'required|min:6',
+            'role'      => 'required|in:super_admin,admin',
+            'tenant_id' => 'required_if:role,admin|nullable|exists:tenants,id',
         ]);
 
         if ($request->role === 'super_admin') {
-            // Check unique email in super_admins table
-            $request->validate([
-                'email' => 'unique:super_admins,email',
-            ]);
-            
             SuperAdmin::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
+                'name'      => $request->name,
+                'email'     => $request->email,
+                'password'  => Hash::make($request->password),
                 'is_active' => true,
             ]);
-            
             $message = 'Super Admin created successfully';
         } else {
-            // Check unique email in admins table for this tenant
-            $request->validate([
-                'email' => 'unique:admins,email,NULL,id,tenant_id,' . $request->tenant_id,
-            ]);
-            
-            Admin::create([
+            Admin::withoutGlobalScope('tenant')->create([
                 'tenant_id' => $request->tenant_id,
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
+                'name'      => $request->name,
+                'email'     => $request->email,
+                'password'  => Hash::make($request->password),
                 'is_active' => true,
             ]);
-            
             $message = 'Restaurant Admin created successfully';
         }
 
@@ -80,58 +74,49 @@ class UserController extends Controller
 
     public function edit($id)
     {
-        // Try to find in both tables
-        $user = Admin::find($id);
+        $user = Admin::withoutGlobalScope('tenant')->find($id);
         if ($user) {
             $user->role = 'admin';
         } else {
             $user = SuperAdmin::findOrFail($id);
             $user->role = 'super_admin';
         }
-        
+
         $tenants = Tenant::where('status', 'active')->get();
         return view('superadmin.users.edit', compact('user', 'tenants'));
     }
 
     public function update(Request $request, $id)
     {
+        $tenantId = $request->input('tenant_id');
+
+        $emailUnique = $request->role === 'super_admin'
+            ? 'unique:super_admins,email,' . $id
+            : 'unique:admins,email,' . $id . ',id,tenant_id,' . $tenantId;
+
         $request->validate([
-            'name' => 'required',
-            'email' => 'required|email',
-            'role' => 'required|in:super_admin,admin',
-            'tenant_id' => 'required_if:role,admin|exists:tenants,id',
+            'name'      => 'required|string|max:255',
+            'email'     => ['required', 'email', $emailUnique],
+            'password'  => 'nullable|min:6',
+            'role'      => 'required|in:super_admin,admin',
+            'tenant_id' => 'required_if:role,admin|nullable|exists:tenants,id',
         ]);
 
-        // Find user in appropriate table
-        $user = Admin::find($id);
-        $isSuperAdmin = false;
-        
+        $user = Admin::withoutGlobalScope('tenant')->find($id);
         if (!$user) {
             $user = SuperAdmin::find($id);
-            $isSuperAdmin = true;
         }
-        
+
         if (!$user) {
             return redirect('/superadmin/users')->with('error', 'User not found');
         }
 
-        // Validate email uniqueness
-        if ($request->role === 'super_admin') {
-            $request->validate([
-                'email' => 'unique:super_admins,email,' . $id,
-            ]);
-        } else {
-            $request->validate([
-                'email' => 'unique:admins,email,' . $id . ',id,tenant_id,' . $request->tenant_id,
-            ]);
-        }
-
         $data = $request->only(['name', 'email', 'is_active']);
-        
+
         if ($request->role === 'admin') {
             $data['tenant_id'] = $request->tenant_id;
         }
-        
+
         if ($request->filled('password')) {
             $data['password'] = Hash::make($request->password);
         }
@@ -143,17 +128,14 @@ class UserController extends Controller
 
     public function destroy($id)
     {
-        // Try to delete from both tables
-        $deleted = Admin::where('id', $id)->delete();
-        
+        $deleted = Admin::withoutGlobalScope('tenant')->where('id', $id)->delete();
+
         if (!$deleted) {
             $deleted = SuperAdmin::where('id', $id)->delete();
         }
-        
-        if ($deleted) {
-            return redirect('/superadmin/users')->with('success', 'User deleted successfully');
-        }
-        
-        return redirect('/superadmin/users')->with('error', 'User not found');
+
+        return $deleted
+            ? redirect('/superadmin/users')->with('success', 'User deleted successfully')
+            : redirect('/superadmin/users')->with('error', 'User not found');
     }
 }

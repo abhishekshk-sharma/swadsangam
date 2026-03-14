@@ -138,6 +138,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
     });
 });
 
+// Public Bill Route (customer scans QR after payment)
+Route::get('/bill/{orderId}', [App\Http\Controllers\BillController::class, 'show'])->name('bill.show');
+
 // Customer Routes
 Route::get('table/{qrCode}', [OrderController::class, 'showMenu'])->name('customer.menu');
 Route::post('table/{qrCode}/order', [OrderController::class, 'placeOrder'])->name('customer.order');

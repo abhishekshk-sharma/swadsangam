@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class MenuCategory extends Model
 {
@@ -11,12 +12,27 @@ class MenuCategory extends Model
 
     protected static function booted()
     {
-        // Auto-set tenant_id on create
-        static::creating(function ($model) {
-            if (!$model->tenant_id && $tenantId = session('tenant_id')) {
-                $model->tenant_id = $tenantId;
+        static::addGlobalScope('tenant', function (Builder $builder) {
+            if ($tenantId = self::resolveTenantId()) {
+                $builder->where(function ($q) use ($tenantId) {
+                    $q->whereNull('menu_categories.tenant_id')
+                      ->orWhere('menu_categories.tenant_id', $tenantId);
+                });
             }
         });
+
+        static::creating(function ($model) {
+            if (!$model->tenant_id) {
+                $model->tenant_id = self::resolveTenantId();
+            }
+        });
+    }
+
+    protected static function resolveTenantId(): ?int
+    {
+        $user = Auth::guard('admin')->user() ?? Auth::guard('employee')->user();
+        if ($user && $user->tenant_id) return (int) $user->tenant_id;
+        return session('tenant_id') ? (int) session('tenant_id') : null;
     }
 
     public function menuItems()
@@ -27,14 +43,5 @@ class MenuCategory extends Model
     public function tenant()
     {
         return $this->belongsTo(Tenant::class);
-    }
-
-    // Scope to get categories accessible by current tenant (global + own)
-    public function scopeAccessibleByTenant(Builder $query)
-    {
-        return $query->where(function($q) {
-            $q->whereNull('tenant_id')
-              ->orWhere('tenant_id', session('tenant_id'));
-        });
     }
 }

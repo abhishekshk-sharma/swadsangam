@@ -10,19 +10,16 @@ class OrderUpdatesController extends Controller
 {
     public function getUpdates(Request $request)
     {
-        $tenantId = session('tenant_id');
-        $panel    = $request->query('panel', 'all');
+        $panel = $request->query('panel', 'all');
 
         $query = Order::with(['table', 'orderItems.menuItem'])
-            ->where('tenant_id', $tenantId)
             ->whereDate('created_at', today());
 
-        // Scope to only statuses each panel cares about
         match ($panel) {
             'cook'    => $query->whereIn('status', ['pending', 'preparing']),
             'cashier' => $query->whereIn('status', ['served']),
             'waiter'  => $query->whereNotIn('status', ['paid']),
-            default   => null, // admin gets all
+            default   => null,
         };
 
         $orders = $query->get()->map(fn($order) => [

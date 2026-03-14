@@ -76,25 +76,25 @@
 
                 <div class="pt-3 border-t">
                     <div class="font-bold text-xl text-green-600 mb-4" data-order-total>Total: ₹{{ number_format($order->total_amount, 2) }}</div>
-                    
+
                     <form action="{{ route('cashier.payments.process', $order) }}" method="POST" id="paymentForm{{ $order->id }}">
                         @csrf
                         @method('PATCH')
-                        
+
                         <div class="mb-4">
                             <label class="block text-sm font-semibold mb-2">Payment Method</label>
                             <div class="grid grid-cols-3 gap-2">
-                                <button type="button" onclick="selectPaymentMode({{ $order->id }}, 'cash')" 
+                                <button type="button" onclick="selectPaymentMode({{ $order->id }}, 'cash')"
                                     class="payment-mode-btn border-2 border-gray-300 rounded-lg py-3 font-semibold hover:border-blue-500"
                                     data-order="{{ $order->id }}" data-mode="cash">
                                     💵 Cash
                                 </button>
-                                <button type="button" onclick="selectPaymentMode({{ $order->id }}, 'upi')" 
+                                <button type="button" onclick="selectPaymentMode({{ $order->id }}, 'upi')"
                                     class="payment-mode-btn border-2 border-gray-300 rounded-lg py-3 font-semibold hover:border-blue-500"
                                     data-order="{{ $order->id }}" data-mode="upi">
                                     📱 UPI
                                 </button>
-                                <button type="button" onclick="selectPaymentMode({{ $order->id }}, 'card')" 
+                                <button type="button" onclick="selectPaymentMode({{ $order->id }}, 'card')"
                                     class="payment-mode-btn border-2 border-gray-300 rounded-lg py-3 font-semibold hover:border-blue-500"
                                     data-order="{{ $order->id }}" data-mode="card">
                                     💳 Card
@@ -106,11 +106,11 @@
                         <div id="cashSection{{ $order->id }}" class="mb-4" style="display: none;">
                             <label class="block text-sm font-semibold mb-2">Cash Received</label>
                             <div class="flex gap-2">
-                                <input type="number" step="0.01" min="0" 
-                                    id="cashReceived{{ $order->id }}" 
+                                <input type="number" step="0.01" min="0"
+                                    id="cashReceived{{ $order->id }}"
                                     class="flex-1 border-2 border-gray-300 rounded-lg px-4 py-2 text-lg"
                                     placeholder="Enter amount">
-                                <button type="button" onclick="calculateChange({{ $order->id }}, {{ $order->total_amount }})" 
+                                <button type="button" onclick="calculateChange({{ $order->id }}, {{ $order->total_amount }})"
                                     class="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold">
                                     OK
                                 </button>
@@ -124,8 +124,8 @@
                             </div>
                         </div>
 
-                        <button type="submit" id="submitBtn{{ $order->id }}" 
-                            class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold text-lg" 
+                        <button type="submit" id="submitBtn{{ $order->id }}"
+                            class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold text-lg"
                             style="display: none;" disabled>
                             Complete Payment
                         </button>
@@ -141,53 +141,113 @@
     @endforelse
 </div>
 
+{{-- QR Modal --}}
+<div id="qrModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50" style="display:none !important;">
+    <div class="bg-white rounded-2xl shadow-2xl p-6 mx-4 w-full max-w-sm text-center">
+        <div class="text-green-500 text-5xl mb-2">✅</div>
+        <h2 class="text-xl font-bold mb-1">Payment Complete!</h2>
+        <p class="text-gray-500 text-sm mb-4">Customer can scan this QR to download their bill</p>
+
+        <div class="bg-gray-50 rounded-xl p-4 mb-4 flex justify-center">
+            <div id="qrCodeContainer"></div>
+        </div>
+
+        <p class="text-xs text-gray-400 mb-1">Or share this link:</p>
+        <a id="billLink" href="#" target="_blank"
+           class="text-blue-600 text-sm underline break-all block mb-4"></a>
+
+        <div class="flex gap-2">
+            <button onclick="closeQrModal()"
+                class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg font-semibold">
+                Close
+            </button>
+            <a id="openBillBtn" href="#" target="_blank"
+               class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold text-center">
+                Open Bill
+            </a>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 function selectPaymentMode(orderId, mode) {
-    // Reset all buttons for this order
     document.querySelectorAll(`[data-order="${orderId}"]`).forEach(btn => {
         btn.classList.remove('border-blue-500', 'bg-blue-50');
         btn.classList.add('border-gray-300');
     });
-    
-    // Highlight selected button
     event.target.classList.remove('border-gray-300');
     event.target.classList.add('border-blue-500', 'bg-blue-50');
-    
-    // Set payment mode
     document.getElementById(`paymentMode${orderId}`).value = mode;
-    
-    // Show/hide cash section
-    const cashSection = document.getElementById(`cashSection${orderId}`);
+    const cashSection  = document.getElementById(`cashSection${orderId}`);
     const changeSection = document.getElementById(`changeSection${orderId}`);
-    const submitBtn = document.getElementById(`submitBtn${orderId}`);
-    
+    const submitBtn    = document.getElementById(`submitBtn${orderId}`);
     if (mode === 'cash') {
-        cashSection.style.display = 'block';
+        cashSection.style.display  = 'block';
         changeSection.style.display = 'none';
-        submitBtn.style.display = 'none';
-        submitBtn.disabled = true;
+        submitBtn.style.display    = 'none';
+        submitBtn.disabled         = true;
     } else {
-        cashSection.style.display = 'none';
+        cashSection.style.display  = 'none';
         changeSection.style.display = 'none';
-        submitBtn.style.display = 'block';
-        submitBtn.disabled = false;
+        submitBtn.style.display    = 'block';
+        submitBtn.disabled         = false;
     }
 }
 
 function calculateChange(orderId, totalAmount) {
     const cashReceived = parseFloat(document.getElementById(`cashReceived${orderId}`).value);
-    
     if (!cashReceived || cashReceived < totalAmount) {
         alert(`Cash received must be at least ₹${totalAmount.toFixed(2)}`);
         return;
     }
-    
     const change = cashReceived - totalAmount;
     document.getElementById(`changeAmount${orderId}`).textContent = `₹${change.toFixed(2)}`;
     document.getElementById(`changeSection${orderId}`).style.display = 'block';
-    document.getElementById(`submitBtn${orderId}`).style.display = 'block';
-    document.getElementById(`submitBtn${orderId}`).disabled = false;
+    document.getElementById(`submitBtn${orderId}`).style.display    = 'block';
+    document.getElementById(`submitBtn${orderId}`).disabled         = false;
 }
+
+function showQrModal(orderId) {
+    const billUrl = `{{ url('/bill') }}/${orderId}`;
+    document.getElementById('billLink').textContent = billUrl;
+    document.getElementById('billLink').href        = billUrl;
+    document.getElementById('openBillBtn').href     = billUrl;
+
+    // Clear previous QR and generate new one
+    const container = document.getElementById('qrCodeContainer');
+    container.innerHTML = '';
+    new QRCode(container, {
+        text:   billUrl,
+        width:  200,
+        height: 200,
+        colorDark:  '#111827',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M,
+    });
+
+    const modal = document.getElementById('qrModal');
+    modal.style.display = 'flex';
+    modal.style.removeProperty('display'); // remove the !important none
+    modal.style.display = 'flex';
+}
+
+function closeQrModal() {
+    document.getElementById('qrModal').style.display = 'none';
+    // Remove paid_order from URL without reload
+    const url = new URL(window.location);
+    url.searchParams.delete('paid_order');
+    window.history.replaceState({}, '', url);
+}
+
+// Auto-open QR modal if redirected after payment
+document.addEventListener('DOMContentLoaded', function () {
+    const params   = new URLSearchParams(window.location.search);
+    const paidOrder = params.get('paid_order');
+    if (paidOrder) {
+        showQrModal(paidOrder);
+    }
+});
 </script>
 
 <script>window.ORDER_POLL = { panel: 'cashier' };</script>

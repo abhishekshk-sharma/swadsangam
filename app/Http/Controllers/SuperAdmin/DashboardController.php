@@ -10,10 +10,10 @@ class DashboardController extends Controller
     public function index()
     {
         $stats = [
-            'tenants' => Tenant::count(),
-            'active_tenants' => Tenant::where('status', 'active')->count(),
-            'total_admins' => Admin::count(),
-            'super_admins' => SuperAdmin::count(),
+            'tenants'       => Tenant::count(),
+            'active_tenants'=> Tenant::where('status', 'active')->count(),
+            'total_admins'  => Admin::withoutGlobalScope('tenant')->count(),
+            'super_admins'  => SuperAdmin::count(),
         ];
         
         $recentTenants = Tenant::latest()->take(5)->get();

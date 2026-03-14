@@ -4,12 +4,31 @@ namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Builder;
 
 class Employee extends Authenticatable
 {
     use Notifiable;
 
     protected $table = 'employees';
+
+    protected static function booted()
+    {
+        static::addGlobalScope('tenant', function (Builder $builder) {
+            $tenantId = app()->bound('current_tenant_id') ? app('current_tenant_id') : session('tenant_id');
+            if ($tenantId) {
+                $builder->where('employees.tenant_id', (int) $tenantId);
+            }
+        });
+
+        static::creating(function ($model) {
+            if (!$model->tenant_id) {
+                $model->tenant_id = app()->bound('current_tenant_id')
+                    ? app('current_tenant_id')
+                    : session('tenant_id');
+            }
+        });
+    }
     
     protected $fillable = [
         'tenant_id', 

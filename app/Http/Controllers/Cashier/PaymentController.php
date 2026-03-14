@@ -20,22 +20,27 @@ class PaymentController extends Controller
 
     public function processPayment(Request $request, Order $order)
     {
+        // Global scope already ensures this order belongs to current tenant
+        // Extra guard in case route model binding is bypassed
+        abort_if($order->tenant_id !== (int) $this->currentTenantId(), 403);
+
         $request->validate([
-            'payment_mode' => 'required|in:cash,upi,card',
-            'cash_received' => 'nullable|numeric|min:0'
+            'payment_mode'  => 'required|in:cash,upi,card',
+            'cash_received' => 'nullable|numeric|min:0',
         ]);
 
         $order->update([
-            'status' => 'paid',
+            'status'       => 'paid',
             'payment_mode' => $request->payment_mode,
-            'paid_at' => now()
+            'paid_at'      => now(),
         ]);
 
         $order->table->update(['is_occupied' => false]);
 
         event(new \App\Events\OrderStatusUpdated($order, 'served'));
 
-        return back()->with('success', 'Payment received! Order closed.');
+        return redirect()->route('cashier.payments.index', ['paid_order' => $order->id])
+            ->with('success', 'Payment received! Order closed.');
     }
 
     public function history()
@@ -47,5 +52,12 @@ class PaymentController extends Controller
             ->get();
 
         return view('cashier.payments.history', compact('orders'));
+    }
+
+    private function currentTenantId(): ?int
+    {
+        $user = \Illuminate\Support\Facades\Auth::guard('employee')->user()
+            ?? \Illuminate\Support\Facades\Auth::guard('admin')->user();
+        return $user ? (int) $user->tenant_id : (int) session('tenant_id');
     }
 }

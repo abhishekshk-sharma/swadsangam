@@ -13,25 +13,25 @@ class TableController extends Controller
     public function index(Request $request)
     {
         $query = RestaurantTable::with('category');
-        
+
         if ($request->category_id) {
             $query->where('category_id', $request->category_id);
         }
-        
+
         if ($request->status === 'available') {
             $query->where('is_occupied', false);
         } elseif ($request->status === 'occupied') {
             $query->where('is_occupied', true);
         }
-        
+
         $tables = $query->get();
-        $categories = TableCategory::accessibleByTenant()->get();
+        $categories = TableCategory::get();
         return view('admin.tables.index', compact('tables', 'categories'));
     }
 
     public function create()
     {
-        $categories = TableCategory::accessibleByTenant()->get();
+        $categories = TableCategory::get();
         return view('admin.tables.create', compact('categories'));
     }
 
@@ -45,10 +45,11 @@ class TableController extends Controller
         
         $qrCode = uniqid('table_');
         RestaurantTable::create([
+            'tenant_id'    => session('tenant_id'),
             'table_number' => $request->table_number,
-            'capacity' => $request->capacity,
-            'qr_code' => $qrCode,
-            'category_id' => $request->category_id
+            'capacity'     => $request->capacity,
+            'qr_code'      => $qrCode,
+            'category_id'  => $request->category_id,
         ]);
 
         return redirect()->route('admin.tables.index')->with('success', 'Table created successfully');
@@ -56,14 +57,14 @@ class TableController extends Controller
 
     public function show($id)
     {
-        $table = RestaurantTable::findOrFail($id);
+        $table = RestaurantTable::findOrFail($id); // global scope enforces tenant
         $qrCodeImage = QrCode::size(300)->generate(url('/table/' . $table->qr_code));
         return view('admin.tables.show', compact('table', 'qrCodeImage'));
     }
 
     public function destroy($id)
     {
-        RestaurantTable::findOrFail($id)->delete();
+        RestaurantTable::findOrFail($id)->delete(); // global scope enforces tenant
         return redirect()->route('admin.tables.index')->with('success', 'Table deleted successfully');
     }
 }

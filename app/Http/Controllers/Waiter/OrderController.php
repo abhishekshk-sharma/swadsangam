@@ -23,7 +23,7 @@ class OrderController extends Controller
 
     public function create()
     {
-        $tables = RestaurantTable::where('is_occupied', false)->get();
+        $tables    = RestaurantTable::where('is_occupied', false)->get();
         $menuItems = MenuItem::where('is_available', true)->get();
 
         return view('waiter.orders.create', compact('tables', 'menuItems'));
@@ -32,43 +32,41 @@ class OrderController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'table_id' => 'required|exists:restaurant_tables,id',
-            'items' => 'required|array',
+            'table_id'             => 'required|exists:restaurant_tables,id',
+            'items'                => 'required|array',
             'items.*.menu_item_id' => 'required|exists:menu_items,id',
-            'items.*.quantity' => 'required|integer|min:1',
-            'items.*.notes' => 'nullable|string|max:500',
-            'customer_notes' => 'nullable|string|max:500',
+            'items.*.quantity'     => 'required|integer|min:1',
+            'items.*.notes'        => 'nullable|string|max:500',
+            'customer_notes'       => 'nullable|string|max:500',
         ]);
 
         $total = 0;
         foreach ($request->items as $item) {
-            $menuItem = MenuItem::find($item['menu_item_id']);
+            $menuItem = MenuItem::findOrFail($item['menu_item_id']);
             $total += $menuItem->price * $item['quantity'];
         }
 
         $order = Order::create([
-            'tenant_id' => session('tenant_id'),
-            'table_id' => $request->table_id,
-            'user_id' => current_user_id(),
-            'status' => 'pending',
-            'total_amount' => $total,
+            'table_id'       => $request->table_id,
+            'user_id'        => current_user_id(),
+            'status'         => 'pending',
+            'total_amount'   => $total,
             'customer_notes' => $request->customer_notes,
         ]);
 
         foreach ($request->items as $item) {
-            $menuItem = MenuItem::find($item['menu_item_id']);
+            $menuItem = MenuItem::findOrFail($item['menu_item_id']);
             OrderItem::create([
-                'tenant_id' => session('tenant_id'),
-                'order_id' => $order->id,
+                'order_id'     => $order->id,
                 'menu_item_id' => $menuItem->id,
-                'quantity' => $item['quantity'],
-                'price' => $menuItem->price,
-                'status' => 'pending',
-                'notes' => $item['notes'] ?? null,
+                'quantity'     => $item['quantity'],
+                'price'        => $menuItem->price,
+                'status'       => 'pending',
+                'notes'        => $item['notes'] ?? null,
             ]);
         }
 
-        RestaurantTable::find($request->table_id)->update(['is_occupied' => true]);
+        RestaurantTable::findOrFail($request->table_id)->update(['is_occupied' => true]);
 
         event(new \App\Events\OrderCreated($order));
         $this->notifyChefs($order);
@@ -80,34 +78,31 @@ class OrderController extends Controller
     {
         $order = Order::findOrFail($id);
         $order->update(['status' => 'served']);
-        
         event(new \App\Events\OrderStatusUpdated($order, 'ready'));
-        
         return response()->json(['success' => true]);
     }
 
     protected function notifyChefs($order, $specificItems = null)
     {
-        $chefs = Employee::where('tenant_id', session('tenant_id'))
-            ->where('role', 'chef')
+        $chefs = Employee::where('role', 'chef')
             ->where('is_active', true)
             ->whereNotNull('telegram_chat_id')
             ->get();
 
         $telegram = new \App\Services\TelegramService();
-        
+
         $itemsToNotify = $specificItems ?? $order->items;
-        
+
         $orderData = [
-            'order_id' => $order->id,
-            'table_name' => 'Table ' . $order->table->table_number,
-            'time' => now()->format('h:i A'),
-            'items' => collect($itemsToNotify)->map(fn($item) => [
-                'name' => $item->menuItem->name,
-                'quantity' => $item->quantity
+            'order_id'    => $order->id,
+            'table_name'  => 'Table ' . $order->table->table_number,
+            'time'        => now()->format('h:i A'),
+            'items'       => collect($itemsToNotify)->map(fn($item) => [
+                'name'     => $item->menuItem->name,
+                'quantity' => $item->quantity,
             ])->toArray(),
-            'total' => $order->total_amount,
-            'is_additional' => $specificItems !== null
+            'total'        => $order->total_amount,
+            'is_additional' => $specificItems !== null,
         ];
 
         foreach ($chefs as $chef) {
@@ -124,35 +119,34 @@ class OrderController extends Controller
         }
 
         $request->validate([
-            'items' => 'required|array',
+            'items'                => 'required|array',
             'items.*.menu_item_id' => 'required|exists:menu_items,id',
-            'items.*.quantity' => 'required|integer|min:1',
-            'items.*.notes' => 'nullable|string|max:500',
+            'items.*.quantity'     => 'required|integer|min:1',
+            'items.*.notes'        => 'nullable|string|max:500',
         ]);
 
         $additionalTotal = 0;
         $newItems = [];
-        
+
         foreach ($request->items as $item) {
-            $menuItem = MenuItem::find($item['menu_item_id']);
+            $menuItem = MenuItem::findOrFail($item['menu_item_id']);
             $additionalTotal += $menuItem->price * $item['quantity'];
-            
+
             $orderItem = OrderItem::create([
-                'tenant_id' => session('tenant_id'),
-                'order_id' => $order->id,
+                'order_id'     => $order->id,
                 'menu_item_id' => $menuItem->id,
-                'quantity' => $item['quantity'],
-                'price' => $menuItem->price,
-                'status' => 'pending',
-                'notes' => $item['notes'] ?? null,
+                'quantity'     => $item['quantity'],
+                'price'        => $menuItem->price,
+                'status'       => 'pending',
+                'notes'        => $item['notes'] ?? null,
             ]);
-            
+
             $newItems[] = $orderItem;
         }
 
         $order->update([
             'total_amount' => $order->total_amount + $additionalTotal,
-            'status' => in_array($order->status, ['ready', 'served']) ? 'preparing' : $order->status,
+            'status'       => in_array($order->status, ['ready', 'served']) ? 'preparing' : $order->status,
         ]);
 
         $order->refresh();
@@ -201,7 +195,6 @@ class OrderController extends Controller
         $this->syncOrderStatus($item->order);
         return back()->with('success', 'Item cancelled.');
     }
-
 
     private function syncOrderStatus(Order $order)
     {

@@ -8,7 +8,7 @@ use App\Models\Concerns\BelongsToTenant;
 class RestaurantTable extends Model
 {
     use BelongsToTenant;
-    protected $fillable = ['table_number', 'capacity', 'qr_code', 'is_occupied', 'category_id'];
+    protected $fillable = ['tenant_id', 'table_number', 'capacity', 'qr_code', 'is_occupied', 'category_id'];
 
     public function category()
     {

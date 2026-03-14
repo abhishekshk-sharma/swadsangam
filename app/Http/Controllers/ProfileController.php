@@ -9,39 +9,46 @@ class ProfileController extends Controller
 {
     public function show()
     {
-        $user = auth()->user();
-        $layout = $this->getLayout($user->role);
+        $user = current_user();
+        $layout = $this->getLayout($user);
         
         return view('profile.show', compact('user', 'layout'));
     }
 
     public function edit()
     {
-        $user = auth()->user();
+        $user = current_user();
         
         // Only admin, manager, super_admin can edit
-        if (!in_array($user->role, ['admin', 'manager', 'super_admin'])) {
+        if ($user instanceof \App\Models\Employee && !in_array($user->role, ['admin', 'manager', 'super_admin'])) {
             abort(403, 'You cannot edit your profile.');
         }
         
-        $layout = $this->getLayout($user->role);
+        $layout = $this->getLayout($user);
         
         return view('profile.edit', compact('user', 'layout'));
     }
 
     public function update(Request $request)
     {
-        $user = auth()->user();
+        $user = current_user();
         
         // Only admin, manager, super_admin can update
-        if (!in_array($user->role, ['admin', 'manager', 'super_admin'])) {
+        if ($user instanceof \App\Models\Employee && !in_array($user->role, ['admin', 'manager', 'super_admin'])) {
             abort(403, 'You cannot update your profile.');
         }
 
+        $table = match(true) {
+            $user instanceof \App\Models\Admin       => 'admins',
+            $user instanceof \App\Models\Employee    => 'employees',
+            $user instanceof \App\Models\SuperAdmin  => 'super_admins',
+            default => 'admins',
+        };
+
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $user->id,
-            'phone' => 'nullable|string|max:15',
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|email|unique:' . $table . ',email,' . $user->id,
+            'phone'    => 'nullable|string|max:15',
             'password' => 'nullable|min:6|confirmed',
         ]);
 
@@ -60,13 +67,16 @@ class ProfileController extends Controller
         return redirect()->route('profile.show')->with('success', 'Profile updated successfully!');
     }
 
-    protected function getLayout($role)
+    protected function getLayout($user)
     {
-        return match($role) {
-            'waiter' => 'layouts.waiter',
-            'chef' => 'layouts.cook',
+        if ($user instanceof \App\Models\Admin || $user instanceof \App\Models\SuperAdmin) {
+            return 'layouts.admin';
+        }
+        return match($user->role ?? '') {
+            'waiter'  => 'layouts.waiter',
+            'chef'    => 'layouts.cook',
             'cashier' => 'layouts.cashier',
-            default => 'layouts.admin',
+            default   => 'layouts.admin',
         };
     }
 }

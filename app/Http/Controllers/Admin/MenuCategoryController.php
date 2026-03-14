@@ -10,11 +10,7 @@ class MenuCategoryController extends Controller
 {
     public function index()
     {
-        // Get global categories (tenant_id = null) and tenant-specific categories
-        $categories = MenuCategory::accessibleByTenant()
-            ->withCount('menuItems')
-            ->get();
-        
+        $categories = MenuCategory::withCount('menuItems')->get();
         return view('admin.menu-categories.index', compact('categories'));
     }
 
@@ -37,12 +33,9 @@ class MenuCategoryController extends Controller
     public function destroy($id)
     {
         $category = MenuCategory::findOrFail($id);
-        
-        // Only allow deletion of tenant-specific categories
-        if ($category->tenant_id !== session('tenant_id')) {
-            return redirect()->route('admin.menu-categories.index')->with('error', 'You can only delete your own categories');
+        if (is_null($category->tenant_id)) {
+            return redirect()->route('admin.menu-categories.index')->with('error', 'Cannot delete global categories');
         }
-        
         $category->delete();
         return redirect()->route('admin.menu-categories.index')->with('success', 'Category deleted successfully');
     }

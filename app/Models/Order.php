@@ -8,8 +8,13 @@ use App\Models\Concerns\BelongsToTenant;
 class Order extends Model
 {
     use BelongsToTenant;
-    protected $fillable = ['table_id', 'user_id', 'status', 'preparation_time', 'ready_at', 'total_amount', 'payment_mode', 'paid_at', 'customer_notes'];
+    protected $fillable = ['tenant_id', 'table_id', 'user_id', 'status', 'preparation_time', 'ready_at', 'total_amount', 'payment_mode', 'paid_at', 'customer_notes'];
     protected $casts = ['ready_at' => 'datetime', 'paid_at' => 'datetime'];
+
+    public function tenant()
+    {
+        return $this->belongsTo(Tenant::class);
+    }
 
     public function user()
     {

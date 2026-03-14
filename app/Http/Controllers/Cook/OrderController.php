@@ -33,6 +33,7 @@ class OrderController extends Controller
 
     public function updateItemStatus(Request $request, OrderItem $orderItem)
     {
+        abort_if($orderItem->tenant_id !== $orderItem->order->tenant_id, 403);
         $request->validate(['status' => 'required|in:pending,prepared']);
 
         $orderItem->update(['status' => $request->status]);
@@ -40,7 +41,10 @@ class OrderController extends Controller
         $order = $orderItem->order;
         $oldStatus = $order->status;
 
-        $allPrepared = $order->orderItems()->where('status', '!=', 'prepared')->where('status', '!=', 'cancelled')->count() === 0;
+        $allPrepared = $order->orderItems()
+            ->where('status', '!=', 'prepared')
+            ->where('status', '!=', 'cancelled')
+            ->count() === 0;
 
         if ($allPrepared) {
             $order->update(['status' => 'ready']);
@@ -92,7 +96,6 @@ class OrderController extends Controller
         $this->syncOrderStatus($item->order);
         return back()->with('success', 'Item cancelled.');
     }
-
 
     private function syncOrderStatus(Order $order)
     {

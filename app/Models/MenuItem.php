@@ -8,7 +8,7 @@ use App\Models\Concerns\BelongsToTenant;
 class MenuItem extends Model
 {
     use BelongsToTenant;
-    protected $fillable = ['name', 'description', 'price', 'image', 'category', 'is_available', 'menu_category_id'];
+    protected $fillable = ['tenant_id', 'name', 'description', 'price', 'image', 'category', 'is_available', 'menu_category_id'];
 
     public function category()
     {

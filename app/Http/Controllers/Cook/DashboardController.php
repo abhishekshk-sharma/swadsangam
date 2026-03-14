@@ -11,12 +11,11 @@ class DashboardController extends Controller
     public function index()
     {
         $stats = [
-            'active' => Order::whereDate('created_at', today())->whereIn('status', ['pending', 'preparing'])->count(),
-            'ready' => Order::whereDate('created_at', today())->where('status', 'ready')->count(),
+            'active'      => Order::whereDate('created_at', today())->whereIn('status', ['pending', 'preparing'])->count(),
+            'ready'       => Order::whereDate('created_at', today())->where('status', 'ready')->count(),
             'total_today' => Order::whereDate('created_at', today())->count(),
         ];
 
-        // Today's hourly data
         $chartData = Order::whereDate('created_at', today())
             ->select(DB::raw('HOUR(created_at) as hour'), DB::raw('COUNT(*) as count'))
             ->groupBy('hour')
@@ -26,7 +25,7 @@ class DashboardController extends Controller
         $hours = [];
         $counts = [];
         for ($i = 0; $i < 24; $i++) {
-            $hours[] = sprintf('%02d:00', $i);
+            $hours[]  = sprintf('%02d:00', $i);
             $counts[] = $chartData->firstWhere('hour', $i)->count ?? 0;
         }
 

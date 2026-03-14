@@ -22,9 +22,7 @@ class CookController extends Controller
     {
         $order = Order::findOrFail($id);
         $order->update(['status' => 'preparing']);
-        
         event(new OrderStatusUpdated($order, 'pending'));
-        
         return response()->json(['success' => true]);
     }
 
@@ -32,9 +30,7 @@ class CookController extends Controller
     {
         $order = Order::findOrFail($id);
         $order->update(['status' => 'ready']);
-        
         event(new OrderStatusUpdated($order, 'preparing'));
-        
         return response()->json(['success' => true]);
     }
 
@@ -42,9 +38,7 @@ class CookController extends Controller
     {
         $order = Order::findOrFail($id);
         $order->update(['status' => 'served']);
-        
         event(new OrderStatusUpdated($order, 'ready'));
-        
         return response()->json(['success' => true]);
     }
 

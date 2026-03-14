@@ -11,15 +11,13 @@ class DashboardController extends Controller
     public function index()
     {
         $stats = [
-            'pending' => Order::whereDate('created_at', today())->where('status', 'pending')->count(),
-            'preparing' => Order::whereDate('created_at', today())->where('status', 'preparing')->count(),
-            'ready' => Order::whereDate('created_at', today())->where('status', 'ready')->count(),
+            'pending'     => Order::whereDate('created_at', today())->where('status', 'pending')->count(),
+            'preparing'   => Order::whereDate('created_at', today())->where('status', 'preparing')->count(),
+            'ready'       => Order::whereDate('created_at', today())->where('status', 'ready')->count(),
             'total_today' => Order::whereDate('created_at', today())->count(),
         ];
 
-        // Today's hourly data
-        $chartData = Order::where('tenant_id', session('tenant_id'))
-            ->whereDate('created_at', today())
+        $chartData = Order::whereDate('created_at', today())
             ->select(DB::raw('HOUR(created_at) as hour'), DB::raw('COUNT(*) as count'))
             ->groupBy('hour')
             ->orderBy('hour')
@@ -28,7 +26,7 @@ class DashboardController extends Controller
         $hours = [];
         $counts = [];
         for ($i = 0; $i < 24; $i++) {
-            $hours[] = sprintf('%02d:00', $i);
+            $hours[]  = sprintf('%02d:00', $i);
             $counts[] = $chartData->firstWhere('hour', $i)->count ?? 0;
         }
 
