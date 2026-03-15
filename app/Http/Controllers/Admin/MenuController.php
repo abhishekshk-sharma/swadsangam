@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
 use App\Models\MenuItem;
 use App\Models\MenuCategory;
 use Illuminate\Http\Request;
 
-class MenuController extends Controller
+class MenuController extends BaseAdminController
 {
     public function index(Request $request)
     {
@@ -37,29 +36,30 @@ class MenuController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name'             => 'required',
-            'price'            => 'required|numeric',
-            'category'         => 'required',
-            'image'            => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
-            'menu_category_id' => 'nullable|exists:menu_categories,id',
+            'name'             => 'required|string|max:255',
+            'price'            => 'required|numeric|min:0.01',
+            'menu_category_id' => 'required|exists:menu_categories,id',
         ]);
 
-        $data = $request->except('image');
+        // Verify the chosen category belongs to this tenant (or is global)
+        $cat = MenuCategory::findOrFail($request->menu_category_id);
+        abort_if($cat->tenant_id !== null && $cat->tenant_id !== $this->tenantId(), 403);
 
-        if ($request->hasFile('image')) {
-            $image     = $request->file('image');
-            $imageName = time() . '_' . $image->getClientOriginalName();
-            $image->move(public_path('uploads/menu'), $imageName);
-            $data['image'] = 'uploads/menu/' . $imageName;
-        }
+        MenuItem::create([
+            'tenant_id'        => $this->tenantId(),
+            'name'             => $request->name,
+            'price'            => $request->price,
+            'description'      => $request->description,
+            'menu_category_id' => $request->menu_category_id,
+            'is_available'     => $request->has('is_available') ? 1 : 0,
+        ]);
 
-        MenuItem::create($data);
         return redirect()->route('admin.menu.index')->with('success', 'Menu item created successfully');
     }
 
     public function edit($id)
     {
-        $menuItem       = MenuItem::findOrFail($id);
+        $menuItem       = $this->findForTenant(MenuItem::class, $id);
         $menuCategories = MenuCategory::get();
         return view('admin.menu.edit', compact('menuItem', 'menuCategories'));
     }
@@ -67,36 +67,30 @@ class MenuController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'name'             => 'required',
-            'price'            => 'required|numeric',
-            'category'         => 'required',
-            'image'            => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
-            'menu_category_id' => 'nullable|exists:menu_categories,id',
+            'name'             => 'required|string|max:255',
+            'price'            => 'required|numeric|min:0.01',
+            'menu_category_id' => 'required|exists:menu_categories,id',
         ]);
 
-        $menuItem = MenuItem::findOrFail($id);
-        $data     = $request->except(['image', '_token', '_method']);
-        $data['is_available'] = $request->has('is_available') ? 1 : 0;
+        $menuItem = $this->findForTenant(MenuItem::class, $id);
 
-        if ($request->hasFile('image')) {
-            $image = $request->file('image');
+        $cat = MenuCategory::findOrFail($request->menu_category_id);
+        abort_if($cat->tenant_id !== null && $cat->tenant_id !== $this->tenantId(), 403);
 
-            if ($menuItem->image && file_exists(public_path($menuItem->image))) {
-                unlink(public_path($menuItem->image));
-            }
+        $menuItem->update([
+            'name'             => $request->name,
+            'price'            => $request->price,
+            'description'      => $request->description,
+            'menu_category_id' => $request->menu_category_id,
+            'is_available'     => $request->has('is_available') ? 1 : 0,
+        ]);
 
-            $imageName     = time() . '_' . $image->getClientOriginalName();
-            $image->move(public_path('uploads/menu'), $imageName);
-            $data['image'] = 'uploads/menu/' . $imageName;
-        }
-
-        $menuItem->update($data);
         return redirect()->route('admin.menu.index')->with('success', 'Menu item updated successfully');
     }
 
     public function destroy($id)
     {
-        MenuItem::findOrFail($id)->delete();
+        $this->findForTenant(MenuItem::class, $id)->delete();
         return redirect()->route('admin.menu.index')->with('success', 'Menu item deleted successfully');
     }
 }

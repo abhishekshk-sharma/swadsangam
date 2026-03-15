@@ -109,9 +109,36 @@
         cursor: pointer;
         transition: all 0.2s ease;
     }
-    .btn-delete:hover {
-        background: #b02a0f;
+    .btn-edit-table {
+        background: #fff;
+        border: 1px solid #d5d9d9;
+        color: #232f3e;
+        padding: 8px 14px;
+        border-radius: 4px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
     }
+    .btn-edit-table:hover { border-color: #ff9900; color: #ff9900; }
+    .modal-overlay {
+        display: none;
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.45);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+        background: #fff;
+        border-radius: 10px;
+        padding: 28px;
+        width: 100%;
+        max-width: 420px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    }
+    .modal-title { font-size: 17px; font-weight: 700; color: #232f3e; margin-bottom: 20px; }
 </style>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -190,10 +217,15 @@
                 <a href="{{ route('admin.tables.show', $table->id) }}" class="btn-view">
                     <i class="fas fa-qrcode me-1"></i> View QR
                 </a>
+                @if(!$table->is_occupied)
+                <button onclick="openEdit({{ $table->id }}, '{{ $table->table_number }}', {{ $table->capacity }}, {{ $table->category_id ?? 'null' }})" class="btn-edit-table">
+                    <i class="fas fa-edit"></i>
+                </button>
+                @endif
                 <form action="{{ route('admin.tables.destroy', $table->id) }}" method="POST" class="d-inline">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="btn-delete" onclick="return confirm('Are you sure you want to delete this table?')">
+                    <button type="submit" class="btn-delete" onclick="return confirm('Delete this table?')">
                         <i class="fas fa-trash"></i>
                     </button>
                 </form>
@@ -213,3 +245,61 @@
     @endforelse
 </div>
 @endsection
+
+{{-- Edit Modal --}}
+<div class="modal-overlay" id="editModal">
+    <div class="modal-box">
+        <div class="modal-title"><i class="fas fa-edit me-2" style="color:#ff9900;"></i>Edit Table</div>
+        <form id="editForm" method="POST">
+            @csrf
+            @method('PUT')
+            <div class="mb-3">
+                <label class="form-label">Table Number</label>
+                <input type="text" name="table_number" id="edit_table_number" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Capacity</label>
+                <input type="number" name="capacity" id="edit_capacity" class="form-control" min="1" required>
+            </div>
+            <div class="mb-4">
+                <label class="form-label">Category</label>
+                <select name="category_id" id="edit_category_id" class="form-select">
+                    <option value="">-- No Category --</option>
+                    @foreach($categories as $cat)
+                        <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                    @endforeach
+                    <option value="__new__">➕ Add New Category...</option>
+                </select>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn-primary" style="flex:1;"><i class="fas fa-save me-1"></i>Save</button>
+                <button type="button" onclick="closeEdit()" class="btn-secondary" style="flex:1;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openEdit(id, tableNumber, capacity, categoryId) {
+    document.getElementById('editForm').action = '/admin/tables/' + id;
+    document.getElementById('edit_table_number').value = tableNumber;
+    document.getElementById('edit_capacity').value = capacity;
+    const sel = document.getElementById('edit_category_id');
+    sel.value = categoryId ?? '';
+    document.getElementById('editModal').classList.add('open');
+}
+function closeEdit() {
+    document.getElementById('editModal').classList.remove('open');
+}
+document.getElementById('editModal').addEventListener('click', function(e) {
+    if (e.target === this) closeEdit();
+});
+document.getElementById('edit_category_id').addEventListener('change', function() {
+    if (this.value === '__new__') {
+        this.value = '';
+        openQuickCategoryModal('edit_category_id', '{{ route('admin.categories.quickCreate') }}');
+    }
+});
+</script>
+
+@include('admin.partials.quick-category-modal')

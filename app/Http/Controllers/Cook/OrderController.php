@@ -9,6 +9,25 @@ use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
+    private function tenantId(): int
+    {
+        return (int) auth()->guard('employee')->user()->tenant_id;
+    }
+
+    private function findOrder(int $id): Order
+    {
+        return Order::where('id', $id)
+            ->where('tenant_id', $this->tenantId())
+            ->firstOrFail();
+    }
+
+    private function findItem(int $id): OrderItem
+    {
+        $item = OrderItem::with('order')->findOrFail($id);
+        abort_if($item->order->tenant_id !== $this->tenantId(), 403);
+        return $item;
+    }
+
     public function pending()
     {
         $orders = Order::with(['table', 'orderItems.menuItem'])
@@ -33,7 +52,8 @@ class OrderController extends Controller
 
     public function updateItemStatus(Request $request, OrderItem $orderItem)
     {
-        abort_if($orderItem->tenant_id !== $orderItem->order->tenant_id, 403);
+        // Global scope on Order ensures tenant isolation; double-check via order
+        abort_if($orderItem->order->tenant_id !== $this->tenantId(), 403);
         $request->validate(['status' => 'required|in:pending,prepared']);
 
         $orderItem->update(['status' => $request->status]);
@@ -58,7 +78,7 @@ class OrderController extends Controller
 
     public function updateItem(Request $request, $id)
     {
-        $item = OrderItem::findOrFail($id);
+        $item = $this->findItem($id);
         if ($item->status !== 'pending') {
             return back()->with('error', 'Only pending items can be edited.');
         }
@@ -68,14 +88,13 @@ class OrderController extends Controller
         ]);
         $oldTotal = $item->price * $item->quantity;
         $item->update(['quantity' => $request->quantity, 'notes' => $request->notes]);
-        $newTotal = $item->price * $request->quantity;
-        $item->order->increment('total_amount', $newTotal - $oldTotal);
+        $item->order->increment('total_amount', ($item->price * $request->quantity) - $oldTotal);
         return back()->with('success', 'Item updated.');
     }
 
     public function cancelOrder($id)
     {
-        $order = Order::findOrFail($id);
+        $order = $this->findOrder($id);
         if ($order->status === 'paid') {
             return back()->with('error', 'Cannot cancel a paid order.');
         }
@@ -90,7 +109,7 @@ class OrderController extends Controller
 
     public function cancelItem($id)
     {
-        $item = OrderItem::findOrFail($id);
+        $item = $this->findItem($id);
         $item->update(['status' => 'cancelled']);
         $item->order->decrement('total_amount', $item->price * $item->quantity);
         $this->syncOrderStatus($item->order);

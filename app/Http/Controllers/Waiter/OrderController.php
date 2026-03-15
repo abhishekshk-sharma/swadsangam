@@ -3,16 +3,35 @@
 namespace App\Http\Controllers\Waiter;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Order, OrderItem, RestaurantTable, MenuItem, Employee};
+use App\Models\{Order, OrderItem, RestaurantTable, MenuItem, Employee, MenuCategory};
 use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
+    private function tenantId(): int
+    {
+        return (int) auth()->guard('employee')->user()->tenant_id;
+    }
+
+    private function findOrder(int $id): Order
+    {
+        return Order::where('id', $id)
+            ->where('tenant_id', $this->tenantId())
+            ->firstOrFail();
+    }
+
+    private function findItem(int $id): OrderItem
+    {
+        $item = OrderItem::with('order')->findOrFail($id);
+        abort_if($item->order->tenant_id !== $this->tenantId(), 403);
+        return $item;
+    }
     public function index()
     {
         $orders = Order::with('table', 'items.menuItem')
             ->whereDate('created_at', today())
             ->where('status', '!=', 'paid')
+            ->where('status', '!=', 'checkout')
             ->latest()
             ->get();
 
@@ -23,10 +42,11 @@ class OrderController extends Controller
 
     public function create()
     {
-        $tables    = RestaurantTable::where('is_occupied', false)->get();
-        $menuItems = MenuItem::where('is_available', true)->get();
+        $tables         = RestaurantTable::where('is_occupied', false)->get();
+        $menuItems      = MenuItem::with('menuCategory')->where('is_available', true)->get();
+        $menuCategories = MenuCategory::whereHas('menuItems', fn($q) => $q->where('is_available', true))->get();
 
-        return view('waiter.orders.create', compact('tables', 'menuItems'));
+        return view('waiter.orders.create', compact('tables', 'menuItems', 'menuCategories'));
     }
 
     public function store(Request $request)
@@ -74,9 +94,20 @@ class OrderController extends Controller
         return redirect('/waiter/orders')->with('success', 'Order created successfully');
     }
 
+    public function checkoutOrder($id)
+    {
+        $order = $this->findOrder($id);
+        if ($order->status !== 'served') {
+            return response()->json(['error' => 'Only served orders can be checked out.'], 422);
+        }
+        $order->update(['status' => 'checkout']);
+        $order->table->update(['is_occupied' => false]);
+        return response()->json(['success' => true]);
+    }
+
     public function markServed($id)
     {
-        $order = Order::findOrFail($id);
+        $order = $this->findOrder($id);
         $order->update(['status' => 'served']);
         event(new \App\Events\OrderStatusUpdated($order, 'ready'));
         return response()->json(['success' => true]);
@@ -112,7 +143,7 @@ class OrderController extends Controller
 
     public function addItems(Request $request, $id)
     {
-        $order = Order::findOrFail($id);
+        $order = $this->findOrder($id);
 
         if ($order->status === 'paid') {
             return redirect()->back()->with('error', 'This order has already been paid. Cannot add items.');
@@ -157,7 +188,7 @@ class OrderController extends Controller
 
     public function updateItem(Request $request, $id)
     {
-        $item = OrderItem::findOrFail($id);
+        $item = $this->findItem($id);
         if ($item->status !== 'pending') {
             return back()->with('error', 'Only pending items can be edited.');
         }
@@ -174,7 +205,7 @@ class OrderController extends Controller
 
     public function cancelOrder($id)
     {
-        $order = Order::findOrFail($id);
+        $order = $this->findOrder($id);
         if ($order->status === 'paid') {
             return back()->with('error', 'Cannot cancel a paid order.');
         }
@@ -189,7 +220,7 @@ class OrderController extends Controller
 
     public function cancelItem($id)
     {
-        $item = OrderItem::findOrFail($id);
+        $item = $this->findItem($id);
         $item->update(['status' => 'cancelled']);
         $item->order->decrement('total_amount', $item->price * $item->quantity);
         $this->syncOrderStatus($item->order);

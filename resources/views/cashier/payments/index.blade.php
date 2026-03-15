@@ -1,6 +1,7 @@
 @extends('layouts.cashier')
 
 @section('title', 'Pending Payments')
+@php use Illuminate\Support\Facades\URL; @endphp
 
 @section('content')
 <div class="space-y-3">
@@ -171,6 +172,12 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
+const BILL_URLS = {
+    @foreach($orders as $order)
+    {{ $order->id }}: "{{ URL::signedRoute('bill.show', ['orderId' => $order->id]) }}",
+    @endforeach
+};
+
 function selectPaymentMode(orderId, mode) {
     document.querySelectorAll(`[data-order="${orderId}"]`).forEach(btn => {
         btn.classList.remove('border-blue-500', 'bg-blue-50');
@@ -209,7 +216,7 @@ function calculateChange(orderId, totalAmount) {
 }
 
 function showQrModal(orderId) {
-    const billUrl = `{{ url('/bill') }}/${orderId}`;
+    const billUrl = BILL_URLS[orderId] || `{{ url('/bill') }}/${orderId}`;
     document.getElementById('billLink').textContent = billUrl;
     document.getElementById('billLink').href        = billUrl;
     document.getElementById('openBillBtn').href     = billUrl;

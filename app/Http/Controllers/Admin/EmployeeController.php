@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
 use App\Models\Employee;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
-class EmployeeController extends Controller
+class EmployeeController extends BaseAdminController
 {
     public function index()
     {
@@ -22,12 +21,12 @@ class EmployeeController extends Controller
 
     public function store(Request $request)
     {
-        $tenantId = auth()->guard('admin')->user()->tenant_id;
+        $tenantId = $this->tenantId();
 
         $request->validate([
-            'name'     => 'required',
+            'name'     => 'required|string|max:255',
             'email'    => ['required', 'email', 'unique:employees,email,NULL,id,tenant_id,' . $tenantId],
-            'password' => 'required|min:6',
+            'password' => 'required|min:6|confirmed',
             'role'     => 'required|in:waiter,chef,cashier',
         ]);
 
@@ -46,20 +45,20 @@ class EmployeeController extends Controller
 
     public function edit($id)
     {
-        $employee = Employee::findOrFail($id);
+        $employee = $this->findForTenant(Employee::class, $id);
         return view('admin.employees.edit', compact('employee'));
     }
 
     public function update(Request $request, $id)
     {
-        $employee = Employee::findOrFail($id);
-        $tenantId = auth()->guard('admin')->user()->tenant_id;
+        $tenantId = $this->tenantId();
+        $employee = $this->findForTenant(Employee::class, $id);
 
         $request->validate([
-            'name'  => 'required',
-            'email' => ['required', 'email', 'unique:employees,email,' . $id . ',id,tenant_id,' . $tenantId],
-            'role'  => 'required|in:waiter,chef,cashier',
-            'password' => 'nullable|min:6',
+            'name'     => 'required|string|max:255',
+            'email'    => ['required', 'email', 'unique:employees,email,' . $id . ',id,tenant_id,' . $tenantId],
+            'role'     => 'required|in:waiter,chef,cashier',
+            'password' => 'nullable|min:6|confirmed',
         ]);
 
         $data = $request->only(['name', 'email', 'phone', 'role', 'is_active']);
@@ -69,13 +68,12 @@ class EmployeeController extends Controller
         }
 
         $employee->update($data);
-
         return redirect('/admin/employees')->with('success', 'Employee updated');
     }
 
     public function destroy($id)
     {
-        Employee::findOrFail($id)->delete();
+        $this->findForTenant(Employee::class, $id)->delete();
         return redirect('/admin/employees')->with('success', 'Employee deleted');
     }
 }

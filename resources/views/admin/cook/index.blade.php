@@ -1,4 +1,5 @@
 @extends('layouts.admin')
+@php use Illuminate\Support\Facades\URL; @endphp
 
 @section('title', 'Kitchen Panel')
 
@@ -22,12 +23,12 @@
         transition: all 0.2s ease;
     }
     .kitchen-tab:hover {
-        color: #ff9900;
-        border-bottom-color: #ff9900;
+        color: #3b82f6;
+        border-bottom-color: #3b82f6;
     }
     .kitchen-tab.active {
-        color: #ff9900;
-        border-bottom-color: #ff9900;
+        color: #3b82f6;
+        border-bottom-color: #3b82f6;
     }
     .order-card {
         background: #fff;
@@ -91,6 +92,14 @@
         background: #d1e7dd;
         color: #0f5132;
     }
+    .status-served {
+        background: #e0d7ff;
+        color: #4c1d95;
+    }
+    .status-checkout {
+        background: #d1fae5;
+        color: #065f46;
+    }
     .items-list {
         margin-bottom: 16px;
     }
@@ -114,7 +123,7 @@
     .item-qty {
         font-size: 14px;
         font-weight: 700;
-        color: #ff9900;
+        color: #3b82f6;
     }
     .prep-input {
         width: 80px;
@@ -125,9 +134,9 @@
         text-align: center;
     }
     .prep-input:focus {
-        border-color: #ff9900;
+        border-color: #3b82f6;
         outline: none;
-        box-shadow: 0 0 0 3px rgba(255,153,0,0.1);
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
     }
     .countdown-display {
         background: #fff3e0;
@@ -139,7 +148,7 @@
     .countdown-time {
         font-size: 24px;
         font-weight: 700;
-        color: #ff9900;
+        color: #3b82f6;
     }
     .countdown-label {
         font-size: 12px;
@@ -179,6 +188,9 @@
     <a href="#" class="kitchen-tab" onclick="filterOrders('served'); return false;">
         <i class="fas fa-check me-2"></i>Served
     </a>
+    <a href="#" class="kitchen-tab" onclick="filterOrders('checkout'); return false;">
+        <i class="fas fa-sign-out-alt me-2"></i>Checkout
+    </a>
     <a href="#" class="kitchen-tab" onclick="filterOrders('paid'); return false;">
         <i class="fas fa-check me-2"></i>Paid
     </a>
@@ -189,7 +201,7 @@
 
 <div id="orders-container" class="row g-4">
     @forelse($orders as $order)
-    <div class="col-md-6 col-lg-4 order-item" data-order-id="{{ $order->id }}" data-order-status="{{ $order->status }}" data-status="{{ $order->status }}">
+    <div class="col-md-6 col-lg-4 order-item" data-order-id="{{ $order->id }}" data-order-status="{{ $order->status }}" data-status="{{ $order->status }}" data-created-at="{{ $order->created_at->timestamp }}">
         <div class="order-card {{ $order->status }}">
             <div class="order-header">
                 <div>
@@ -199,9 +211,17 @@
                         <i class="fas fa-clock me-1"></i>{{ $order->created_at->diffForHumans() }}
                     </div>
                 </div>
-                <span class="status-badge-kitchen status-{{ $order->status }}" data-order-status-badge>
-                    {{ ucfirst($order->status) }}
-                </span>
+                <div class="d-flex flex-column align-items-end gap-1">
+                    @if(in_array($order->status, ['paid', 'cancelled']))
+                        @php $dur = (int) $order->created_at->diffInMinutes($order->updated_at); @endphp
+                        <span class="order-timer-admin {{ $order->status === 'paid' ? 'timer-ok' : 'timer-late' }}">⏱ {{ $dur }}m</span>
+                    @else
+                        <span class="order-timer-admin" data-timer></span>
+                    @endif
+                    <span class="status-badge-kitchen status-{{ $order->status }}" data-order-status-badge>
+                        {{ ucfirst($order->status) }}
+                    </span>
+                </div>
             </div>
             
             <div class="items-list">
@@ -216,7 +236,7 @@
                             <span style="font-size:11px;color:#dc3545;"> (cancelled)</span>
                         @endif
                         @if($item->notes)
-                            <div style="font-size: 11px; color: #ff9900; font-style: italic; margin-top: 2px;">
+                            <div style="font-size: 11px; color: #3b82f6; font-style: italic; margin-top: 2px;">
                                 → {{ $item->notes }}
                             </div>
                         @endif
@@ -277,7 +297,7 @@
             <button onclick="markServed({{ $order->id }})" class="btn-success w-100">
                 <i class="fas fa-utensils me-1"></i>Mark as Served
             </button>
-            @elseif($order->status === 'served')
+            @elseif(in_array($order->status, ['served', 'checkout']))
             <div class="mb-3">
                 <div style="font-size: 18px; font-weight: 700; color: #16a34a; text-align: center; margin-bottom: 12px;">
                     Total: ₹{{ number_format($order->total_amount, 2) }}
@@ -295,6 +315,9 @@
                 <i class="fas fa-check-circle" style="font-size: 48px; color: #16a34a;"></i>
                 <div class="mt-2" style="color: #15803d; font-weight: 600;">Payment Completed</div>
                 <div style="font-size: 14px; color: #666; margin-top: 4px;">₹{{ number_format($order->total_amount, 2) }} - {{ ucfirst($order->payment_mode ?? 'cash') }}</div>
+                <button onclick="showAdminQr({{ $order->id }})" class="mt-3 w-100" style="background:#f0fdf4;border:2px solid #86efac;color:#15803d;border-radius:8px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;">
+                    <i class="fas fa-qrcode me-2"></i>Show Bill QR
+                </button>
             </div>
             @endif
             @if(!in_array($order->status, ['paid','cancelled']))
@@ -322,7 +345,7 @@
 <div id="paymentModal" class="modal fade" tabindex="-1" style="display: none;">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
-            <div class="modal-header" style="background: linear-gradient(135deg, #232f3e 0%, #37475a 100%); color: white; border-radius: 12px 12px 0 0;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #1e3a5f 0%, #2a4f7c 100%); color: white; border-radius: 12px 12px 0 0;">
                 <div>
                     <h5 class="modal-title" style="margin: 0; font-weight: 700;">Process Payment</h5>
                     <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">Order #<span id="modalOrderId"></span> - Table <span id="modalTableNumber"></span></p>
@@ -390,18 +413,47 @@
 </div>
 <div id="modalBackdrop" class="modal-backdrop fade" style="display: none;"></div>
 
+<!-- Bill QR Modal -->
+<div id="adminQrModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:16px;padding:28px;width:100%;max-width:360px;margin:auto;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,0.25);">
+        <div style="color:#16a34a;font-size:48px;margin-bottom:8px;">✅</div>
+        <h5 style="font-weight:700;margin-bottom:4px;">Bill QR Code</h5>
+        <p style="font-size:13px;color:#666;margin-bottom:16px;">Customer can scan to view their bill</p>
+        <div style="background:#f9fafb;border-radius:12px;padding:16px;display:flex;justify-content:center;margin-bottom:16px;">
+            <div id="adminQrContainer"></div>
+        </div>
+        <a id="adminBillLink" href="#" target="_blank" style="font-size:13px;color:#2563eb;word-break:break-all;display:block;margin-bottom:16px;"></a>
+        <div style="display:flex;gap:8px;">
+            <button onclick="closeAdminQr()" style="flex:1;background:#f3f4f6;border:none;border-radius:8px;padding:10px;font-weight:600;cursor:pointer;">Close</button>
+            <a id="adminOpenBillBtn" href="#" target="_blank" style="flex:1;background:#2563eb;color:#fff;border-radius:8px;padding:10px;font-weight:600;text-decoration:none;display:inline-block;">Open Bill</a>
+        </div>
+    </div>
+</div>
+
 <style>
 .payment-mode-btn:hover {
-    border-color: #ff9900 !important;
-    background: #fff3e0 !important;
+    border-color: #3b82f6 !important;
+    background: #eff6ff !important;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(255,153,0,0.2);
+    box-shadow: 0 4px 12px rgba(59,130,246,0.2);
 }
 .payment-mode-btn.selected {
-    border-color: #ff9900 !important;
-    background: #fff3e0 !important;
-    box-shadow: 0 0 0 3px rgba(255,153,0,0.2);
+    border-color: #3b82f6 !important;
+    background: #eff6ff !important;
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.2);
 }
+.order-timer-admin {
+    font-size: 11px;
+    font-weight: 700;
+    font-family: monospace;
+    letter-spacing: 0.04em;
+    padding: 2px 8px;
+    border-radius: 20px;
+}
+.order-timer-admin.timer-ok   { background:#dcfce7; color:#15803d; }
+.order-timer-admin.timer-warn { background:#fef9c3; color:#a16207; }
+.order-timer-admin.timer-late { background:#fee2e2; color:#b91c1c; animation:adminTimerPulse 1s ease-in-out infinite; }
+@keyframes adminTimerPulse { 0%,100%{opacity:1} 50%{opacity:.5} }
 </style>
 
 <script>
@@ -549,6 +601,50 @@ document.getElementById('paymentForm').addEventListener('submit', function(e) {
 });
 </script>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+const ADMIN_BILL_URLS = {
+    @foreach($orders->where('status','paid') as $order)
+    {{ $order->id }}: "{{ URL::signedRoute('bill.show', ['orderId' => $order->id]) }}",
+    @endforeach
+};
+function showAdminQr(orderId) {
+    const url = ADMIN_BILL_URLS[orderId];
+    if (!url) return;
+    document.getElementById('adminBillLink').textContent = url;
+    document.getElementById('adminBillLink').href = url;
+    document.getElementById('adminOpenBillBtn').href = url;
+    const container = document.getElementById('adminQrContainer');
+    container.innerHTML = '';
+    new QRCode(container, { text: url, width: 200, height: 200, colorDark: '#111827', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+    const modal = document.getElementById('adminQrModal');
+    modal.style.display = 'flex';
+}
+function closeAdminQr() {
+    document.getElementById('adminQrModal').style.display = 'none';
+}
+</script>
 <script>window.ORDER_POLL = { panel: 'admin' };</script>
 <script src="/js/order-poll.js"></script>
+
+<script>
+(function() {
+    function tick() {
+        var now = Math.floor(Date.now() / 1000);
+        document.querySelectorAll('[data-created-at]').forEach(function(card) {
+            var el = card.querySelector('[data-timer]');
+            if (!el) return;
+            var elapsed = now - parseInt(card.dataset.createdAt, 10);
+            if (elapsed < 0) elapsed = 0;
+            var m = Math.floor(elapsed / 60);
+            el.textContent = '⏱ ' + m + 'm';
+            el.classList.remove('timer-ok','timer-warn','timer-late');
+            if (elapsed >= 1200)     el.classList.add('timer-late');
+            else if (elapsed >= 600) el.classList.add('timer-warn');
+            else                     el.classList.add('timer-ok');
+        });
+    }
+    document.addEventListener('DOMContentLoaded', function() { tick(); setInterval(tick, 60000); });
+})();
+</script>
 @endsection

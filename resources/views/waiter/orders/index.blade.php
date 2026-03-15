@@ -27,14 +27,16 @@
 
 <div class="space-y-3">
     @forelse($orders as $order)
-    <div class="order-card bg-white p-4 rounded-lg shadow" data-order-id="{{ $order->id }}" data-order-status="{{ $order->status }}" data-table-number="{{ $order->table->table_number }}">
+    <div class="order-card bg-white p-4 rounded-lg shadow" data-order-id="{{ $order->id }}" data-order-status="{{ $order->status }}" data-table-number="{{ $order->table->table_number }}" data-created-at="{{ $order->created_at->timestamp }}">
         <div class="flex justify-between items-start mb-3">
             <div>
                 <h3 class="text-lg font-bold">Order #{{ $order->id }}</h3>
                 <p class="text-xs text-gray-500">Table {{ $order->table->table_number }}</p>
                 <p class="text-xs text-gray-400">{{ $order->created_at->format('h:i A') }}</p>
             </div>
-            <span class="order-status-badge px-2 py-1 rounded text-xs font-semibold 
+            <div class="flex flex-col items-end gap-1">
+                <span class="waiter-order-timer" data-timer></span>
+                <span class="order-status-badge px-2 py-1 rounded text-xs font-semibold 
                 {{ $order->status === 'pending' ? 'bg-yellow-100 text-yellow-800' : '' }}
                 {{ $order->status === 'preparing' ? 'bg-blue-100 text-blue-800' : '' }}
                 {{ $order->status === 'ready' ? 'bg-green-100 text-green-800' : '' }}
@@ -43,6 +45,7 @@
                 data-order-status-badge>
                 {{ ucfirst($order->status) }}
             </span>
+        </div>
         </div>
         
         <div class="mb-3">
@@ -61,15 +64,27 @@
                             @endif
                         </div>
                         @if(!in_array($order->status, ['paid', 'cancelled']))
-                            <div class="flex gap-1 flex-shrink-0" data-item-actions>
+                            <div class="waiter-item-actions" data-item-actions>
                                 @if($item->status === 'pending')
-                                    <button onclick="toggleEdit('edit-{{ $item->id }}')"
-                                            class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Edit</button>
+                                    <button type="button" title="Edit Item"
+                                            onclick="toggleEdit('edit-{{ $item->id }}')"
+                                            class="waiter-action-btn waiter-btn-edit">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                        </svg>
+                                    </button>
                                 @endif
                                 @if($item->status !== 'prepared' && $item->status !== 'cancelled')
-                                    <form action="{{ route('waiter.orderItems.cancel', $item->id) }}" method="POST">
+                                    <form action="{{ route('waiter.orderItems.cancel', $item->id) }}" method="POST" style="display:flex;align-items:center;margin:0;">
                                         @csrf @method('PATCH')
-                                        <button class="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded">Cancel</button>
+                                        <button type="submit" title="Cancel Item"
+                                                class="waiter-action-btn waiter-btn-cancel">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                                <line x1="6" y1="6" x2="18" y2="18"/>
+                                            </svg>
+                                        </button>
                                     </form>
                                 @endif
                             </div>
@@ -118,29 +133,57 @@
                 </div>
             </div>
             
-            <div class="order-actions flex gap-2">
-                @if(!in_array($order->status, ['paid', 'cancelled']))
-                <button onclick="addItemsToOrder({{ $order->id }}, '{{ $order->table->table_number }}')" 
-                        data-add-items-btn
-                        class="flex-1 bg-blue-500 text-white px-4 py-2 rounded text-sm font-semibold">
-                    + Add Items
+            <div class="order-actions waiter-order-actions">
+                @if(!in_array($order->status, ['paid', 'cancelled', 'checkout']))
+                <button type="button" onclick="addItemsToOrder({{ $order->id }}, '{{ $order->table->table_number }}')" 
+                        data-add-items-btn title="Add Items"
+                        class="waiter-action-btn waiter-btn-add">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="16"/>
+                        <line x1="8" y1="12" x2="16" y2="12"/>
+                    </svg>
                 </button>
                 @endif
                 @if($order->status === 'ready')
-                <button onclick="markServed({{ $order->id }})" 
-                        data-serve-btn
-                        class="flex-1 bg-green-500 text-white px-4 py-2 rounded text-sm font-semibold">
-                    Mark as Served
+                <button type="button" onclick="markServed({{ $order->id }})" 
+                        data-serve-btn title="Mark as Served"
+                        class="waiter-action-btn waiter-btn-serve">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
                 </button>
                 @endif
-                @if(!in_array($order->status, ['paid', 'cancelled', 'served']) && $order->items->where('status', 'prepared')->count() === 0)
+                @if(!in_array($order->status, ['paid', 'cancelled', 'served', 'checkout']) && $order->items->where('status', 'prepared')->count() === 0)
                 <form action="{{ route('waiter.orders.cancel', $order->id) }}" method="POST"
-                      onsubmit="return confirm('Cancel entire order #{{ $order->id }}?')">
+                      onsubmit="return confirm('Cancel entire order #{{ $order->id }}?')"
+                      style="display:flex;align-items:center;margin:0;">
                     @csrf @method('PATCH')
-                    <button class="bg-red-500 text-white px-4 py-2 rounded text-sm font-semibold">Cancel Order</button>
+                    <button type="submit" title="Cancel Order"
+                            class="waiter-action-btn waiter-btn-cancel-order">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="15" y1="9" x2="9" y2="15"/>
+                            <line x1="9" y1="9" x2="15" y2="15"/>
+                        </svg>
+                    </button>
                 </form>
                 @endif
             </div>
+            @if($order->status === 'served')
+            <div class="checkout-section">
+                <button type="button" onclick="checkoutOrder({{ $order->id }})" class="checkout-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;display:inline-block;vertical-align:middle;margin-right:6px;">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                        <polyline points="16 17 21 12 16 7"/>
+                        <line x1="21" y1="12" x2="9" y2="12"/>
+                    </svg>
+                    Checkout Table
+                </button>
+                <p class="checkout-hint">Customer is done. Free the table now — cashier will collect payment separately.</p>
+            </div>
+            @endif
         </div>
     </div>
     @empty
@@ -447,6 +490,26 @@ function markServed(orderId) {
     .then(() => location.reload());
 }
 
+function checkoutOrder(orderId) {
+    if (!confirm('Checkout this table?\n\nThis will free the table immediately. The cashier will collect payment separately.')) return;
+    fetch(`/waiter/orders/${orderId}/checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            const card = document.querySelector(`.order-card[data-order-id="${orderId}"]`);
+            if (card) {
+                card.style.transition = 'opacity 0.4s, transform 0.4s';
+                card.style.opacity = '0';
+                card.style.transform = 'scale(0.95)';
+                setTimeout(() => card.remove(), 400);
+            }
+        }
+    });
+}
+
 function showToast(message) {
     const toast = document.createElement('div');
     toast.className = 'fixed top-20 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
@@ -466,7 +529,145 @@ function updateAdditionalItemNotes(index, notes) {
 <script>window.ORDER_POLL = { panel: 'waiter' };</script>
 <script src="/js/order-poll.js"></script>
 
+<script>
+(function() {
+    function tick() {
+        var now = Math.floor(Date.now() / 1000);
+        document.querySelectorAll('[data-created-at]').forEach(function(card) {
+            var el = card.querySelector('[data-timer]');
+            if (!el) return;
+            var elapsed = now - parseInt(card.dataset.createdAt, 10);
+            if (elapsed < 0) elapsed = 0;
+            var m = Math.floor(elapsed / 60);
+            el.textContent = '⏱ ' + m + 'm';
+            el.classList.remove('timer-ok','timer-warn','timer-late');
+            if (elapsed >= 1200)     el.classList.add('timer-late');
+            else if (elapsed >= 600) el.classList.add('timer-warn');
+            else                     el.classList.add('timer-ok');
+        });
+    }
+    document.addEventListener('DOMContentLoaded', function() { tick(); setInterval(tick, 60000); });
+})();
+</script>
+
 <style>
+.waiter-action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    flex-shrink: 0;
+}
+.waiter-action-btn svg { width: 18px; height: 18px; }
+.waiter-action-btn:active { transform: scale(0.93); }
+
+.waiter-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.waiter-btn-edit {
+    background: #eff6ff;
+    color: #2563eb;
+    box-shadow: 0 2px 6px rgba(37,99,235,0.15);
+}
+.waiter-btn-edit:hover { background: #dbeafe; }
+
+.waiter-btn-cancel {
+    background: #fef2f2;
+    color: #dc2626;
+    box-shadow: 0 2px 6px rgba(220,38,38,0.15);
+}
+.waiter-btn-cancel:hover { background: #fee2e2; }
+
+.waiter-order-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.waiter-btn-add {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: #2563eb;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.35);
+}
+.waiter-btn-add svg { width: 22px; height: 22px; }
+.waiter-btn-add:hover { background: #1d4ed8; }
+
+.waiter-btn-serve {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: #16a34a;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(22,163,74,0.35);
+}
+.waiter-btn-serve svg { width: 22px; height: 22px; }
+.waiter-btn-serve:hover { background: #15803d; }
+
+.waiter-btn-cancel-order {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: #dc2626;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(220,38,38,0.35);
+}
+.waiter-btn-cancel-order svg { width: 22px; height: 22px; }
+.waiter-btn-cancel-order:hover { background: #b91c1c; }
+
+.waiter-order-timer {
+    font-size: 11px;
+    font-weight: 700;
+    font-family: monospace;
+    letter-spacing: 0.04em;
+    padding: 2px 8px;
+    border-radius: 20px;
+}
+.waiter-order-timer.timer-ok   { background:#dcfce7; color:#15803d; }
+.waiter-order-timer.timer-warn { background:#fef9c3; color:#a16207; }
+.waiter-order-timer.timer-late { background:#fee2e2; color:#b91c1c; animation:waiterTimerPulse 1s ease-in-out infinite; }
+@keyframes waiterTimerPulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+.checkout-section {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 2px dashed #d1fae5;
+}
+.checkout-btn {
+    width: 100%;
+    background: #059669;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 10px rgba(5,150,105,0.35);
+    transition: background 0.15s, transform 0.15s;
+}
+.checkout-btn:hover  { background: #047857; }
+.checkout-btn:active { transform: scale(0.98); }
+.checkout-hint {
+    margin-top: 6px;
+    font-size: 11px;
+    color: #6b7280;
+    text-align: center;
+    font-style: italic;
+}
 .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;

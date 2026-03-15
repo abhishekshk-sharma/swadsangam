@@ -41,36 +41,45 @@
     
     <div class="mb-4">
         <div class="flex gap-2 overflow-x-auto pb-2">
-            <button onclick="filterCategory('all')" class="category-btn px-4 py-2 rounded-full bg-blue-600 text-white text-sm whitespace-nowrap">All</button>
-            @php
-                $categories = $menuItems->pluck('category')->unique();
-            @endphp
-            @foreach($categories as $category)
-                <button onclick="filterCategory('{{ $category }}')" class="category-btn px-4 py-2 rounded-full bg-gray-200 text-gray-700 text-sm whitespace-nowrap">{{ $category }}</button>
+            <button onclick="filterCategory('all', this)" class="category-btn px-4 py-2 rounded-full bg-blue-600 text-white text-sm whitespace-nowrap">All</button>
+            @foreach($menuCategories as $cat)
+                <button onclick="filterCategory('{{ $cat->id }}', this)" class="category-btn px-4 py-2 rounded-full bg-gray-200 text-gray-700 text-sm whitespace-nowrap">{{ $cat->name }}</button>
             @endforeach
         </div>
     </div>
-    
-    <div id="menuItems" class="grid grid-cols-2 gap-3 pb-24">
+
+    <div id="menuItems" class="flex flex-col gap-2 pb-24">
         @foreach($menuItems as $item)
-            <div class="menu-item bg-white rounded-lg shadow-md overflow-hidden" data-category="{{ $item->category }}" data-name="{{ strtolower($item->name) }}">
-                @if($item->image)
-                    <img src="{{ asset($item->image) }}" alt="{{ $item->name }}" class="w-full h-32 object-cover">
-                @else
-                    <div class="w-full h-32 bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
-                        <span class="text-4xl">🍽️</span>
+            <div class="menu-item bg-white rounded-lg shadow-sm border border-gray-200"
+                 data-category="{{ $item->menu_category_id }}" data-name="{{ strtolower($item->name) }}"
+                 data-id="{{ $item->id }}">
+                <div class="flex items-center justify-between px-4 py-3 cursor-pointer"
+                     onclick="toggleItemRow({{ $item->id }})">
+                    <div>
+                        <div class="font-semibold text-sm text-gray-800">{{ $item->name }}</div>
+                        @if($item->description)
+                            <div class="text-xs text-gray-400 mt-0.5">{{ $item->description }}</div>
+                        @endif
                     </div>
-                @endif
-                <div class="p-3">
-                    <h3 class="font-semibold text-sm text-gray-800 mb-1">{{ $item->name }}</h3>
-                    <p class="text-xs text-gray-600 mb-2 line-clamp-2">{{ $item->description }}</p>
-                    <div class="flex items-center justify-between">
-                        <span class="text-lg font-bold text-blue-600">₹{{ $item->price }}</span>
-                        <button onclick="addToCart({{ $item->id }}, '{{ $item->name }}', {{ $item->price }})" 
-                                class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-semibold hover:bg-blue-700">
-                            + Add
+                    <div class="flex items-center gap-3">
+                        <span class="font-bold text-blue-600">₹{{ $item->price }}</span>
+                        <span id="addIcon{{ $item->id }}" class="text-blue-600 text-xl font-bold leading-none">+</span>
+                    </div>
+                </div>
+                <div id="qtyRow{{ $item->id }}" class="hidden px-4 pb-3">
+                    <div class="flex items-center gap-3 mb-2">
+                        <button onclick="changeInlineQty({{ $item->id }}, -1)" class="w-8 h-8 bg-gray-200 rounded-full font-bold text-lg">−</button>
+                        <span id="inlineQty{{ $item->id }}" class="font-bold text-lg w-8 text-center">1</span>
+                        <button onclick="changeInlineQty({{ $item->id }}, 1)" class="w-8 h-8 bg-blue-600 text-white rounded-full font-bold text-lg">+</button>
+                        <button onclick="confirmAdd({{ $item->id }}, '{{ addslashes($item->name) }}', {{ $item->price }})"
+                                class="ml-2 bg-blue-600 text-white px-4 py-1.5 rounded-full text-sm font-semibold">
+                            Add to Order
                         </button>
+                        <button onclick="toggleItemRow({{ $item->id }})" class="text-gray-400 text-xl ml-auto">×</button>
                     </div>
+                    <textarea id="inlineNotes{{ $item->id }}" rows="2"
+                        class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        placeholder="Special request (e.g. less spicy, no onion)..."></textarea>
                 </div>
             </div>
         @endforeach
@@ -134,6 +143,48 @@ function backToTables() {
     }
     document.getElementById('tableSelection').classList.remove('hidden');
     document.getElementById('menuSelection').classList.add('hidden');
+}
+
+function toggleItemRow(itemId) {
+    const row = document.getElementById('qtyRow' + itemId);
+    const icon = document.getElementById('addIcon' + itemId);
+    const isHidden = row.classList.contains('hidden');
+
+    // Close all others
+    document.querySelectorAll('[id^="qtyRow"]').forEach(r => r.classList.add('hidden'));
+    document.querySelectorAll('[id^="addIcon"]').forEach(i => { i.textContent = '+'; });
+
+    if (isHidden) {
+        row.classList.remove('hidden');
+        icon.textContent = '−';
+        document.getElementById('inlineQty' + itemId).textContent = '1';
+    }
+}
+
+function changeInlineQty(itemId, change) {
+    const el = document.getElementById('inlineQty' + itemId);
+    let qty = parseInt(el.textContent) + change;
+    if (qty < 1) qty = 1;
+    el.textContent = qty;
+}
+
+function confirmAdd(itemId, itemName, itemPrice) {
+    const qty = parseInt(document.getElementById('inlineQty' + itemId).textContent);
+    const notesEl = document.getElementById('inlineNotes' + itemId);
+    const notes = notesEl ? notesEl.value.trim() : '';
+    const existing = cart.find(i => i.id === itemId);
+    if (existing) {
+        existing.quantity += qty;
+        if (notes) existing.notes = (existing.notes ? existing.notes + '; ' : '') + notes;
+    } else {
+        cart.push({ id: itemId, name: itemName, price: itemPrice, quantity: qty, notes: notes });
+    }
+    if (notesEl) notesEl.value = '';
+    updateCartBadge();
+    showToast(qty + '× ' + itemName + ' added!');
+    // Close the row
+    document.getElementById('qtyRow' + itemId).classList.add('hidden');
+    document.getElementById('addIcon' + itemId).textContent = '+';
 }
 
 function addToCart(itemId, itemName, itemPrice) {
@@ -293,24 +344,16 @@ function submitOrder() {
     form.submit();
 }
 
-function filterCategory(category) {
-    const items = document.querySelectorAll('.menu-item');
-    const buttons = document.querySelectorAll('.category-btn');
-    
-    buttons.forEach(btn => {
-        btn.classList.remove('bg-blue-600', 'text-white');
-        btn.classList.add('bg-gray-200', 'text-gray-700');
+function filterCategory(category, btn) {
+    document.querySelectorAll('.category-btn').forEach(b => {
+        b.classList.remove('bg-blue-600', 'text-white');
+        b.classList.add('bg-gray-200', 'text-gray-700');
     });
-    
-    event.target.classList.remove('bg-gray-200', 'text-gray-700');
-    event.target.classList.add('bg-blue-600', 'text-white');
-    
-    items.forEach(item => {
-        if (category === 'all' || item.dataset.category === category) {
-            item.style.display = 'block';
-        } else {
-            item.style.display = 'none';
-        }
+    btn.classList.remove('bg-gray-200', 'text-gray-700');
+    btn.classList.add('bg-blue-600', 'text-white');
+
+    document.querySelectorAll('.menu-item').forEach(item => {
+        item.style.display = (category === 'all' || item.dataset.category === String(category)) ? 'block' : 'none';
     });
 }
 

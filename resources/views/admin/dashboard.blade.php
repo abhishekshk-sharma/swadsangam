@@ -31,7 +31,7 @@
     .stat-card:hover {
         box-shadow: 0 8px 24px rgba(0,0,0,0.15);
         transform: translateY(-4px);
-        border-color: #ff9900;
+        border-color: #3b82f6;
     }
     .stat-card:hover::before {
         transform: translateX(100%);
@@ -39,10 +39,14 @@
     .stat-card:hover .stat-icon {
         transform: scale(1.1) rotate(5deg);
     }
+    .fa-table, .fa-utensils, 
+    .fa-shopping-cart, .fa-rupee-sign{
+        font-size: 24px;
+    }
     .stat-icon {
-        width: 56px;
-        height: 56px;
-        border-radius: 12px;
+        width: 38px;
+        height: 38px;
+        border-radius: 4px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -86,14 +90,14 @@
         color: #232f3e;
     }
     .view-all-link {
-        color: #ff9900;
+        color: #3b82f6;
         text-decoration: none;
         font-size: 14px;
         font-weight: 600;
         transition: all 0.2s ease;
     }
     .view-all-link:hover {
-        color: #ec8b00;
+        color: #2563eb;
     }
     .overview-table {
         width: 100%;

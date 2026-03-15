@@ -44,41 +44,43 @@
         
         <form action="{{ route('admin.tables.store') }}" method="POST">
             @csrf
-            <div class="form-group">
-                <label class="form-label">
-                    <i class="fas fa-hashtag me-2"></i>Table Number / Name
-                </label>
-                <input type="text" name="table_number" class="form-control" 
-                       placeholder="e.g., Table 1, VIP-A, etc." 
-                       value="{{ old('table_number') }}" required>
-                @error('table_number')
-                    <p class="error-message"><i class="fas fa-exclamation-circle me-1"></i>{{ $message }}</p>
-                @enderror
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label">
-                    <i class="fas fa-users me-2"></i>Capacity (seats)
-                </label>
-                <input type="number" name="capacity" min="1" value="{{ old('capacity', 4) }}" 
-                       class="form-control" placeholder="Number of seats" required>
-                @error('capacity')
-                    <p class="error-message"><i class="fas fa-exclamation-circle me-1"></i>{{ $message }}</p>
-                @enderror
-            </div>
-            
+
             <div class="form-group">
                 <label class="form-label">
                     <i class="fas fa-tag me-2"></i>Category (Optional)
                 </label>
-                <select name="category_id" class="form-select">
+                <select name="category_id" id="category_id" class="form-select">
                     <option value="">No Category</option>
                     @foreach($categories as $category)
                         <option value="{{ $category->id }}" {{ old('category_id') == $category->id ? 'selected' : '' }}>
                             {{ $category->name }}
                         </option>
                     @endforeach
+                    <option value="__new__">➕ Add New Category...</option>
                 </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">
+                    <i class="fas fa-hashtag me-2"></i>Table Number / Name
+                </label>
+                <input type="text" name="table_number" class="form-control"
+                       placeholder="e.g., Table 1, VIP-A, etc."
+                       value="{{ old('table_number') }}" required>
+                @error('table_number')
+                    <p class="error-message"><i class="fas fa-exclamation-circle me-1"></i>{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">
+                    <i class="fas fa-users me-2"></i>Capacity (seats)
+                </label>
+                <input type="number" name="capacity" min="1" value="{{ old('capacity', 4) }}"
+                       class="form-control" placeholder="Number of seats" required>
+                @error('capacity')
+                    <p class="error-message"><i class="fas fa-exclamation-circle me-1"></i>{{ $message }}</p>
+                @enderror
             </div>
             
             <div class="form-actions">
@@ -92,4 +94,15 @@
         </form>
     </div>
 </div>
+
+@include('admin.partials.quick-category-modal')
+
+<script>
+document.getElementById('category_id').addEventListener('change', function() {
+    if (this.value === '__new__') {
+        this.value = '';
+        openQuickCategoryModal('category_id', '{{ route('admin.categories.quickCreate') }}');
+    }
+});
+</script>
 @endsection

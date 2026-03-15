@@ -33,22 +33,22 @@
         font-size: 14px;
     }
     .form-select:focus, .form-control:focus {
-        border-color: #ff9900;
-        box-shadow: 0 0 0 3px rgba(255,153,0,0.1);
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
         outline: none;
     }
     .btn-primary {
-        background: #ff9900;
-        border: 1px solid #ff9900;
+        background: #3b82f6;
+        border: 1px solid #3b82f6;
         color: #fff;
         padding: 8px 24px;
-        border-radius: 4px;
+        border-radius: 8px;
         font-weight: 600;
         font-size: 14px;
     }
     .btn-primary:hover {
-        background: #ec8b00;
-        border-color: #ec8b00;
+        background: #2563eb;
+        border-color: #2563eb;
     }
     .btn-secondary {
         background: #fff;

@@ -150,7 +150,7 @@
     <div class="info-card">
         <div class="info-icon"><i class="fas fa-building"></i></div>
         <div class="info-label">Restaurant</div>
-        <div class="info-value">Swad Sangam</div>
+        <div class="info-value">{{  $tenant->name }}</div>
     </div>
 </div>
 @endsection

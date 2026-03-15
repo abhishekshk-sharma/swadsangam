@@ -37,156 +37,78 @@
             </div>
         @endif
         
-        <form action="{{ route('admin.menu.update.post', $menuItem->id) }}" method="POST" enctype="multipart/form-data" id="menuForm">
+        <form action="{{ route('admin.menu.update.post', $menuItem->id) }}" method="POST" id="menuForm">
             @csrf
             
-            <!-- Basic Information Section -->
+            <!-- Categorization -->
             <div class="mb-4">
                 <h5 style="color: #232f3e; font-weight: 600; font-size: 15px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #f0f0f0;">
-                    <i class="fas fa-info-circle" style="color: #ff9900;"></i> Basic Information
+                    <i class="fas fa-tags" style="color: #ff9900;"></i> Category *
                 </h5>
-                
-                <div class="row g-3">
-                    <div class="col-md-8">
-                        <label class="form-label">
-                            <i class="fas fa-utensils"></i> Item Name *
-                        </label>
-                        <input type="text" name="name" class="form-control" 
-                               value="{{ old('name', $menuItem->name) }}" 
-                               placeholder="e.g., Margherita Pizza, Caesar Salad" 
-                               required>
-                    </div>
-                    
-                    <div class="col-md-4">
-                        <label class="form-label">
-                            <i class="fas fa-dollar-sign"></i> Price *
-                        </label>
-                        <div class="input-group">
-                            <span class="input-group-text" style="background: #f7f8f9; border-color: #d5d9d9;">₹</span>
-                            <input type="number" step="0.01" name="price" class="form-control" 
-                                   value="{{ old('price', $menuItem->price) }}" 
-                                   placeholder="0.00" 
-                                   required>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="row g-3 mt-2">
-                    <div class="col-12">
-                        <label class="form-label">
-                            <i class="fas fa-align-left"></i> Description
-                        </label>
-                        <textarea name="description" class="form-control" rows="3" 
-                                  placeholder="Describe the dish, ingredients, or special features...">{{ old('description', $menuItem->description) }}</textarea>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Categorization Section -->
-            <div class="mb-4">
-                <h5 style="color: #232f3e; font-weight: 600; font-size: 15px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #f0f0f0;">
-                    <i class="fas fa-tags" style="color: #ff9900;"></i> Categorization
-                </h5>
-                
                 <div class="row g-3">
                     <div class="col-md-6">
-                        <label class="form-label">
-                            <i class="fas fa-list"></i> Category *
-                        </label>
-                        <input type="text" name="category" class="form-control" 
-                               value="{{ old('category', $menuItem->category) }}" 
-                               placeholder="e.g., Main Course, Appetizer, Dessert" 
-                               list="categoryList"
-                               required>
-                        <datalist id="categoryList">
-                            <option value="Appetizer">
-                            <option value="Main Course">
-                            <option value="Dessert">
-                            <option value="Beverage">
-                            <option value="Starter">
-                            <option value="Salad">
-                        </datalist>
-                    </div>
-                    
-                    <div class="col-md-6">
-                        <label class="form-label">
-                            <i class="fas fa-folder"></i> Menu Category (Optional)
-                        </label>
-                        <select name="menu_category_id" class="form-select">
-                            <option value="">-- No Category --</option>
+                        <label class="form-label"><i class="fas fa-folder"></i> Menu Category *</label>
+                        <select name="menu_category_id" id="menu_category_id" class="form-select" required>
+                            <option value="">-- Select Category --</option>
                             @foreach($menuCategories as $category)
-                                <option value="{{ $category->id }}" 
+                                <option value="{{ $category->id }}"
                                     {{ old('menu_category_id', $menuItem->menu_category_id) == $category->id ? 'selected' : '' }}>
                                     {{ $category->name }}
                                 </option>
                             @endforeach
+                            <option value="__new__">➕ Add New Category...</option>
                         </select>
                     </div>
                 </div>
             </div>
-            
-            <!-- Image Upload Section -->
+
+            <!-- Basic Information -->
             <div class="mb-4">
                 <h5 style="color: #232f3e; font-weight: 600; font-size: 15px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #f0f0f0;">
-                    <i class="fas fa-image" style="color: #ff9900;"></i> Item Image
+                    <i class="fas fa-info-circle" style="color: #ff9900;"></i> Item Details
                 </h5>
-                
                 <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label">
-                            <i class="fas fa-upload"></i> Upload New Image (Optional)
-                        </label>
-                        <input type="file" name="image" class="form-control" 
-                               accept="image/jpeg,image/png,image/jpg,image/gif" 
-                               id="imageInput"
-                               onchange="previewImage(event)">
-                        <small class="text-muted">Leave empty to keep current image</small>
-                        <div id="fileInfo" style="margin-top: 8px; padding: 8px 12px; border-radius: 4px; font-size: 13px; display: none;"></div>
+                    <div class="col-md-8">
+                        <label class="form-label"><i class="fas fa-utensils"></i> Item Name *</label>
+                        <input type="text" name="name" class="form-control"
+                               value="{{ old('name', $menuItem->name) }}"
+                               placeholder="e.g., Margherita Pizza, Caesar Salad" required>
                     </div>
-                    
-                    <div class="col-md-6">
-                        <label class="form-label">Current / Preview</label>
-                        <div id="imagePreview" style="border: 2px dashed #d5d9d9; border-radius: 8px; padding: 20px; text-align: center; background: #fafafa; min-height: 150px; display: flex; align-items: center; justify-content: center;">
-                            @if($menuItem->image)
-                                <img src="{{ asset($menuItem->image) }}" 
-                                     style="max-width: 100%; max-height: 200px; border-radius: 6px; object-fit: cover;" 
-                                     alt="Current image"
-                                     id="currentImage">
-                            @else
-                                <div style="color: #999;">
-                                    <i class="fas fa-image" style="font-size: 48px; margin-bottom: 10px; display: block;"></i>
-                                    <span style="font-size: 13px;">No image uploaded</span>
-                                </div>
-                            @endif
+                    <div class="col-md-4">
+                        <label class="form-label"><i class="fas fa-rupee-sign"></i> Price *</label>
+                        <div class="input-group">
+                            <span class="input-group-text" style="background: #f7f8f9; border-color: #d5d9d9;">₹</span>
+                            <input type="number" step="0.01" name="price" class="form-control"
+                                   value="{{ old('price', $menuItem->price) }}" placeholder="0.00" required>
                         </div>
                     </div>
-                </div>
-            </div>
-            
-            <!-- Availability Section -->
-            <div class="mb-4">
-                <h5 style="color: #232f3e; font-weight: 600; font-size: 15px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #f0f0f0;">
-                    <i class="fas fa-toggle-on" style="color: #ff9900;"></i> Availability
-                </h5>
-                
-                <div class="form-check" style="padding-left: 0;">
-                    <div style="background: #f7f8f9; border: 1px solid #d5d9d9; border-radius: 6px; padding: 16px;">
-                        <label class="form-check-label d-flex align-items-center" style="cursor: pointer;">
-                            <input type="checkbox" name="is_available" value="1" 
-                                   {{ old('is_available', $menuItem->is_available) ? 'checked' : '' }} 
-                                   class="form-check-input" 
-                                   style="width: 20px; height: 20px; margin-right: 12px; cursor: pointer;">
-                            <div>
-                                <strong style="color: #232f3e; font-size: 14px;">Item is Available</strong>
-                                <p class="mb-0 text-muted" style="font-size: 12px; margin-top: 4px;">
-                                    Uncheck this if the item is temporarily out of stock
-                                </p>
-                            </div>
-                        </label>
+                    <div class="col-12">
+                        <label class="form-label"><i class="fas fa-align-left"></i> Description</label>
+                        <textarea name="description" class="form-control" rows="3"
+                                  placeholder="Describe the dish, ingredients, or special features...">{{ old('description', $menuItem->description) }}</textarea>
                     </div>
                 </div>
             </div>
-            
+
+            <!-- Show -->
+            <div class="mb-4">
+                <h5 style="color:#232f3e;font-weight:600;font-size:15px;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #f0f0f0;">
+                    <i class="fas fa-eye" style="color:#ff9900;"></i> Show
+                </h5>
+                <div style="background:#f7f8f9;border:1px solid #d5d9d9;border-radius:6px;padding:16px;">
+                    <label class="form-check-label d-flex align-items-center" style="cursor:pointer;">
+                        <input type="checkbox" name="is_available" value="1"
+                               {{ old('is_available', $menuItem->is_available) ? 'checked' : '' }}
+                               class="form-check-input"
+                               style="width:20px;height:20px;margin-right:12px;cursor:pointer;">
+                        <div>
+                            <strong style="color:#232f3e;font-size:14px;">Show this item on menu</strong>
+                            <p class="mb-0 text-muted" style="font-size:12px;margin-top:4px;">Uncheck to hide this item from the menu</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
             <!-- Action Buttons -->
             <div class="d-flex gap-2 pt-3" style="border-top: 2px solid #f0f0f0;">
                 <button type="submit" class="btn-primary" style="padding: 12px 32px;">
@@ -201,74 +123,28 @@
 </div>
 
 <script>
-function previewImage(event) {
-    const preview = document.getElementById('imagePreview');
-    const fileInfo = document.getElementById('fileInfo');
-    const file = event.target.files[0];
-    
-    if (file) {
-        const sizeMB = (file.size / 1024 / 1024).toFixed(2);
-        
-        if (file.size > 5 * 1024 * 1024) {
-            fileInfo.style.display = 'block';
-            fileInfo.style.background = '#f8d7da';
-            fileInfo.style.color = '#842029';
-            fileInfo.style.border = '1px solid #f5c2c7';
-            fileInfo.innerHTML = `<i class="fas fa-exclamation-triangle"></i> File too large: ${sizeMB} MB (Max: 5MB)`;
-            event.target.value = '';
-            return;
-        }
-        
-        fileInfo.style.display = 'block';
-        fileInfo.style.background = '#d1e7dd';
-        fileInfo.style.color = '#0f5132';
-        fileInfo.style.border = '1px solid #badbcc';
-        fileInfo.innerHTML = `<i class="fas fa-check-circle"></i> Selected: ${file.name} (${sizeMB} MB)`;
-        
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            preview.innerHTML = `
-                <img src="${e.target.result}" 
-                     style="max-width: 100%; max-height: 200px; border-radius: 6px; object-fit: cover;" 
-                     alt="Preview">
-            `;
-        }
-        reader.readAsDataURL(file);
-    } else {
-        fileInfo.style.display = 'none';
-        @if($menuItem->image)
-            preview.innerHTML = `
-                <img src="{{ asset($menuItem->image) }}" 
-                     style="max-width: 100%; max-height: 200px; border-radius: 6px; object-fit: cover;" 
-                     alt="Current image">
-            `;
-        @else
-            preview.innerHTML = `
-                <div style="color: #999;">
-                    <i class="fas fa-image" style="font-size: 48px; margin-bottom: 10px; display: block;"></i>
-                    <span style="font-size: 13px;">No image uploaded</span>
-                </div>
-            `;
-        @endif
-    }
-}
-
 document.getElementById('menuForm').addEventListener('submit', function(e) {
     const name = document.querySelector('input[name="name"]').value.trim();
     const price = document.querySelector('input[name="price"]').value;
-    const category = document.querySelector('input[name="category"]').value.trim();
-    
-    if (!name || !price || !category) {
+    const cat = document.querySelector('select[name="menu_category_id"]').value;
+    if (!name || !price || !cat) {
         e.preventDefault();
-        alert('Please fill in all required fields (Name, Price, and Category)');
+        alert('Please fill in all required fields (Category, Name, and Price)');
         return false;
     }
-    
     if (parseFloat(price) <= 0) {
         e.preventDefault();
         alert('Price must be greater than 0');
         return false;
     }
 });
+
+document.getElementById('menu_category_id').addEventListener('change', function() {
+    if (this.value === '__new__') {
+        this.value = '';
+        openQuickCategoryModal('menu_category_id', '{{ route('admin.menu-categories.quickCreate') }}');
+    }
+});
 </script>
+@include('admin.partials.quick-category-modal')
 @endsection

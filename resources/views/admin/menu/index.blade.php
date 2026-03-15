@@ -7,101 +7,69 @@
     .menu-item-card {
         background: #fff;
         border-radius: 8px;
-        overflow: hidden;
         box-shadow: 0 1px 3px rgba(0,0,0,0.08);
         border: 1px solid #e3e6e8;
         transition: all 0.2s ease;
-    }
-    .menu-item-card:hover {
-        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-        transform: translateY(-2px);
-    }
-    .menu-image {
-        width: 100%;
-        height: 200px;
-        object-fit: cover;
-        background: #f9f9f9;
-    }
-    .menu-image-placeholder {
-        width: 100%;
-        height: 200px;
-        background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
         display: flex;
         align-items: center;
-        justify-content: center;
-        color: #999;
-        font-size: 48px;
+        justify-content: space-between;
+        padding: 14px 16px;
+        gap: 12px;
     }
-    .menu-content {
-        padding: 16px;
+    .menu-item-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
     .menu-name {
-        font-size: 16px;
+        font-size: 15px;
         font-weight: 700;
         color: #232f3e;
-        margin-bottom: 8px;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
     }
     .menu-category {
         display: inline-block;
-        padding: 4px 10px;
+        padding: 2px 8px;
         background: #e7f3ff;
         color: #0066c0;
         border-radius: 4px;
         font-size: 11px;
         font-weight: 600;
-        margin-bottom: 8px;
         text-transform: uppercase;
+        margin-top: 4px;
     }
     .menu-price {
-        font-size: 20px;
+        font-size: 16px;
         font-weight: 700;
         color: #067d62;
-        margin-bottom: 12px;
+        white-space: nowrap;
     }
     .menu-actions {
         display: flex;
         gap: 8px;
-        padding-top: 12px;
-        border-top: 1px solid #f0f0f0;
+        align-items: center;
     }
     .btn-edit {
-        flex: 1;
         background: #fff;
         border: 1px solid #d5d9d9;
         color: #232f3e;
-        padding: 8px 16px;
+        padding: 6px 14px;
         border-radius: 4px;
         font-size: 13px;
         font-weight: 600;
-        text-align: center;
         text-decoration: none;
         transition: all 0.2s ease;
     }
-    .btn-edit:hover {
-        background: #f7f8f9;
-        border-color: #ff9900;
-        color: #ff9900;
-    }
+    .btn-edit:hover { background: #f7f8f9; border-color: #ff9900; color: #ff9900; }
     .btn-delete-menu {
         background: #fff;
         border: 1px solid #d5d9d9;
         color: #d13212;
-        padding: 8px 16px;
+        padding: 6px 12px;
         border-radius: 4px;
         font-size: 13px;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s ease;
     }
-    .btn-delete-menu:hover {
-        background: #d13212;
-        border-color: #d13212;
-        color: #fff;
-    }
+    .btn-delete-menu:hover { background: #d13212; border-color: #d13212; color: #fff; }
 </style>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -169,59 +137,41 @@ function clearFilters() {
 }
 </script>
 
-<div class="row g-4">
+<div class="d-flex flex-column gap-2">
     @forelse($menuItems as $item)
-    <div class="col-md-4 col-lg-3">
-        <div class="menu-item-card">
-            @if($item->image)
-                <img src="{{ asset($item->image) }}" class="menu-image" alt="{{ $item->name }}">
-            @else
-                <div class="menu-image-placeholder">
-                    <i class="fas fa-utensils"></i>
-                </div>
-            @endif
-            
-            <div class="menu-content">
+    <div class="menu-item-card">
+        <div style="flex:1; min-width:0;">
+            <div class="menu-name">{{ $item->name }}</div>
+            <div>
                 @if($item->menuCategory)
-                    <span class="menu-category">
-                        <i class="fas fa-tag me-1"></i>{{ $item->menuCategory->name }}
-                    </span>
+                    <span class="menu-category"><i class="fas fa-tag me-1"></i>{{ $item->menuCategory->name }}</span>
                 @endif
-                
-                <div class="menu-name">{{ $item->name }}</div>
-                
-                <div class="menu-price">₹{{ number_format($item->price, 2) }}</div>
-                
-                <div class="mb-2">
-                    <span class="badge-custom {{ $item->is_available ? 'badge-completed' : 'badge-pending' }}">
-                        {{ $item->is_available ? 'Available' : 'Unavailable' }}
-                    </span>
-                </div>
-                
-                <div class="menu-actions">
-                    <a href="{{ route('admin.menu.edit', $item->id) }}" class="btn-edit">
-                        <i class="fas fa-edit me-1"></i> Edit
-                    </a>
-                    <form action="{{ route('admin.menu.destroy', $item->id) }}" method="POST" class="d-inline">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn-delete-menu" onclick="return confirm('Are you sure you want to delete this item?')">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </form>
-                </div>
+                <span class="badge-custom {{ $item->is_available ? 'badge-completed' : 'badge-pending' }} ms-1">
+                    {{ $item->is_available ? 'Available' : 'Unavailable' }}
+                </span>
             </div>
+        </div>
+        <div class="menu-price">₹{{ number_format($item->price, 2) }}</div>
+        <div class="menu-actions">
+            <a href="{{ route('admin.menu.edit', $item->id) }}" class="btn-edit">
+                <i class="fas fa-edit me-1"></i> Edit
+            </a>
+            <form action="{{ route('admin.menu.destroy', $item->id) }}" method="POST">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn-delete-menu" onclick="return confirm('Delete this item?')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </form>
         </div>
     </div>
     @empty
-    <div class="col-12">
-        <div class="empty-state">
-            <i class="fas fa-utensils"></i>
-            <p>No menu items found</p>
-            <a href="{{ route('admin.menu.create') }}" class="btn-primary mt-3">
-                <i class="fas fa-plus me-1"></i> Add Your First Menu Item
-            </a>
-        </div>
+    <div class="empty-state">
+        <i class="fas fa-utensils"></i>
+        <p>No menu items found</p>
+        <a href="{{ route('admin.menu.create') }}" class="btn-primary mt-3">
+            <i class="fas fa-plus me-1"></i> Add Your First Menu Item
+        </a>
     </div>
     @endforelse
 </div>

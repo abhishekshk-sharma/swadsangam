@@ -31,14 +31,17 @@ Route::get('/', function () {
 });
 
 Route::get('/test', function () {
+    if (!app()->environment('local')) abort(404);
     return 'Laravel is working!';
 });
 
 Route::get('/test-upload', function () {
+    if (!app()->environment('local')) abort(404);
     return view('test-upload');
 });
 
 Route::post('/test-upload-direct', function (Illuminate\Http\Request $request) {
+    if (!app()->environment('local')) abort(404);
     $debug = [];
     $debug['has_file'] = $request->hasFile('image') ? 'YES' : 'NO';
     $debug['all_files'] = $request->allFiles();
@@ -59,7 +62,10 @@ Route::post('/test-upload-direct', function (Illuminate\Http\Request $request) {
     return response()->json(['error' => 'No file uploaded', 'debug' => $debug]);
 });
 
-Route::match(['get', 'post'], '/debug/upload', [App\Http\Controllers\DebugController::class, 'testUpload']);
+Route::match(['get', 'post'], '/debug/upload', function() {
+    if (!app()->environment('local')) abort(404);
+    return app(App\Http\Controllers\DebugController::class)->testUpload(request());
+});
 
 // Telegram Webhook (no middleware)
 Route::post('/telegram/webhook', [TelegramController::class, 'webhook']);
@@ -104,7 +110,7 @@ Route::prefix('superadmin')->name('superadmin.')->group(function () {
 
 // Login Routes
 Route::get('login', [AuthController::class, 'showLogin'])->name('login');
-Route::post('login', [AuthController::class, 'login']);
+Route::post('login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
 // Admin Routes
@@ -115,10 +121,14 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('tables', TableController::class);
         Route::get('categories', [TableCategoryController::class, 'index'])->name('categories.index');
         Route::post('categories', [TableCategoryController::class, 'store'])->name('categories.store');
+        Route::put('categories/{id}', [TableCategoryController::class, 'update'])->name('categories.update');
         Route::delete('categories/{id}', [TableCategoryController::class, 'destroy'])->name('categories.destroy');
+        Route::post('categories/quick-create', [TableCategoryController::class, 'quickCreate'])->name('categories.quickCreate');
         Route::get('menu-categories', [MenuCategoryController::class, 'index'])->name('menu-categories.index');
         Route::post('menu-categories', [MenuCategoryController::class, 'store'])->name('menu-categories.store');
+        Route::put('menu-categories/{id}', [MenuCategoryController::class, 'update'])->name('menu-categories.update');
         Route::delete('menu-categories/{id}', [MenuCategoryController::class, 'destroy'])->name('menu-categories.destroy');
+        Route::post('menu-categories/quick-create', [MenuCategoryController::class, 'quickCreate'])->name('menu-categories.quickCreate');
         Route::post('menu/{id}/update', [MenuController::class, 'update'])->name('menu.update.post');
         Route::resource('menu', MenuController::class);
         Route::get('cook', [CookController::class, 'index'])->name('cook.index');
@@ -138,7 +148,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
     });
 });
 
-// Public Bill Route (customer scans QR after payment)
+// Public Bill Route — signed URL prevents order ID enumeration
 Route::get('/bill/{orderId}', [App\Http\Controllers\BillController::class, 'show'])->name('bill.show');
 
 // Customer Routes
@@ -153,6 +163,7 @@ Route::prefix('waiter')->name('waiter.')->middleware(['multi.auth', 'role:waiter
     Route::get('orders/create', [WaiterOrderController::class, 'create'])->name('orders.create');
     Route::post('orders', [WaiterOrderController::class, 'store'])->name('orders.store');
     Route::post('orders/{id}/serve', [WaiterOrderController::class, 'markServed'])->name('orders.serve');
+    Route::post('orders/{id}/checkout', [WaiterOrderController::class, 'checkoutOrder'])->name('orders.checkout');
     Route::post('orders/{id}/add-items', [WaiterOrderController::class, 'addItems'])->name('orders.addItems');
     Route::patch('orders/{id}/cancel', [WaiterOrderController::class, 'cancelOrder'])->name('orders.cancel');
     Route::patch('order-items/{id}/cancel', [WaiterOrderController::class, 'cancelItem'])->name('orderItems.cancel');

@@ -2,11 +2,10 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
 use App\Models\MenuCategory;
 use Illuminate\Http\Request;
 
-class MenuCategoryController extends Controller
+class MenuCategoryController extends BaseAdminController
 {
     public function index()
     {
@@ -16,26 +15,41 @@ class MenuCategoryController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string'
-        ]);
+        $request->validate(['name' => 'required|string|max:255', 'description' => 'nullable|string']);
 
         MenuCategory::create([
-            'tenant_id' => session('tenant_id'),
-            'name' => $request->name,
+            'tenant_id'   => $this->tenantId(),
+            'name'        => $request->name,
             'description' => $request->description,
         ]);
-        
+
         return redirect()->route('admin.menu-categories.index')->with('success', 'Category created successfully');
+    }
+
+    public function update(Request $request, $id)
+    {
+        $request->validate(['name' => 'required|string|max:255', 'description' => 'nullable|string']);
+        $category = $this->findForTenant(MenuCategory::class, $id);
+        abort_if(is_null($category->tenant_id), 403, 'Cannot edit global categories');
+        $category->update($request->only('name', 'description'));
+        return redirect()->route('admin.menu-categories.index')->with('success', 'Category updated successfully');
+    }
+
+    public function quickCreate(Request $request)
+    {
+        $request->validate(['name' => 'required|string|max:255']);
+        $category = MenuCategory::create([
+            'tenant_id'   => $this->tenantId(),
+            'name'        => $request->name,
+            'description' => $request->description,
+        ]);
+        return response()->json(['id' => $category->id, 'name' => $category->name]);
     }
 
     public function destroy($id)
     {
-        $category = MenuCategory::findOrFail($id);
-        if (is_null($category->tenant_id)) {
-            return redirect()->route('admin.menu-categories.index')->with('error', 'Cannot delete global categories');
-        }
+        $category = $this->findForTenant(MenuCategory::class, $id);
+        abort_if(is_null($category->tenant_id), 403, 'Cannot delete global categories');
         $category->delete();
         return redirect()->route('admin.menu-categories.index')->with('success', 'Category deleted successfully');
     }

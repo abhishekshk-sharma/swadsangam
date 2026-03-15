@@ -8,7 +8,7 @@ use App\Models\TableCategory;
 use Illuminate\Http\Request;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
-class TableController extends Controller
+class TableController extends BaseAdminController
 {
     public function index(Request $request)
     {
@@ -45,7 +45,7 @@ class TableController extends Controller
         
         $qrCode = uniqid('table_');
         RestaurantTable::create([
-            'tenant_id'    => session('tenant_id'),
+            'tenant_id'    => $this->tenantId(),
             'table_number' => $request->table_number,
             'capacity'     => $request->capacity,
             'qr_code'      => $qrCode,
@@ -55,16 +55,35 @@ class TableController extends Controller
         return redirect()->route('admin.tables.index')->with('success', 'Table created successfully');
     }
 
+    public function edit($id)
+    {
+        $table = $this->findForTenant(RestaurantTable::class, $id);
+        $categories = TableCategory::get();
+        return view('admin.tables.edit', compact('table', 'categories'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $table = $this->findForTenant(RestaurantTable::class, $id);
+        $request->validate([
+            'table_number' => 'required|unique:restaurant_tables,table_number,' . $id,
+            'capacity'     => 'required|integer|min:1',
+            'category_id'  => 'nullable|exists:table_categories,id',
+        ]);
+        $table->update($request->only('table_number', 'capacity', 'category_id'));
+        return redirect()->route('admin.tables.index')->with('success', 'Table updated successfully');
+    }
+
     public function show($id)
     {
-        $table = RestaurantTable::findOrFail($id); // global scope enforces tenant
+        $table = $this->findForTenant(RestaurantTable::class, $id);
         $qrCodeImage = QrCode::size(300)->generate(url('/table/' . $table->qr_code));
         return view('admin.tables.show', compact('table', 'qrCodeImage'));
     }
 
     public function destroy($id)
     {
-        RestaurantTable::findOrFail($id)->delete(); // global scope enforces tenant
+        $this->findForTenant(RestaurantTable::class, $id)->delete();
         return redirect()->route('admin.tables.index')->with('success', 'Table deleted successfully');
     }
 }

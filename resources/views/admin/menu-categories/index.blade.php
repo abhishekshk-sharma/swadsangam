@@ -99,10 +99,13 @@
                             </td>
                             <td style="text-align: center;">
                                 @if($category->tenant_id)
-                                    <form action="{{ route('admin.menu-categories.destroy', $category->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this category?')" style="display: inline;">
+                                    <button onclick="toggleEdit({{ $category->id }})" class="btn-secondary" style="padding: 6px 12px; font-size: 13px;">
+                                        <i class="fas fa-edit me-1"></i>Edit
+                                    </button>
+                                    <form action="{{ route('admin.menu-categories.destroy', $category->id) }}" method="POST" onsubmit="return confirm('Delete this category?')" style="display: inline;">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="btn-danger" style="padding: 8px 16px;">
+                                        <button type="submit" class="btn-danger" style="padding: 6px 12px; font-size: 13px;">
                                             <i class="fas fa-trash me-1"></i>Delete
                                         </button>
                                     </form>
@@ -113,6 +116,26 @@
                                 @endif
                             </td>
                         </tr>
+                        @if($category->tenant_id)
+                        <tr id="editRow{{ $category->id }}" style="display:none; background:#fffbf0;">
+                            <td colspan="5" style="padding: 12px 16px;">
+                                <form action="{{ route('admin.menu-categories.update', $category->id) }}" method="POST" class="d-flex gap-2 align-items-end flex-wrap">
+                                    @csrf
+                                    @method('PUT')
+                                    <div>
+                                        <label class="form-label mb-1" style="font-size:12px;">Name</label>
+                                        <input type="text" name="name" class="form-control form-control-sm" value="{{ $category->name }}" required style="min-width:180px;">
+                                    </div>
+                                    <div>
+                                        <label class="form-label mb-1" style="font-size:12px;">Description</label>
+                                        <input type="text" name="description" class="form-control form-control-sm" value="{{ $category->description }}" style="min-width:220px;">
+                                    </div>
+                                    <button type="submit" class="btn-primary" style="padding:6px 16px; font-size:13px;"><i class="fas fa-save me-1"></i>Save</button>
+                                    <button type="button" onclick="toggleEdit({{ $category->id }})" class="btn-secondary" style="padding:6px 14px; font-size:13px;">Cancel</button>
+                                </form>
+                            </td>
+                        </tr>
+                        @endif
                         @empty
                         <tr>
                             <td colspan="5" style="text-align: center; padding: 48px; color: #9ca3af;">
@@ -129,3 +152,10 @@
     </div>
 </div>
 @endsection
+
+<script>
+function toggleEdit(id) {
+    const row = document.getElementById('editRow' + id);
+    row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+}
+</script>

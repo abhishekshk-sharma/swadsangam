@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Tenant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -10,6 +11,9 @@ class ProfileController extends Controller
     public function show()
     {
         $user = current_user();
+        // $tenant = Tenant::where("id", $user->tenant_id)->value('name');
+        // return $tenant;
+
         $layout = $this->getLayout($user);
         
         return view('profile.show', compact('user', 'layout'));

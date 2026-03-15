@@ -11,7 +11,8 @@ class PaymentController extends Controller
     public function index()
     {
         $orders = Order::with(['table', 'orderItems.menuItem'])
-            ->where('status', 'served')
+            ->whereIn('status', ['served', 'checkout'])
+            ->whereDate('created_at', today())
             ->latest()
             ->get();
 
