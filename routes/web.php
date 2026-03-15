@@ -20,7 +20,9 @@ use App\Http\Controllers\Cashier\PaymentController as CashierPaymentController;
 use App\Http\Controllers\TelegramController;
 use App\Http\Controllers\Admin\TelegramIntegrationController;
 use App\Http\Controllers\Api\OrderUpdatesController;
+use App\Http\Controllers\Admin\CashHandoverController as AdminCashHandoverController;
 use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Cashier\CashHandoverController as CashierCashHandoverController;
 
 Route::get('/', function () {
     try {
@@ -145,6 +147,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::delete('telegram/unlink/{id}', [TelegramIntegrationController::class, 'unlink'])->name('telegram.unlink');
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('reports/export', [ReportController::class, 'export'])->name('reports.export');
+        // Cash Handover
+        Route::get('handover', [AdminCashHandoverController::class, 'index'])->name('handover.index');
+        Route::get('handover/export', [AdminCashHandoverController::class, 'export'])->name('handover.export');
+        Route::get('handover/{handover}/edit', [AdminCashHandoverController::class, 'edit'])->name('handover.edit');
+        Route::patch('handover/{handover}', [AdminCashHandoverController::class, 'update'])->name('handover.update');
+        Route::post('handover/{handover}/approve', [AdminCashHandoverController::class, 'approve'])->name('handover.approve');
     });
 });
 
@@ -187,4 +195,14 @@ Route::prefix('cashier')->name('cashier.')->middleware(['multi.auth', 'role:cash
     Route::get('payments', [CashierPaymentController::class, 'index'])->name('payments.index');
     Route::patch('payments/{order}/process', [CashierPaymentController::class, 'processPayment'])->name('payments.process');
     Route::get('payments/history', [CashierPaymentController::class, 'history'])->name('payments.history');
+    Route::get('parcels', [CashierPaymentController::class, 'parcelsIndex'])->name('parcels.index');
+    Route::get('parcels/create', [CashierPaymentController::class, 'createParcel'])->name('parcels.create');
+    Route::post('parcels', [CashierPaymentController::class, 'storeParcel'])->name('parcels.store');
+    Route::post('parcels/{id}/add-items', [CashierPaymentController::class, 'addParcelItems'])->name('parcels.addItems');
+    Route::patch('parcels/{id}/cancel', [CashierPaymentController::class, 'cancelParcelOrder'])->name('parcels.cancel');
+    Route::patch('parcel-items/{id}/cancel', [CashierPaymentController::class, 'cancelParcelItem'])->name('parcelItems.cancel');
+    Route::patch('parcel-items/{id}/update', [CashierPaymentController::class, 'updateParcelItem'])->name('parcelItems.update');
+    // Cash Handover
+    Route::get('handover', [CashierCashHandoverController::class, 'create'])->name('handover.create');
+    Route::post('handover', [CashierCashHandoverController::class, 'store'])->name('handover.store');
 });

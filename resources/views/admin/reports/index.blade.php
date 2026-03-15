@@ -197,7 +197,7 @@
                     @forelse($orders as $order)
                     <tr>
                         <td><strong>#{{ $order->id }}</strong></td>
-                        <td>Table {{ $order->table->table_number }}</td>
+                        <td>{{ $order->is_parcel ? '📦 Parcel' : 'Table ' . $order->table->table_number }}</td>
                         <td>
                             @foreach($order->orderItems as $item)
                                 <div style="font-size: 13px;">{{ $item->menuItem->name }} ({{ $item->quantity }})</div>

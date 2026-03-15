@@ -39,7 +39,7 @@ class OrdersExport implements FromCollection, WithHeadings, WithMapping
     {
         return [
             $order->id,
-            'Table ' . $order->table->table_number,
+            $order->is_parcel ? '📦 Parcel' : 'Table ' . ($order->table->table_number ?? '-'),
             $order->orderItems->pluck('menuItem.name')->implode(', '),
             number_format($order->total_amount, 2),
             ucfirst($order->status),

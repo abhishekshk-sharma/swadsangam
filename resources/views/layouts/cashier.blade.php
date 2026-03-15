@@ -51,6 +51,10 @@
                     <div class="text-2xl">₹</div>
                     <div class="text-xs">Payments</div>
                 </a>
+                <a href="{{ route('cashier.parcels.index') }}" class="flex-1 text-center py-3 {{ request()->routeIs('cashier.parcels.*') ? 'text-orange-500 bg-orange-50' : 'text-gray-600' }}">
+                    <div class="text-2xl">📦</div>
+                    <div class="text-xs">Parcels</div>
+                </a>
                 <a href="{{ route('cashier.payments.history') }}" class="flex-1 text-center py-3 {{ request()->routeIs('cashier.payments.history') ? 'text-blue-600 bg-blue-50' : 'text-gray-600' }}">
                     <div class="text-2xl">✓</div>
                     <div class="text-xs">History</div>

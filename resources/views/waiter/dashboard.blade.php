@@ -40,7 +40,11 @@
                 <div class="p-3">
                     <div class="flex justify-between items-start mb-1">
                         <div>
-                            <span class="font-bold text-sm">Table {{ $order->table->table_number }}</span>
+                            @if($order->is_parcel)
+                                <span style="background:#ea580c;color:#fff;font-size:12px;font-weight:800;padding:1px 8px;border-radius:6px;">📦 Parcel</span>
+                            @else
+                                <span class="font-bold text-sm">Table {{ $order->table?->table_number }}</span>
+                            @endif
                             <span class="text-xs text-gray-500 ml-2">{{ $order->created_at->format('h:i A') }}</span>
                         </div>
                         <span class="px-2 py-1 rounded text-xs font-semibold

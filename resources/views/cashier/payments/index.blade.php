@@ -6,7 +6,7 @@
 @section('content')
 <div class="space-y-3">
 <div class="flex justify-between items-center">
-    <h2 class="text-xl font-bold">Pending Payments ({{ $orders->count() }})</h2>
+    <h2 class="text-xl font-bold">Pending Payments (<span id="pendingCount">{{ $orders->count() }}</span>)</h2>
     <button onclick="location.reload()" class="flex items-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-semibold">
         🔄 Refresh
     </button>
@@ -20,12 +20,22 @@
 
     @forelse($orders as $order)
         <div class="bg-white rounded-lg shadow-md overflow-hidden border-l-4 border-red-500"
-             data-order-id="{{ $order->id }}" data-order-status="{{ $order->status }}">
+             data-order-id="{{ $order->id }}" data-order-status="{{ $order->status }}" data-is-parcel="{{ $order->is_parcel ? '1' : '0' }}">
             <div class="p-4">
                 <div class="flex justify-between items-start mb-3">
                     <div>
                         <h3 class="font-bold text-lg">Order #{{ $order->id }}</h3>
-                        <p class="text-sm text-gray-500">Table {{ $order->table->table_number }} • {{ $order->created_at->format('h:i A') }}</p>
+                        <div class="flex items-center gap-2 mt-1">
+                            @if($order->is_parcel)
+                                <span style="background:#ea580c;color:#fff;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;letter-spacing:0.03em;">📦 Parcel</span>
+                            @else
+                                <span style="background:#1e3a5f;color:#fff;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;letter-spacing:0.03em;">T{{ $order->table->table_number }}</span>
+                                @if($order->table->category)
+                                    <span style="background:#e0e7ff;color:#3730a3;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;letter-spacing:0.02em;">{{ $order->table->category->name }}</span>
+                                @endif
+                            @endif
+                        </div>
+                        <p class="text-xs text-gray-400" style='margin-top: 3px;'>{{ $order->created_at->format('h:i A') }}</p>
                     </div>
                     <span class="px-3 py-1 rounded-full text-sm font-semibold
                         {{ $order->status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
@@ -178,6 +188,10 @@ const BILL_URLS = {
     @endforeach
 };
 
+@if(session('bill_url') && request('paid_order'))
+BILL_URLS[{{ request('paid_order') }}] = "{{ session('bill_url') }}";
+@endif
+
 function selectPaymentMode(orderId, mode) {
     document.querySelectorAll(`[data-order="${orderId}"]`).forEach(btn => {
         btn.classList.remove('border-blue-500', 'bg-blue-50');
@@ -260,3 +274,4 @@ document.addEventListener('DOMContentLoaded', function () {
 <script>window.ORDER_POLL = { panel: 'cashier' };</script>
 <script src="/js/order-poll.js"></script>
 @endsection
+

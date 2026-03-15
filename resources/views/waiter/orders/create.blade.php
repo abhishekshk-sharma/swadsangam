@@ -5,7 +5,12 @@
 @section('content')
 <div id="tableSelection" class="mb-4">
     <h1 class="text-xl font-bold mb-4 text-gray-800">Select Table</h1>
-    
+
+    <button onclick="selectParcel()"
+            class="w-full mb-4 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-lg shadow transition-all">
+        <span class="text-xl">📦</span> Parcel Order
+    </button>
+
     <div class="grid grid-cols-3 gap-3">
         @foreach($tables as $table)
             <div onclick="selectTable({{ $table->id }}, '{{ $table->table_number }}', {{ $table->is_occupied ? 'false' : 'true' }})" 
@@ -27,7 +32,7 @@
             <button onclick="backToTables()" class="text-blue-600 font-semibold flex items-center">
                 <span class="text-xl mr-1">←</span> Back
             </button>
-            <h1 class="text-lg font-bold text-gray-800">Table <span id="selectedTableName"></span></h1>
+            <h1 class="text-lg font-bold text-gray-800"><span id="selectedTableName"></span></h1>
             <button onclick="viewCart()" class="relative">
                 <span class="text-2xl">🛒</span>
                 <span id="cartBadge" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold hidden">0</span>
@@ -119,17 +124,27 @@
 <script>
 let selectedTableId = null;
 let selectedTableName = null;
+let isParcel = false;
 let cart = [];
+
+function selectParcel() {
+    isParcel = true;
+    selectedTableId = null;
+    selectedTableName = null;
+    document.getElementById('selectedTableName').textContent = '📦 Parcel';
+    document.getElementById('tableSelection').classList.add('hidden');
+    document.getElementById('menuSelection').classList.remove('hidden');
+}
 
 function selectTable(tableId, tableName, isAvailable) {
     if (!isAvailable) {
         alert('This table is occupied. Please select an available table.');
         return;
     }
-    
+    isParcel = false;
     selectedTableId = tableId;
     selectedTableName = tableName;
-    document.getElementById('selectedTableName').textContent = tableName;
+    document.getElementById('selectedTableName').textContent = 'Table ' + tableName;
     document.getElementById('tableSelection').classList.add('hidden');
     document.getElementById('menuSelection').classList.remove('hidden');
 }
@@ -141,6 +156,7 @@ function backToTables() {
         }
         cart = [];
     }
+    isParcel = false;
     document.getElementById('tableSelection').classList.remove('hidden');
     document.getElementById('menuSelection').classList.add('hidden');
 }
@@ -297,49 +313,57 @@ function submitOrder() {
         alert('Your cart is empty!');
         return;
     }
-    
+
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = '/waiter/orders';
-    
+
     const csrfToken = document.createElement('input');
     csrfToken.type = 'hidden';
     csrfToken.name = '_token';
     csrfToken.value = '{{ csrf_token() }}';
     form.appendChild(csrfToken);
-    
-    const tableInput = document.createElement('input');
-    tableInput.type = 'hidden';
-    tableInput.name = 'table_id';
-    tableInput.value = selectedTableId;
-    form.appendChild(tableInput);
-    
+
+    const parcelInput = document.createElement('input');
+    parcelInput.type = 'hidden';
+    parcelInput.name = 'is_parcel';
+    parcelInput.value = isParcel ? '1' : '0';
+    form.appendChild(parcelInput);
+
+    if (!isParcel) {
+        const tableInput = document.createElement('input');
+        tableInput.type = 'hidden';
+        tableInput.name = 'table_id';
+        tableInput.value = selectedTableId;
+        form.appendChild(tableInput);
+    }
+
     const notesInput = document.createElement('input');
     notesInput.type = 'hidden';
     notesInput.name = 'customer_notes';
     notesInput.value = document.getElementById('customerNotes').value;
     form.appendChild(notesInput);
-    
+
     cart.forEach((item, index) => {
         const itemIdInput = document.createElement('input');
         itemIdInput.type = 'hidden';
         itemIdInput.name = `items[${index}][menu_item_id]`;
         itemIdInput.value = item.id;
         form.appendChild(itemIdInput);
-        
+
         const quantityInput = document.createElement('input');
         quantityInput.type = 'hidden';
         quantityInput.name = `items[${index}][quantity]`;
         quantityInput.value = item.quantity;
         form.appendChild(quantityInput);
-        
+
         const notesInput = document.createElement('input');
         notesInput.type = 'hidden';
         notesInput.name = `items[${index}][notes]`;
         notesInput.value = item.notes || '';
         form.appendChild(notesInput);
     });
-    
+
     document.body.appendChild(form);
     form.submit();
 }

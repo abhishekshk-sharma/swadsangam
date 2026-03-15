@@ -206,9 +206,12 @@
                     
                     <div class="mb-4">
                         <label class="form-label">Password</label>
-                        <div class="input-group">
+                        <div class="input-group" style="position:relative;">
                             <i class="fas fa-lock input-icon"></i>
-                            <input type="password" name="password" class="form-control with-icon" placeholder="Enter your password" required>
+                            <input type="password" name="password" id="loginpassword" class="form-control with-icon" style="padding-right:44px;" placeholder="Enter your password" required>
+                            <button type="button" onclick="togglePassword()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#999;z-index:5;padding:0;">
+                                <i class="fas fa-eye" id="eyeIcon"></i>
+                            </button>
                         </div>
                     </div>
                     
@@ -227,5 +230,18 @@
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function togglePassword() {
+    const input = document.getElementById('loginpassword');
+    const icon  = document.getElementById('eyeIcon');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.replace('fa-eye', 'fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.replace('fa-eye-slash', 'fa-eye');
+    }
+}
+</script>
 </body>
 </html>

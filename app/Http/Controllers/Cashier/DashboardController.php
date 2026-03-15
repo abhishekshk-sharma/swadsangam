@@ -13,26 +13,23 @@ class DashboardController extends Controller
         $stats = [
             'pending_payment' => Order::where('status', 'served')
             ->whereDate('created_at', today())->count(),
-            'today_revenue'   => Order::whereDate('created_at', today())->where('status', 'paid')->sum('total_amount'),
             'today_orders'    => Order::whereDate('created_at', today())->where('status', 'paid')->count(),
-            'cash_collected'  => Order::whereDate('created_at', today())->where('status', 'paid')->where('payment_mode', 'cash')->sum('total_amount'),
+            'pending_parcels' => Order::where('is_parcel', true)->whereNotIn('status', ['paid', 'cancelled'])->whereDate('created_at', today())->count(),
+            'paid_today'      => Order::whereDate('created_at', today())->where('status', 'paid')->count(),
         ];
 
         $chartData = Order::whereDate('created_at', today())
             ->where('status', 'paid')
-            ->select(
-                DB::raw('HOUR(created_at) as hour'),
-                DB::raw('SUM(total_amount) as revenue')
-            )
+            ->select(DB::raw('HOUR(paid_at) as hour'), DB::raw('COUNT(*) as count'))
             ->groupBy('hour')
             ->orderBy('hour')
             ->get();
 
-        $hours = [];
-        $revenues = [];
+        $hours  = [];
+        $counts = [];
         for ($i = 0; $i < 24; $i++) {
-            $hours[]    = sprintf('%02d:00', $i);
-            $revenues[] = $chartData->firstWhere('hour', $i)->revenue ?? 0;
+            $hours[]  = sprintf('%02d:00', $i);
+            $counts[] = $chartData->firstWhere('hour', $i)->count ?? 0;
         }
 
         $recentPayments = Order::with('table')
@@ -42,6 +39,6 @@ class DashboardController extends Controller
             ->take(5)
             ->get();
 
-        return view('cashier.dashboard', compact('stats', 'hours', 'revenues', 'recentPayments'));
+        return view('cashier.dashboard', compact('stats', 'hours', 'counts', 'recentPayments'));
     }
 }

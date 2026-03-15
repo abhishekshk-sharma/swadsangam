@@ -172,9 +172,24 @@
     </div>
 @endif
 
+{{-- Master type tabs --}}
+<div style="display:flex;gap:10px;margin-bottom:12px;">
+    <button onclick="switchType('table')" id="masterTab-table"
+        style="display:flex;align-items:center;gap:8px;padding:10px 22px;border-radius:8px;border:2px solid #1e3a5f;background:#1e3a5f;color:#fff;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.2s;">
+        🍽️ Table Orders
+        <span id="masterCount-table" style="background:rgba(255,255,255,0.25);border-radius:20px;padding:1px 8px;font-size:12px;">{{ $orders->where('is_parcel', false)->count() }}</span>
+    </button>
+    <button onclick="switchType('parcel')" id="masterTab-parcel"
+        style="display:flex;align-items:center;gap:8px;padding:10px 22px;border-radius:8px;border:2px solid #d1d5db;background:#fff;color:#6b7280;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.2s;">
+        📦 Parcel Orders
+        <span id="masterCount-parcel" style="background:#f3f4f6;border-radius:20px;padding:1px 8px;font-size:12px;color:#374151;">{{ $orders->where('is_parcel', true)->count() }}</span>
+    </button>
+</div>
+
+{{-- Status sub-tabs --}}
 <div class="kitchen-tabs">
     <a href="#" class="kitchen-tab active" onclick="filterOrders('all'); return false;">
-        <i class="fas fa-th me-2"></i>All Orders
+        <i class="fas fa-th me-2"></i>All
     </a>
     <a href="#" class="kitchen-tab" onclick="filterOrders('pending'); return false;">
         <i class="fas fa-clock me-2"></i>Pending
@@ -183,7 +198,7 @@
         <i class="fas fa-fire me-2"></i>Preparing
     </a>
     <a href="#" class="kitchen-tab" onclick="filterOrders('ready'); return false;">
-        <i class="fas fa-fire me-2"></i>Ready to Serve
+        <i class="fas fa-check-circle me-2"></i>Ready
     </a>
     <a href="#" class="kitchen-tab" onclick="filterOrders('served'); return false;">
         <i class="fas fa-check me-2"></i>Served
@@ -192,7 +207,7 @@
         <i class="fas fa-sign-out-alt me-2"></i>Checkout
     </a>
     <a href="#" class="kitchen-tab" onclick="filterOrders('paid'); return false;">
-        <i class="fas fa-check me-2"></i>Paid
+        <i class="fas fa-rupee-sign me-2"></i>Paid
     </a>
     <a href="#" class="kitchen-tab" onclick="filterOrders('cancelled'); return false;">
         <i class="fas fa-ban me-2"></i>Cancelled
@@ -201,12 +216,21 @@
 
 <div id="orders-container" class="row g-4">
     @forelse($orders as $order)
-    <div class="col-md-6 col-lg-4 order-item" data-order-id="{{ $order->id }}" data-order-status="{{ $order->status }}" data-status="{{ $order->status }}" data-created-at="{{ $order->created_at->timestamp }}">
+    <div class="col-md-6 col-lg-4 order-item" data-order-id="{{ $order->id }}" data-order-status="{{ $order->status }}" data-status="{{ $order->status }}" data-type="{{ $order->is_parcel ? 'parcel' : 'table' }}" data-created-at="{{ $order->created_at->timestamp }}">
         <div class="order-card {{ $order->status }}">
             <div class="order-header">
                 <div>
-                    <div class="order-table">Table {{ $order->table->table_number }}</div>
-                    <div class="order-id">Order #{{ $order->id }}</div>
+                    <div class="order-table">Order #{{ $order->id }}</div>
+                    <div class="mt-1 d-flex align-items-center gap-2">
+                        @if($order->is_parcel)
+                            <span style="background:#ea580c;color:#fff;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;letter-spacing:0.03em;">📦 Parcel</span>
+                        @else
+                            <span style="background:#1e3a5f;color:#fff;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;letter-spacing:0.03em;">T{{ $order->table->table_number }}</span>
+                            @if($order->table->category)
+                                <span style="background:#e0e7ff;color:#3730a3;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;letter-spacing:0.02em;">{{ $order->table->category->name }}</span>
+                            @endif
+                        @endif
+                    </div>
                     <div class="order-time">
                         <i class="fas fa-clock me-1"></i>{{ $order->created_at->diffForHumans() }}
                     </div>
@@ -302,7 +326,7 @@
                 <div style="font-size: 18px; font-weight: 700; color: #16a34a; text-align: center; margin-bottom: 12px;">
                     Total: ₹{{ number_format($order->total_amount, 2) }}
                 </div>
-                <button onclick="openPaymentModal({{ $order->id }}, {{ $order->total_amount }}, '{{ $order->table->table_number }}')" class="btn-primary w-100">
+                <button onclick="openPaymentModal({{ $order->id }}, {{ $order->total_amount }}, '{{ $order->is_parcel ? 'Parcel' : $order->table?->table_number }}')" class="btn-primary w-100">
                     <i class="fas fa-money-bill me-1"></i>Take Payment
                 </button>
             </div>
@@ -462,19 +486,43 @@ function toggleAdminEdit(id) {
     el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
 
+let activeType = 'table';
+let activeStatus = 'all';
+
+function switchType(type) {
+    activeType = type;
+    activeStatus = 'all';
+
+    // Update master tab styles
+    const tableBtn  = document.getElementById('masterTab-table');
+    const parcelBtn = document.getElementById('masterTab-parcel');
+    if (type === 'table') {
+        tableBtn.style.background  = '#1e3a5f'; tableBtn.style.color  = '#fff'; tableBtn.style.borderColor  = '#1e3a5f';
+        parcelBtn.style.background = '#fff';    parcelBtn.style.color = '#6b7280'; parcelBtn.style.borderColor = '#d1d5db';
+    } else {
+        parcelBtn.style.background = '#ea580c'; parcelBtn.style.color = '#fff'; parcelBtn.style.borderColor = '#ea580c';
+        tableBtn.style.background  = '#fff';    tableBtn.style.color  = '#6b7280'; tableBtn.style.borderColor  = '#d1d5db';
+    }
+
+    // Reset status sub-tabs to 'All'
+    document.querySelectorAll('.kitchen-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector('.kitchen-tab').classList.add('active');
+
+    applyFilters();
+}
+
 function filterOrders(status) {
-    document.querySelectorAll('.kitchen-tab').forEach(tab => {
-        tab.classList.remove('active');
-    });
+    activeStatus = status;
+    document.querySelectorAll('.kitchen-tab').forEach(tab => tab.classList.remove('active'));
     event.target.closest('.kitchen-tab').classList.add('active');
-    
-    // Filter orders
+    applyFilters();
+}
+
+function applyFilters() {
     document.querySelectorAll('.order-item').forEach(item => {
-        if (status === 'all' || item.dataset.status === status) {
-            item.style.display = 'block';
-        } else {
-            item.style.display = 'none';
-        }
+        const typeMatch   = item.dataset.type === activeType;
+        const statusMatch = activeStatus === 'all' || item.dataset.status === activeStatus;
+        item.style.display = (typeMatch && statusMatch) ? 'block' : 'none';
     });
 }
 
@@ -646,5 +694,9 @@ function closeAdminQr() {
     }
     document.addEventListener('DOMContentLoaded', function() { tick(); setInterval(tick, 60000); });
 })();
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() { applyFilters(); });
 </script>
 @endsection

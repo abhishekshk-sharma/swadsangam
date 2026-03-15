@@ -30,7 +30,7 @@ class OrderController extends Controller
 
     public function pending()
     {
-        $orders = Order::with(['table', 'orderItems.menuItem'])
+        $orders = Order::with(['table.category', 'orderItems.menuItem'])
             ->whereIn('status', ['pending', 'preparing'])
             ->whereDate('created_at', today())
             ->latest()
@@ -41,7 +41,7 @@ class OrderController extends Controller
 
     public function completed()
     {
-        $orders = Order::with(['table', 'orderItems.menuItem'])
+        $orders = Order::with(['table.category', 'orderItems.menuItem'])
             ->where('status', 'ready')
             ->whereDate('created_at', today())
             ->latest()
@@ -103,7 +103,9 @@ class OrderController extends Controller
         }
         $order->orderItems()->update(['status' => 'cancelled']);
         $order->update(['status' => 'cancelled']);
-        $order->table->update(['is_occupied' => false]);
+        if (!$order->is_parcel && $order->table) {
+            $order->table->update(['is_occupied' => false]);
+        }
         return back()->with('success', 'Order cancelled.');
     }
 
@@ -122,7 +124,9 @@ class OrderController extends Controller
         $nonCancelled = $order->orderItems()->where('status', '!=', 'cancelled');
         if ($nonCancelled->count() === 0) {
             $order->update(['status' => 'cancelled']);
-            $order->table->update(['is_occupied' => false]);
+            if (!$order->is_parcel && $order->table) {
+                $order->table->update(['is_occupied' => false]);
+            }
         } elseif ($nonCancelled->where('status', '!=', 'prepared')->count() === 0) {
             $order->update(['status' => 'ready']);
             event(new \App\Events\OrderStatusUpdated($order, 'preparing'));

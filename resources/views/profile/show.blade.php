@@ -69,7 +69,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="section-title"><i class="fas fa-user-circle me-2"></i>My Profile</h1>
-    @if(in_array($user->role, ['admin', 'manager', 'super_admin']))
+    @if($user instanceof \App\Models\Admin || ($user instanceof \App\Models\Employee && in_array($user->role, ['admin', 'manager', 'super_admin'])))
     <a href="{{ route('profile.edit') }}" class="btn-primary">
         <i class="fas fa-edit me-2"></i>Edit Profile
     </a>
@@ -100,7 +100,7 @@
             ];
             $icon = $roleIcons[$user->role] ?? 'fa-user';
         @endphp
-        <i class="fas {{ $icon }} me-2"></i>{{ ucfirst($user->role) }}
+        <i class="fas {{ $icon }} me-2"></i>{{ ucfirst($user->role ?? 'Admin') }}
     </div>
 </div>
 
@@ -117,6 +117,7 @@
         <div class="info-value">{{ $user->phone ?? 'Not provided' }}</div>
     </div>
 
+    @if(isset($user->is_active))
     <div class="info-card">
         <div class="info-icon"><i class="fas fa-shield-alt"></i></div>
         <div class="info-label">Account Status</div>
@@ -132,6 +133,7 @@
             @endif
         </div>
     </div>
+    @endif
 
     <div class="info-card">
         <div class="info-icon"><i class="fas fa-calendar-alt"></i></div>
@@ -147,10 +149,12 @@
     </div>
     @endif
 
+    @if($tenant)
     <div class="info-card">
         <div class="info-icon"><i class="fas fa-building"></i></div>
         <div class="info-label">Restaurant</div>
-        <div class="info-value">{{  $tenant->name }}</div>
+        <div class="info-value">{{ $tenant->name }}</div>
     </div>
+    @endif
 </div>
 @endsection

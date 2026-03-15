@@ -5,14 +5,14 @@
 @section('content')
 <div class="content-card" style="max-width: 900px;">
     <div class="card-header">
-        <div class="d-flex justify-content-between align-items-center">
+        <div class="d-flex justify-content-between align-items-center" style="position:relative;width: 100%;">
             <div>
                 <h2 class="card-title mb-1">
                     <i class="fas fa-edit" style="color: #ff9900;"></i> Edit Menu Item
                 </h2>
                 <p class="text-muted mb-0" style="font-size: 13px;">Update menu item details</p>
             </div>
-            <a href="{{ route('admin.menu.index') }}" class="btn-secondary" style="text-decoration: none;">
+            <a href="{{ route('admin.menu.index') }}" class="btn-secondary" style="text-decoration: none;" >
                 <i class="fas fa-arrow-left"></i> Back to Menu
             </a>
         </div>

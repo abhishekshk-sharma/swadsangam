@@ -50,8 +50,20 @@
             <div class="p-4">
                 <div class="flex justify-between items-start mb-3">
                     <div>
-                        <h3 class="font-bold text-lg">Order #{{ $order->id }}</h3>
-                        <p class="text-sm text-gray-500">Table {{ $order->table->table_number }} • {{ $order->created_at->format('h:i A') }}</p>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="font-bold text-lg">Order #{{ $order->id }}</span>
+                            <span class="text-gray-400 text-xs">{{ $order->created_at->format('h:i A') }}</span>
+                        </div>
+                        <div class="flex items-center gap-2 mt-1">
+                            @if($order->is_parcel)
+                                <span style="background:#ea580c;color:#fff;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;letter-spacing:0.03em;">📦 Parcel</span>
+                            @else
+                                <span style="background:#1e3a5f;color:#fff;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;letter-spacing:0.03em;">T{{ $order->table->table_number }}</span>
+                                @if($order->table->category)
+                                    <span style="background:#e0e7ff;color:#3730a3;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;letter-spacing:0.02em;">{{ $order->table->category->name }}</span>
+                                @endif
+                            @endif
+                        </div>
                     </div>
                     <div class="flex flex-col items-end gap-1">
                         <span class="order-timer text-xs font-mono font-bold px-2 py-0.5 rounded-full" data-timer></span>

@@ -10,7 +10,6 @@ class BillController extends Controller
 {
     public function show(Request $request, $orderId)
     {
-        // Validate the signed URL — prevents guessing other tenants' order IDs
         if (!URL::hasValidSignature($request)) {
             abort(403, 'Invalid or expired bill link.');
         }

@@ -26,11 +26,34 @@
 
         html, body {
             height: 100%;
-            overflow: hidden;           /* ← kills browser scroll */
+            overflow: hidden;
             font-family: 'Segoe UI', system-ui, sans-serif;
             background: var(--bg);
             color: var(--text);
         }
+
+        /* Bootstrap modal overrides — must sit above app shell */
+        body.modal-open { overflow: hidden !important; }
+        .modal { overflow-x: hidden; overflow-y: auto; }
+        .modal-backdrop { z-index: 1040 !important; }
+        .modal { z-index: 1050 !important; }
+        .modal-dialog { z-index: 1060 !important; }
+        .modal .btn-secondary {
+            background: #6c757d; border: 1px solid #6c757d; color: #fff;
+            padding: 6px 16px; font-size: 14px;
+        }
+        .modal .btn-secondary:hover { background: #5c636a; border-color: #565e64; color: #fff; }
+        .modal .btn-success {
+            background: #059669; border: 1px solid #059669; color: #fff;
+            padding: 6px 16px; font-size: 14px;
+        }
+        .modal .btn-success:hover { background: #047857; color: #fff; }
+        .modal .alert { margin-bottom: 0; }
+        .modal .alert-success { background: #d1fae5; border-color: #6ee7b7; color: #065f46; }
+        .modal .alert-danger  { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
+        .modal .alert-primary { background: #dbeafe; border-color: #93c5fd; color: #1e40af; }
+        .modal .alert-warning { background: #fef3c7; border-color: #fcd34d; color: #92400e; }
+        .modal .form-control  { display: block; }
 
         /* ═══════════════════════════════
            APP SHELL  — fixed full-screen
@@ -399,5 +422,6 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+@stack('scripts')
 </body>
 </html>

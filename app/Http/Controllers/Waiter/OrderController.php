@@ -28,7 +28,7 @@ class OrderController extends Controller
     }
     public function index()
     {
-        $orders = Order::with('table', 'items.menuItem')
+        $orders = Order::with('table.category', 'items.menuItem')
             ->whereDate('created_at', today())
             ->where('status', '!=', 'paid')
             ->where('status', '!=', 'checkout')
@@ -51,8 +51,10 @@ class OrderController extends Controller
 
     public function store(Request $request)
     {
+        $isParcel = $request->boolean('is_parcel');
+
         $request->validate([
-            'table_id'             => 'required|exists:restaurant_tables,id',
+            'table_id'             => $isParcel ? 'nullable' : 'required|exists:restaurant_tables,id',
             'items'                => 'required|array',
             'items.*.menu_item_id' => 'required|exists:menu_items,id',
             'items.*.quantity'     => 'required|integer|min:1',
@@ -67,11 +69,12 @@ class OrderController extends Controller
         }
 
         $order = Order::create([
-            'table_id'       => $request->table_id,
+            'table_id'       => $isParcel ? null : $request->table_id,
             'user_id'        => current_user_id(),
             'status'         => 'pending',
             'total_amount'   => $total,
             'customer_notes' => $request->customer_notes,
+            'is_parcel'      => $isParcel,
         ]);
 
         foreach ($request->items as $item) {
@@ -86,7 +89,9 @@ class OrderController extends Controller
             ]);
         }
 
-        RestaurantTable::findOrFail($request->table_id)->update(['is_occupied' => true]);
+        if (!$isParcel) {
+            RestaurantTable::findOrFail($request->table_id)->update(['is_occupied' => true]);
+        }
 
         event(new \App\Events\OrderCreated($order));
         $this->notifyChefs($order);
@@ -101,7 +106,9 @@ class OrderController extends Controller
             return response()->json(['error' => 'Only served orders can be checked out.'], 422);
         }
         $order->update(['status' => 'checkout']);
-        $order->table->update(['is_occupied' => false]);
+        if (!$order->is_parcel && $order->table) {
+            $order->table->update(['is_occupied' => false]);
+        }
         return response()->json(['success' => true]);
     }
 
@@ -116,23 +123,35 @@ class OrderController extends Controller
     protected function notifyChefs($order, $specificItems = null)
     {
         $chefs = Employee::where('role', 'chef')
+            ->where('tenant_id', $this->tenantId())
             ->where('is_active', true)
             ->whereNotNull('telegram_chat_id')
             ->get();
 
+        if ($chefs->isEmpty()) return;
+
         $telegram = new \App\Services\TelegramService();
 
-        $itemsToNotify = $specificItems ?? $order->items;
-
-        $orderData = [
-            'order_id'    => $order->id,
-            'table_name'  => 'Table ' . $order->table->table_number,
-            'time'        => now()->format('h:i A'),
-            'items'       => collect($itemsToNotify)->map(fn($item) => [
+        $itemsToNotify = $specificItems
+            ? collect($specificItems)->map(fn($item) => [
+                'name'     => $item->menuItem()->value('name') ?? $item->menu_item_id,
+                'quantity' => $item->quantity,
+              ])->toArray()
+            : $order->items->map(fn($item) => [
                 'name'     => $item->menuItem->name,
                 'quantity' => $item->quantity,
-            ])->toArray(),
-            'total'        => $order->total_amount,
+              ])->toArray();
+
+        $tableName = $order->is_parcel
+            ? 'Parcel'
+            : 'Table ' . ($order->table?->table_number ?? $order->table_id);
+
+        $orderData = [
+            'order_id'      => $order->id,
+            'table_name'    => $tableName,
+            'time'          => now()->format('h:i A'),
+            'items'         => $itemsToNotify,
+            'total'         => $order->total_amount,
             'is_additional' => $specificItems !== null,
         ];
 
@@ -214,7 +233,9 @@ class OrderController extends Controller
         }
         $order->orderItems()->update(['status' => 'cancelled']);
         $order->update(['status' => 'cancelled']);
-        $order->table->update(['is_occupied' => false]);
+        if (!$order->is_parcel && $order->table) {
+            $order->table->update(['is_occupied' => false]);
+        }
         return back()->with('success', 'Order cancelled.');
     }
 
@@ -233,7 +254,9 @@ class OrderController extends Controller
         $nonCancelled = $order->orderItems()->where('status', '!=', 'cancelled');
         if ($nonCancelled->count() === 0) {
             $order->update(['status' => 'cancelled']);
-            $order->table->update(['is_occupied' => false]);
+            if (!$order->is_parcel && $order->table) {
+                $order->table->update(['is_occupied' => false]);
+            }
         } elseif ($nonCancelled->where('status', '!=', 'prepared')->count() === 0) {
             $order->update(['status' => 'ready']);
         } elseif (in_array($order->status, ['cancelled', 'pending'])) {

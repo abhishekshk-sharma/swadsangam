@@ -23,7 +23,7 @@
                             {{ strtoupper(substr($user->name, 0, 1)) }}
                         </div>
                         <div style="color: #666; font-size: 14px;">
-                            <i class="fas fa-user-shield me-1"></i>{{ ucfirst($user->role) }}
+                            <i class="fas fa-user-shield me-1"></i>{{ ucfirst($user->role ?? 'Admin') }}
                         </div>
                     </div>
 

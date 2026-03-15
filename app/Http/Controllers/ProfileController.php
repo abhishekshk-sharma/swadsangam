@@ -11,33 +11,27 @@ class ProfileController extends Controller
     public function show()
     {
         $user = current_user();
-        // $tenant = Tenant::where("id", $user->tenant_id)->value('name');
-        // return $tenant;
-
+        $tenant = $user->tenant ?? null;
         $layout = $this->getLayout($user);
-        
-        return view('profile.show', compact('user', 'layout'));
+        return view('profile.show', compact('user', 'layout', 'tenant'));
     }
 
     public function edit()
     {
         $user = current_user();
-        
-        // Only admin, manager, super_admin can edit
+
         if ($user instanceof \App\Models\Employee && !in_array($user->role, ['admin', 'manager', 'super_admin'])) {
             abort(403, 'You cannot edit your profile.');
         }
-        
+
         $layout = $this->getLayout($user);
-        
         return view('profile.edit', compact('user', 'layout'));
     }
 
     public function update(Request $request)
     {
         $user = current_user();
-        
-        // Only admin, manager, super_admin can update
+
         if ($user instanceof \App\Models\Employee && !in_array($user->role, ['admin', 'manager', 'super_admin'])) {
             abort(403, 'You cannot update your profile.');
         }

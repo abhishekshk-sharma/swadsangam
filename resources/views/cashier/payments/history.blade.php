@@ -12,7 +12,14 @@
                 <div class="flex justify-between items-start mb-3">
                     <div>
                         <h3 class="font-bold text-lg">Order #{{ $order->id }}</h3>
-                        <p class="text-sm text-gray-500">Table {{ $order->table->table_number }} • {{ $order->paid_at ? $order->paid_at->format('h:i A') : $order->created_at->format('h:i A') }}</p>
+                        <div class="flex items-center gap-2 mt-1">
+                            @if($order->is_parcel)
+                                <span style="background:#ea580c;color:#fff;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;">📦 Parcel</span>
+                            @else
+                                <span style="background:#1e3a5f;color:#fff;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;">T{{ $order->table->table_number }}</span>
+                            @endif
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1">{{ $order->paid_at ? $order->paid_at->format('h:i A') : $order->created_at->format('h:i A') }}</p>
                     </div>
                     <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold">
                         Paid

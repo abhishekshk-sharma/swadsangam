@@ -135,7 +135,7 @@
 </style>
 
 <div class="row g-2 mb-4">
-    <div class="col-md-6">
+    <div class="col-md-4">
         <a href="{{ route('admin.tables.index') }}" class="stat-card">
             <div class="d-flex justify-content-between align-items-start">
                 <div>
@@ -152,7 +152,7 @@
         </a>
     </div>
     
-    <div class="col-md-6">
+    <div class="col-md-4">
         <a href="{{ route('admin.menu.index') }}" class="stat-card">
             <div class="d-flex justify-content-between align-items-start">
                 <div>
@@ -169,7 +169,41 @@
         </a>
     </div>
     
-    <div class="col-md-6">
+    
+    
+    <div class="col-md-4">
+        <a href="{{ route('admin.reports.index') }}" class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Revenue Today</div>
+                    <div class="stat-value">₹{{ number_format($stats['revenue_today'], 2) }}</div>
+                    <div class="stat-trend">
+                        <i class="fas fa-arrow-up"></i>View Reports
+                    </div>
+                </div>
+                <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                    <i class="fas fa-rupee-sign"></i>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="{{ route('admin.reports.index') }}" class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Total Revenue</div>
+                    <div class="stat-value">₹{{ number_format($stats['total_revenue'], 2) }}</div>
+                    <div class="stat-trend">
+                        <i class="fas fa-chart-line"></i>All Time
+                    </div>
+                </div>
+                <div class="stat-icon" style="background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%);">
+                    <i class="fas fa-rupee-sign"></i>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
         <a href="{{ route('admin.cook.index') }}" class="stat-card">
             <div class="d-flex justify-content-between align-items-start">
                 <div>
@@ -186,18 +220,18 @@
         </a>
     </div>
     
-    <div class="col-md-6">
-        <a href="{{ route('admin.reports.index') }}" class="stat-card">
+    <div class="col-md-4">
+        <a href="{{ route('admin.handover.index') }}" class="stat-card">
             <div class="d-flex justify-content-between align-items-start">
                 <div>
-                    <div class="stat-label">Revenue Today</div>
-                    <div class="stat-value">₹{{ number_format($stats['revenue_today'], 2) }}</div>
+                    <div class="stat-label">Cash Handovers</div>
+                    <div class="stat-value">{{ $stats['pending_handovers'] }}</div>
                     <div class="stat-trend">
-                        <i class="fas fa-arrow-up"></i>View Reports
+                        <i class="fas fa-clock"></i>Pending Approval
                     </div>
                 </div>
-                <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
-                    <i class="fas fa-rupee-sign"></i>
+                <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <i class="fas fa-hand-holding-usd"></i>
                 </div>
             </div>
         </a>
@@ -229,7 +263,7 @@
                     @foreach($recentOrders as $order)
                     <tr>
                         <td><strong>#{{ $order->id }}</strong></td>
-                        <td>Table {{ $order->table->table_number ?? 'N/A' }}</td>
+                        <td>{{ $order->is_parcel ? '📦 Parcel' : ('Table ' . ($order->table?->table_number ?? 'N/A')) }}</td>
                         <td>{{ $order->orderItems->count() }} items</td>
                         <td>
                             <span class="badge-custom badge-{{ $order->status }}">{{ $order->status }}</span>

@@ -27,12 +27,21 @@
 
 <div class="space-y-3">
     @forelse($orders as $order)
-    <div class="order-card bg-white p-4 rounded-lg shadow" data-order-id="{{ $order->id }}" data-order-status="{{ $order->status }}" data-table-number="{{ $order->table->table_number }}" data-created-at="{{ $order->created_at->timestamp }}">
+    <div class="order-card bg-white p-4 rounded-lg shadow" data-order-id="{{ $order->id }}" data-order-status="{{ $order->status }}" data-table-number="{{ $order->is_parcel ? 'Parcel' : $order->table?->table_number }}" data-created-at="{{ $order->created_at->timestamp }}">
         <div class="flex justify-between items-start mb-3">
             <div>
                 <h3 class="text-lg font-bold">Order #{{ $order->id }}</h3>
-                <p class="text-xs text-gray-500">Table {{ $order->table->table_number }}</p>
-                <p class="text-xs text-gray-400">{{ $order->created_at->format('h:i A') }}</p>
+                <div class="flex items-center gap-2 mt-1">
+                    @if($order->is_parcel)
+                        <span style="background:#ea580c;color:#fff;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;letter-spacing:0.03em;">📦 Parcel</span>
+                    @else
+                        <span style="background:#1e3a5f;color:#fff;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;letter-spacing:0.03em;">T{{ $order->table->table_number }}</span>
+                        @if($order->table->category)
+                            <span style="background:#e0e7ff;color:#3730a3;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;letter-spacing:0.02em;">{{ $order->table->category->name }}</span>
+                        @endif
+                    @endif
+                </div>
+                <p class="text-xs text-gray-400" style="margin-top: 3px;">{{ $order->created_at->format('h:i A') }}</p>
             </div>
             <div class="flex flex-col items-end gap-1">
                 <span class="waiter-order-timer" data-timer></span>
@@ -135,7 +144,7 @@
             
             <div class="order-actions waiter-order-actions">
                 @if(!in_array($order->status, ['paid', 'cancelled', 'checkout']))
-                <button type="button" onclick="addItemsToOrder({{ $order->id }}, '{{ $order->table->table_number }}')" 
+                <button type="button" onclick="addItemsToOrder({{ $order->id }}, '{{ $order->is_parcel ? 'Parcel' : $order->table?->table_number }}')" 
                         data-add-items-btn title="Add Items"
                         class="waiter-action-btn waiter-btn-add">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -214,7 +223,7 @@
                 <div class="flex gap-2 overflow-x-auto pb-2">
                     <button onclick="filterModalCategory('all')" class="modal-category-btn px-4 py-2 rounded-full bg-blue-600 text-white text-sm whitespace-nowrap">All</button>
                     @php
-                        $categories = ($menuItems ?? collect())->pluck('category')->unique();
+                        $categories = ($menuItems ?? collect())->pluck('category.name')->filter()->unique();
                     @endphp
                     @foreach($categories as $category)
                         <button onclick="filterModalCategory('{{ $category }}')" class="modal-category-btn px-4 py-2 rounded-full bg-gray-200 text-gray-700 text-sm whitespace-nowrap">{{ $category }}</button>
@@ -225,7 +234,7 @@
             <div class="flex-1 overflow-y-auto p-4" style="min-height: 0;">
                 <div id="modalMenuItems" class="grid grid-cols-2 gap-3">
                     @foreach($menuItems ?? [] as $item)
-                    <div class="modal-menu-item bg-white rounded-lg shadow-md border border-gray-200 flex flex-col" data-category="{{ $item->category }}" data-name="{{ strtolower($item->name) }}">
+                    <div class="modal-menu-item bg-white rounded-lg shadow-md border border-gray-200 flex flex-col" data-category="{{ $item->category?->name }}" data-name="{{ strtolower($item->name) }}">
                         @if($item->image)
                             <img src="{{ asset($item->image) }}" alt="{{ $item->name }}" class="w-full h-32 object-cover flex-shrink-0">
                         @else

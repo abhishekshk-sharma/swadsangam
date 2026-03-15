@@ -11,7 +11,7 @@ class CookController extends BaseAdminController
 {
     public function index()
     {
-        $orders = Order::with(['table', 'items.menuItem'])
+        $orders = Order::with(['table.category', 'items.menuItem'])
             ->whereIn('status', ['pending', 'preparing', 'ready', 'served', 'checkout', 'paid', 'cancelled'])
             ->orderBy('created_at', 'asc')
             ->get();
@@ -57,7 +57,9 @@ class CookController extends BaseAdminController
             'paid_at'      => now(),
         ]);
 
-        $order->table->update(['is_occupied' => false]);
+        if (!$order->is_parcel && $order->table) {
+            $order->table->update(['is_occupied' => false]);
+        }
         event(new OrderStatusUpdated($order, 'served'));
 
         return redirect('/admin/cook')->with('success', 'Payment received! Order closed.');
@@ -90,7 +92,9 @@ class CookController extends BaseAdminController
         }
         $order->orderItems()->update(['status' => 'cancelled']);
         $order->update(['status' => 'cancelled']);
-        $order->table->update(['is_occupied' => false]);
+        if (!$order->is_parcel && $order->table) {
+            $order->table->update(['is_occupied' => false]);
+        }
         return back()->with('success', 'Order cancelled.');
     }
 
@@ -116,7 +120,9 @@ class CookController extends BaseAdminController
         $nonCancelled = $order->orderItems()->where('status', '!=', 'cancelled');
         if ($nonCancelled->count() === 0) {
             $order->update(['status' => 'cancelled']);
-            $order->table->update(['is_occupied' => false]);
+            if (!$order->is_parcel && $order->table) {
+                $order->table->update(['is_occupied' => false]);
+            }
         } elseif ($nonCancelled->where('status', '!=', 'prepared')->count() === 0) {
             $order->update(['status' => 'ready']);
             event(new OrderStatusUpdated($order, 'preparing'));
