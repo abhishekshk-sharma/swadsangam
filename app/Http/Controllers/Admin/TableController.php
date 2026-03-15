@@ -38,9 +38,13 @@ class TableController extends BaseAdminController
     public function store(Request $request)
     {
         $request->validate([
-            'table_number' => 'required|unique:restaurant_tables',
-            'capacity' => 'required|integer|min:1',
-            'category_id' => 'nullable|exists:table_categories,id'
+            'table_number' => [
+                'required',
+                \Illuminate\Validation\Rule::unique('restaurant_tables')
+                    ->where('tenant_id', $this->tenantId()),
+            ],
+            'capacity'    => 'required|integer|min:1',
+            'category_id' => 'nullable|exists:table_categories,id',
         ]);
         
         $qrCode = uniqid('table_');
@@ -66,9 +70,14 @@ class TableController extends BaseAdminController
     {
         $table = $this->findForTenant(RestaurantTable::class, $id);
         $request->validate([
-            'table_number' => 'required|unique:restaurant_tables,table_number,' . $id,
-            'capacity'     => 'required|integer|min:1',
-            'category_id'  => 'nullable|exists:table_categories,id',
+            'table_number' => [
+                'required',
+                \Illuminate\Validation\Rule::unique('restaurant_tables')
+                    ->where('tenant_id', $this->tenantId())
+                    ->ignore($id),
+            ],
+            'capacity'    => 'required|integer|min:1',
+            'category_id' => 'nullable|exists:table_categories,id',
         ]);
         $table->update($request->only('table_number', 'capacity', 'category_id'));
         return redirect()->route('admin.tables.index')->with('success', 'Table updated successfully');
