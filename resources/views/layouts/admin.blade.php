@@ -26,6 +26,7 @@
 
         html, body {
             height: 100%;
+            height: 100dvh;
             overflow: hidden;
             font-family: 'Segoe UI', system-ui, sans-serif;
             background: var(--bg);
@@ -55,6 +56,7 @@
         .app-shell {
             display: flex;
             height: 100vh;
+            height: 100dvh;
             width: 100vw;
             overflow: hidden;
         }
@@ -77,6 +79,7 @@
             display: flex;
             flex-direction: column;
             height: 100vh;
+            height: 100dvh;
             overflow: hidden;
             z-index: 1210;
             transition: transform 0.25s ease;
@@ -247,7 +250,9 @@
         .content-area {
             flex: 1;
             overflow-y: auto;
+            overflow-x: hidden;
             padding: 24px;
+            min-height: 0;
         }
         .content-area::-webkit-scrollbar { width: 6px; }
         .content-area::-webkit-scrollbar-track { background: transparent; }
@@ -378,6 +383,7 @@
                 position: fixed;
                 top: 0; left: 0;
                 height: 100vh;
+                height: 100dvh;
                 transform: translateX(-100%);
             }
             .sidebar.open {

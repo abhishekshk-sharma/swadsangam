@@ -99,8 +99,10 @@
     .view-all-link:hover {
         color: #2563eb;
     }
+    .table-scroll-wrap { overflow-x: auto; }
     .overview-table {
         width: 100%;
+        min-width: 520px;
     }
     .overview-table thead th {
         padding: 12px 16px;
@@ -111,12 +113,14 @@
         letter-spacing: 0.5px;
         border-bottom: 2px solid #e3e6e8;
         background: #fafafa;
+        white-space: nowrap;
     }
     .overview-table tbody td {
         padding: 12px 16px;
         border-bottom: 1px solid #f0f0f0;
         color: #232f3e;
         font-size: 14px;
+        white-space: nowrap;
     }
     .overview-table tbody tr:hover {
         background-color: #f9f9f9;
@@ -246,7 +250,7 @@
             <a href="/admin/cook" class="view-all-link">View All <i class="fas fa-arrow-right ms-1"></i></a>
         </div>
     </div>
-    <div>
+    <div class="table-scroll-wrap">
         @if($recentOrders->count())
             <table class="overview-table">
                 <thead>
@@ -293,7 +297,7 @@
                     <a href="/admin/tables" class="view-all-link">View All <i class="fas fa-arrow-right ms-1"></i></a>
                 </div>
             </div>
-            <div>
+            <div class="table-scroll-wrap">
                 @if($recentTables->count())
                     <table class="overview-table">
                         <thead>
@@ -338,7 +342,7 @@
                     <a href="/admin/menu" class="view-all-link">View All <i class="fas fa-arrow-right ms-1"></i></a>
                 </div>
             </div>
-            <div>
+            <div class="table-scroll-wrap">
                 @if($recentMenuItems->count())
                     <table class="overview-table">
                         <thead>
@@ -383,7 +387,7 @@
             <a href="/admin/employees" class="view-all-link">View All <i class="fas fa-arrow-right ms-1"></i></a>
         </div>
     </div>
-    <div>
+    <div class="table-scroll-wrap">
         @if($recentEmployees->count())
             <table class="overview-table">
                 <thead>
