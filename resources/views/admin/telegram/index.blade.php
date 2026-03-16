@@ -54,6 +54,17 @@
     color: #666;
     margin-bottom: 40px;
 }
+@media (max-width: 576px) {
+    .coming-soon-container { min-height: 60vh; }
+    .watermark { font-size: 36px; }
+    .content-overlay { padding: 20px 12px; }
+    .telegram-icon { font-size: 72px; margin-bottom: 20px; }
+    .coming-soon-text { font-size: 28px; margin-bottom: 12px; }
+    .coming-soon-subtitle { font-size: 15px; margin-bottom: 24px; }
+    .feature-grid { gap: 12px; margin-top: 24px; grid-template-columns: 1fr; }
+    .feature-card { padding: 16px; }
+    .feature-icon { font-size: 28px; margin-bottom: 8px; }
+}
 .feature-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));

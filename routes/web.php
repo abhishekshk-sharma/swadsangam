@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\TelegramIntegrationController;
 use App\Http\Controllers\Api\OrderUpdatesController;
 use App\Http\Controllers\Admin\CashHandoverController as AdminCashHandoverController;
 use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\MenuOcrController;
 use App\Http\Controllers\Cashier\CashHandoverController as CashierCashHandoverController;
 
 Route::get('/', function () {
@@ -147,6 +148,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::delete('telegram/unlink/{id}', [TelegramIntegrationController::class, 'unlink'])->name('telegram.unlink');
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('reports/export', [ReportController::class, 'export'])->name('reports.export');
+        // Menu OCR
+        Route::get('menu-ocr', [MenuOcrController::class, 'index'])->name('menu-ocr.index');
+        Route::post('menu-ocr', [MenuOcrController::class, 'process'])->name('menu-ocr.process');
         // Cash Handover
         Route::get('handover', [AdminCashHandoverController::class, 'index'])->name('handover.index');
         Route::get('handover/export', [AdminCashHandoverController::class, 'export'])->name('handover.export');

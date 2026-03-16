@@ -11,7 +11,11 @@
         margin-bottom: 24px;
         border-bottom: 2px solid #e3e6e8;
         padding-bottom: 0;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
     }
+    .kitchen-tabs::-webkit-scrollbar { display: none; }
     .kitchen-tab {
         padding: 12px 24px;
         font-size: 14px;
@@ -21,6 +25,8 @@
         border-bottom: 3px solid transparent;
         margin-bottom: -2px;
         transition: all 0.2s ease;
+        white-space: nowrap;
+        flex-shrink: 0;
     }
     .kitchen-tab:hover {
         color: #3b82f6;

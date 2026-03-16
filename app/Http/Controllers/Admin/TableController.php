@@ -38,21 +38,55 @@ class TableController extends BaseAdminController
     public function store(Request $request)
     {
         $request->validate([
-            'table_number' => [
+            'capacity'    => 'required|integer|min:1',
+            'category_id' => 'nullable|exists:table_categories,id',
+            'count'       => 'nullable|integer|min:1|max:100',
+            'table_number' => $request->filled('count') ? 'nullable' : [
                 'required',
                 \Illuminate\Validation\Rule::unique('restaurant_tables')
                     ->where('tenant_id', $this->tenantId()),
             ],
-            'capacity'    => 'required|integer|min:1',
-            'category_id' => 'nullable|exists:table_categories,id',
         ]);
-        
-        $qrCode = uniqid('table_');
+
+        if ($request->filled('count') && $request->filled('category_id')) {
+            $category = TableCategory::find($request->category_id);
+            $prefix   = strtoupper(substr($category->name, 0, 1));
+
+            // Get existing numbers for this prefix+tenant
+            $existing = RestaurantTable::where('tenant_id', $this->tenantId())
+                ->where('table_number', 'LIKE', $prefix . '%')
+                ->pluck('table_number')
+                ->map(fn($n) => (int) substr($n, strlen($prefix)))
+                ->filter(fn($n) => $n > 0)
+                ->toArray();
+
+            $created = 0;
+            $counter = 1;
+            while ($created < $request->count) {
+                while (in_array($counter, $existing)) {
+                    $counter++;
+                }
+                RestaurantTable::create([
+                    'tenant_id'    => $this->tenantId(),
+                    'table_number' => $prefix . $counter,
+                    'capacity'     => $request->capacity,
+                    'qr_code'      => uniqid('table_'),
+                    'category_id'  => $request->category_id,
+                ]);
+                $existing[] = $counter;
+                $counter++;
+                $created++;
+            }
+
+            return redirect()->route('admin.tables.index')
+                ->with('success', $request->count . ' tables created successfully');
+        }
+
         RestaurantTable::create([
             'tenant_id'    => $this->tenantId(),
             'table_number' => $request->table_number,
             'capacity'     => $request->capacity,
-            'qr_code'      => $qrCode,
+            'qr_code'      => uniqid('table_'),
             'category_id'  => $request->category_id,
         ]);
 

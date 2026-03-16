@@ -183,14 +183,14 @@
             <table class="table-custom">
                 <thead>
                     <tr>
-                        <th>Order ID</th>
-                        <th>Table</th>
-                        <th>Items</th>
-                        <th>Total Amount</th>
-                        <th>Status</th>
-                        <th>Payment Mode</th>
-                        <th>Created By</th>
-                        <th>Date & Time</th>
+                        <th style="min-width:80px;">Order ID</th>
+                        <th style="min-width:90px;">Table</th>
+                        <th style="min-width:220px;">Items</th>
+                        <th style="min-width:110px;">Total Amount</th>
+                        <th style="min-width:90px;">Status</th>
+                        <th style="min-width:110px;">Payment Mode</th>
+                        <th style="min-width:110px;">Created By</th>
+                        <th style="min-width:140px;">Date & Time</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -199,9 +199,14 @@
                         <td><strong>#{{ $order->id }}</strong></td>
                         <td>{{ $order->is_parcel ? '📦 Parcel' : 'Table ' . $order->table->table_number }}</td>
                         <td>
+                            <div style="display:flex;flex-wrap:wrap;gap:4px;">
                             @foreach($order->orderItems as $item)
-                                <div style="font-size: 13px;">{{ $item->menuItem->name }} ({{ $item->quantity }})</div>
+                                <span style="display:inline-flex;align-items:center;gap:4px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:5px;padding:2px 8px;font-size:12.5px;white-space:nowrap;">
+                                    {{ $item->menuItem->name }}
+                                    <span style="background:#3b82f6;color:#fff;border-radius:3px;padding:0 5px;font-size:11px;font-weight:700;">×{{ $item->quantity }}</span>
+                                </span>
                             @endforeach
+                            </div>
                         </td>
                         <td><strong>₹{{ number_format($order->total_amount, 2) }}</strong></td>
                         <td>

@@ -59,15 +59,15 @@
                     <i class="fas fa-list me-2"></i>All Categories
                 </h2>
             </div>
-            <div class="card-body p-0">
-                <table class="table-custom">
+            <div class="card-body p-0" style="overflow-x:auto;">
+                <table class="table-custom" style="min-width:600px;">
                     <thead>
                         <tr>
-                            <th>Name</th>
-                            <th>Description</th>
-                            <th>Type</th>
-                            <th>Tables Count</th>
-                            <th style="text-align: center;">Actions</th>
+                            <th style="min-width:140px;">Name</th>
+                            <th style="min-width:180px;">Description</th>
+                            <th style="min-width:100px;">Type</th>
+                            <th style="min-width:110px;">Tables Count</th>
+                            <th style="text-align:center; min-width:160px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
