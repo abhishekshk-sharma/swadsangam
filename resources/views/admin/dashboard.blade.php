@@ -242,6 +242,106 @@
     </div>
 </div>
 
+
+
+<div class="row g-4 mb-4">
+    <!-- All Tables Grid -->
+    <div class="col-12">
+        <div class="content-card">
+            <div class="card-header">
+                <div class="section-header">
+                    <h2 class="section-title"><i class="fas fa-table me-2"></i>Tables Overview</h2>
+                    <a href="/admin/tables" class="view-all-link">Manage <i class="fas fa-arrow-right ms-1"></i></a>
+                </div>
+            </div>
+            <div class="p-3">
+                @php
+                    $grouped = $recentTables->groupBy(fn($t) => $t->category->name ?? 'Uncategorized');
+                @endphp
+                @forelse($grouped as $catName => $tables)
+                    <div class="mb-3">
+                        <div style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">{{ $catName }}</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:10px;">
+                            @foreach($tables as $table)
+                                @php
+                                    $activeOrder = $table->orders->first();
+                                    $mins = $activeOrder ? (int) $activeOrder->created_at->diffInMinutes(now()) : null;
+                                @endphp
+                                <div style="
+                                    width:110px;min-height:80px;border-radius:10px;padding:10px 8px;
+                                    border:2px solid {{ $table->is_occupied ? '#ef4444' : '#22c55e' }};
+                                    background:{{ $table->is_occupied ? '#fef2f2' : '#f0fdf4' }};
+                                    display:flex;flex-direction:column;align-items:center;justify-content:center;
+                                    text-align:center;gap:4px;
+                                ">
+                                    <div style="font-weight:700;font-size:14px;color:#1e293b;">{{ $table->table_number }}</div>
+                                    <span style="
+                                        font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;
+                                        background:{{ $table->is_occupied ? '#ef4444' : '#22c55e' }};
+                                        color:#fff;
+                                    ">{{ $table->is_occupied ? 'Occupied' : 'Free' }}</span>
+                                    @if($table->is_occupied && $mins !== null)
+                                        <div style="font-size:11px;color:#ef4444;font-weight:600;">{{ $mins }}m ago</div>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @empty
+                    <div class="empty-state"><i class="fas fa-table"></i><p>No tables yet</p></div>
+                @endforelse
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Menu Items -->
+    <div class="col-md-12">
+        <div class="content-card">
+            <div class="card-header">
+                <div class="section-header">
+                    <h2 class="section-title"><i class="fas fa-utensils me-2"></i>Recent Menu Items</h2>
+                    <a href="/admin/menu" class="view-all-link">View All <i class="fas fa-arrow-right ms-1"></i></a>
+                </div>
+            </div>
+            <div class="table-scroll-wrap">
+                @if($recentMenuItems->count())
+                    <table class="overview-table">
+                        <thead>
+                            <tr>
+                                <th>Item Name</th>
+                                <th>Category</th>
+                                <th>Price</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($recentMenuItems as $item)
+                            <tr>
+                                <td><strong>{{ $item->name }}</strong></td>
+                                <td>{{ $item->category->name ?? 'N/A' }}</td>
+                                <td><strong>₹{{ number_format($item->price, 2) }}</strong></td>
+                                <td>
+                                    <span class="badge-custom {{ $item->is_available ? 'badge-completed' : 'badge-pending' }}">
+                                        {{ $item->is_available ? 'Available' : 'Unavailable' }}
+                                    </span>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                @else
+                    <div class="empty-state">
+                        <i class="fas fa-utensils"></i>
+                        <p>No menu items yet</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
 <!-- Recent Orders -->
 <div class="content-card mb-4">
     <div class="card-header">
@@ -287,97 +387,7 @@
     </div>
 </div>
 
-<div class="row g-4 mb-4">
-    <!-- Recent Tables -->
-    <div class="col-md-6">
-        <div class="content-card">
-            <div class="card-header">
-                <div class="section-header">
-                    <h2 class="section-title"><i class="fas fa-table me-2"></i>Recent Tables</h2>
-                    <a href="/admin/tables" class="view-all-link">View All <i class="fas fa-arrow-right ms-1"></i></a>
-                </div>
-            </div>
-            <div class="table-scroll-wrap">
-                @if($recentTables->count())
-                    <table class="overview-table">
-                        <thead>
-                            <tr>
-                                <th>Table Name</th>
-                                <th>Category</th>
-                                <th>Capacity</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($recentTables as $table)
-                            <tr>
-                                <td><strong>{{ $table->table_number }}</strong></td>
-                                <td>{{ $table->category->name ?? 'N/A' }}</td>
-                                <td>{{ $table->capacity }} seats</td>
-                                <td>
-                                    <span class="badge-custom {{ $table->is_occupied ? 'badge-pending' : 'badge-completed' }}">
-                                        {{ $table->is_occupied ? 'Occupied' : 'Available' }}
-                                    </span>
-                                </td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                @else
-                    <div class="empty-state">
-                        <i class="fas fa-table"></i>
-                        <p>No tables yet</p>
-                    </div>
-                @endif
-            </div>
-        </div>
-    </div>
 
-    <!-- Recent Menu Items -->
-    <div class="col-md-6">
-        <div class="content-card">
-            <div class="card-header">
-                <div class="section-header">
-                    <h2 class="section-title"><i class="fas fa-utensils me-2"></i>Recent Menu Items</h2>
-                    <a href="/admin/menu" class="view-all-link">View All <i class="fas fa-arrow-right ms-1"></i></a>
-                </div>
-            </div>
-            <div class="table-scroll-wrap">
-                @if($recentMenuItems->count())
-                    <table class="overview-table">
-                        <thead>
-                            <tr>
-                                <th>Item Name</th>
-                                <th>Category</th>
-                                <th>Price</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($recentMenuItems as $item)
-                            <tr>
-                                <td><strong>{{ $item->name }}</strong></td>
-                                <td>{{ $item->category->name ?? 'N/A' }}</td>
-                                <td><strong>₹{{ number_format($item->price, 2) }}</strong></td>
-                                <td>
-                                    <span class="badge-custom {{ $item->is_available ? 'badge-completed' : 'badge-pending' }}">
-                                        {{ $item->is_available ? 'Available' : 'Unavailable' }}
-                                    </span>
-                                </td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                @else
-                    <div class="empty-state">
-                        <i class="fas fa-utensils"></i>
-                        <p>No menu items yet</p>
-                    </div>
-                @endif
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- Recent Employees -->
 <div class="content-card">

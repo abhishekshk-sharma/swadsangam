@@ -151,6 +151,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // Menu OCR
         Route::get('menu-ocr', [MenuOcrController::class, 'index'])->name('menu-ocr.index');
         Route::post('menu-ocr', [MenuOcrController::class, 'process'])->name('menu-ocr.process');
+        Route::post('menu-ocr/import', [MenuOcrController::class, 'import'])->name('menu-ocr.import');
+        Route::post('menu-ocr/excel', [MenuOcrController::class, 'importExcel'])->name('menu-ocr.excel');
         // Cash Handover
         Route::get('handover', [AdminCashHandoverController::class, 'index'])->name('handover.index');
         Route::get('handover/export', [AdminCashHandoverController::class, 'export'])->name('handover.export');

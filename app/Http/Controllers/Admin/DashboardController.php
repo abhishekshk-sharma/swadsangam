@@ -20,7 +20,7 @@ class DashboardController extends Controller
         ];
 
         $recentOrders    = Order::with(['table', 'orderItems.menuItem'])->latest()->take(5)->get();
-        $recentTables    = RestaurantTable::with('category')->latest()->take(5)->get();
+        $recentTables    = RestaurantTable::with(['category', 'orders' => fn($q) => $q->whereIn('status', ['pending','preparing','served'])->latest()->limit(1)])->get();
         $recentMenuItems = MenuItem::with('category')->latest()->take(5)->get();
         $recentEmployees = Employee::latest()->take(5)->get();
         $pendingOrders   = Order::whereIn('status', ['pending', 'preparing'])->count();
