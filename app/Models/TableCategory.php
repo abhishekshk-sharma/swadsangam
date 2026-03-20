@@ -8,31 +8,26 @@ use Illuminate\Support\Facades\Auth;
 
 class TableCategory extends Model
 {
-    protected $fillable = ['tenant_id', 'name', 'description'];
+    protected $fillable = ['tenant_id', 'branch_id', 'name', 'description'];
 
     protected static function booted()
     {
         static::addGlobalScope('tenant', function (Builder $builder) {
-            if ($tenantId = self::resolveTenantId()) {
-                $builder->where(function ($q) use ($tenantId) {
+            $user = Auth::guard('admin')->user() ?? Auth::guard('employee')->user();
+            if ($user && $user->tenant_id) {
+                $builder->where(function ($q) use ($user) {
                     $q->whereNull('table_categories.tenant_id')
-                      ->orWhere('table_categories.tenant_id', $tenantId);
+                      ->orWhere('table_categories.tenant_id', $user->tenant_id);
                 });
             }
         });
 
         static::creating(function ($model) {
-            if (!$model->tenant_id) {
-                $model->tenant_id = self::resolveTenantId();
+            $user = Auth::guard('admin')->user() ?? Auth::guard('employee')->user();
+            if (!$model->tenant_id && $user) {
+                $model->tenant_id = $user->tenant_id;
             }
         });
-    }
-
-    protected static function resolveTenantId(): ?int
-    {
-        $user = Auth::guard('admin')->user() ?? Auth::guard('employee')->user();
-        if ($user && $user->tenant_id) return (int) $user->tenant_id;
-        return session('tenant_id') ? (int) session('tenant_id') : null;
     }
 
     public function tables()

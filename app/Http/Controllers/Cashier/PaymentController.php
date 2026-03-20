@@ -9,6 +9,17 @@ use Illuminate\Support\Facades\URL;
 
 class PaymentController extends Controller
 {
+    private function branchId(): ?int
+    {
+        return auth()->guard('employee')->user()->branch_id ?? null;
+    }
+
+    private function branchScope(): \Closure
+    {
+        $branchId = $this->branchId();
+        return fn($q) => $branchId ? $q->where('branch_id', $branchId) : $q->whereNull('branch_id');
+    }
+
     public function index()
     {
         $orders = Order::with(['table.category', 'orderItems.menuItem'])
@@ -20,6 +31,7 @@ class PaymentController extends Controller
                       $q2->where('is_parcel', true)->where('status', 'ready');
                   });
             })
+            ->where($this->branchScope())
             ->whereDate('created_at', today())
             ->latest()
             ->get();
@@ -63,6 +75,7 @@ public function processPayment(Request $request, Order $order)
     {
         $orders = Order::with(['table', 'orderItems.menuItem'])
             ->where('status', 'paid')
+            ->where($this->branchScope())
             ->whereDate('created_at', today())
             ->latest()
             ->get();
@@ -129,6 +142,7 @@ public function processPayment(Request $request, Order $order)
         $orders = Order::with(['orderItems.menuItem'])
             ->where('is_parcel', true)
             ->whereNotIn('status', ['paid', 'cancelled'])
+            ->where($this->branchScope())
             ->whereDate('created_at', today())
             ->latest()
             ->get();
@@ -227,6 +241,7 @@ public function processPayment(Request $request, Order $order)
         return Order::where('id', $id)
             ->where('is_parcel', true)
             ->where('tenant_id', $this->currentTenantId())
+            ->where($this->branchScope())
             ->firstOrFail();
     }
 
@@ -253,10 +268,17 @@ public function processPayment(Request $request, Order $order)
 
     private function notifyChefs($order, $specificItems = null)
     {
-        $tenantId = $this->currentTenantId();
+        $senderBranchId = auth()->guard('employee')->user()->branch_id ?? null;
 
         $chefs = Employee::where('role', 'chef')
-            ->where('tenant_id', $tenantId)
+            ->where('tenant_id', $this->currentTenantId())
+            ->where(function ($q) use ($senderBranchId) {
+                if ($senderBranchId) {
+                    $q->where('branch_id', $senderBranchId);
+                } else {
+                    $q->whereNull('branch_id');
+                }
+            })
             ->where('is_active', true)
             ->whereNotNull('telegram_chat_id')
             ->get();

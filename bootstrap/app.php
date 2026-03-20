@@ -13,12 +13,13 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
             \App\Http\Middleware\IdentifyTenant::class,
+            \App\Http\Middleware\IdentifyBranch::class,
         ]);
         $middleware->validateCsrfTokens(except: [
             '/telegram/webhook',
         ]);
         $middleware->alias([
-            'role' => \App\Http\Middleware\CheckRole::class,
+            'role'       => \App\Http\Middleware\CheckRole::class,
             'multi.auth' => \App\Http\Middleware\MultiGuardAuth::class,
         ]);
         $middleware->redirectGuestsTo(fn() => route('login'));

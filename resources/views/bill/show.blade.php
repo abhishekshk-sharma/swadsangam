@@ -150,6 +150,18 @@
 
     <div class="divider-dashed"></div>
 
+    {{-- Bill QR Code --}}
+    @php
+        $billUrl = request()->fullUrl();
+        $qrSvg   = base64_encode(\SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(160)->margin(1)->generate($billUrl));
+    @endphp
+    <div class="center" style="margin:10px 0 4px;">
+        <img src="data:image/svg+xml;base64,{{ $qrSvg }}" width="160" height="160" alt="Bill QR" style="display:inline-block;">
+    </div>
+    <div class="center small" style="margin-bottom:4px;">Scan to view &amp; download this bill</div>
+
+    <div class="divider-dashed"></div>
+
     {{-- Footer --}}
     <div class="center bold" style="margin-top:4px;">*** THANK YOU ***</div>
     <div class="center small" style="margin-top:2px;">Please visit again!</div>

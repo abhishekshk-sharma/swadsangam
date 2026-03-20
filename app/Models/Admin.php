@@ -15,9 +15,8 @@ class Admin extends Authenticatable
     protected static function booted()
     {
         static::addGlobalScope('tenant', function (Builder $builder) {
-            $tenantId = app()->bound('current_tenant_id') ? app('current_tenant_id') : session('tenant_id');
-            if ($tenantId) {
-                $builder->where('admins.tenant_id', (int) $tenantId);
+            if (app()->bound('current_tenant_id')) {
+                $builder->where('admins.tenant_id', (int) app('current_tenant_id'));
             }
         });
     }

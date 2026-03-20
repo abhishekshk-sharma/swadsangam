@@ -13,10 +13,13 @@
     <div class="flex flex-col h-screen">
         <!-- Top Bar -->
         <div class="bg-indigo-900 text-white p-4 shadow-lg">
+            @php $branchName = current_user()->branch_id ? \App\Models\Branch::find(current_user()->branch_id)?->name : null; @endphp
             <div class="flex justify-between items-center">
                 <div>
-                    <h1 class="text-lg font-bold">Swad Sangam</h1>
-                    <p class="text-xs text-indigo-300">{{ current_user()->name ?? 'User' }}</p>
+                    <h1 class="text-lg font-bold">{{ $tenant->name }}</h1>
+                    <p class="text-xs text-indigo-300">{{ current_user()->name ?? 'User' }}
+                        @if($branchName) &nbsp;·&nbsp; <span class="text-indigo-200">{{ $branchName }}</span>@endif
+                    </p>
                 </div>
                 <form action="/logout" method="POST">
                     @csrf

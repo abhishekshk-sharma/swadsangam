@@ -9,8 +9,15 @@ class MenuCategoryController extends BaseAdminController
 {
     public function index()
     {
-        $categories = MenuCategory::withCount('menuItems')->get();
-        return view('admin.menu-categories.index', compact('categories'));
+        $categories     = MenuCategory::withCount('menuItems')->get();
+        $branches       = \App\Models\Branch::where('tenant_id', $this->tenantId())->where('is_active', true)->get();
+        $selectedBranch = request('branch_id');
+        if ($selectedBranch) {
+            $categories = MenuCategory::withCount('menuItems')
+                ->where(fn($q) => $q->whereNull('branch_id')->orWhere('branch_id', $selectedBranch))
+                ->get();
+        }
+        return view('admin.menu-categories.index', compact('categories', 'branches', 'selectedBranch'));
     }
 
     public function store(Request $request)

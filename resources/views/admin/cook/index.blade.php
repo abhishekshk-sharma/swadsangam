@@ -178,6 +178,24 @@
     </div>
 @endif
 
+{{-- Branch Filter --}}
+@if($branches->count() > 0)
+<form method="GET" action="{{ route('admin.cook.index') }}" style="margin-bottom:16px;">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <label style="font-size:13px;font-weight:600;color:var(--gray-600);white-space:nowrap;"><i class="fas fa-store me-1"></i>Branch:</label>
+        <select name="branch_id" onchange="this.form.submit()" style="padding:7px 12px;border:1px solid var(--gray-300);border-radius:8px;font-size:13px;font-weight:500;color:var(--gray-700);background:var(--white);min-width:180px;cursor:pointer;">
+            <option value="">All Branches</option>
+            @foreach($branches as $branch)
+                <option value="{{ $branch->id }}" {{ $selectedBranch == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+            @endforeach
+        </select>
+        @if($selectedBranch)
+            <a href="{{ route('admin.cook.index') }}" style="font-size:12px;color:var(--gray-500);text-decoration:none;"><i class="fas fa-times me-1"></i>Clear</a>
+        @endif
+    </div>
+</form>
+@endif
+
 {{-- Master type tabs --}}
 <div style="display:flex;gap:10px;margin-bottom:12px;">
     <button onclick="switchType('table')" id="masterTab-table"

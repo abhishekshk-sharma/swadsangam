@@ -4,11 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Concerns\BelongsToTenant;
+use App\Models\Concerns\BelongsToBranch;
 
 class RestaurantTable extends Model
 {
-    use BelongsToTenant;
-    protected $fillable = ['tenant_id', 'table_number', 'capacity', 'qr_code', 'is_occupied', 'category_id'];
+    use BelongsToTenant, BelongsToBranch;
+    protected $fillable = ['tenant_id', 'branch_id', 'table_number', 'capacity', 'qr_code', 'is_occupied', 'category_id'];
 
     public function category()
     {

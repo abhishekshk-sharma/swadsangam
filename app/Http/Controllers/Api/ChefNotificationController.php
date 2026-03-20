@@ -12,19 +12,24 @@ class ChefNotificationController extends Controller
 {
     public function getUpdates(Request $request)
     {
+        $user      = auth()->guard('employee')->user();
+        $tenantId  = $user?->tenant_id;
+        $branchId  = $user?->branch_id;
         $lastCheck = $request->input('last_check', now()->subMinutes(5)->toISOString());
-        $tenantId = session('tenant_id');
-        
         $lastCheckTime = Carbon::parse($lastCheck);
-        
-        // Get all pending order items created or updated after last check
+
         $newPendingItems = OrderItem::with(['order.table', 'menuItem'])
             ->where('tenant_id', $tenantId)
             ->where('status', 'pending')
             ->where('created_at', '>', $lastCheckTime)
-            ->whereHas('order', function($query) {
+            ->whereHas('order', function ($query) use ($branchId) {
                 $query->whereDate('created_at', today())
                       ->where('status', '!=', 'paid');
+                if ($branchId) {
+                    $query->where('branch_id', $branchId);
+                } else {
+                    $query->whereNull('branch_id');
+                }
             })
             ->get();
         

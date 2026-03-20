@@ -69,7 +69,8 @@ class AuthController extends Controller
                 $tenantId  = $employee->tenant_id;
                 session(['tenant_id' => $tenantId]);
                 app()->instance('current_tenant_id', $tenantId);
-
+        
+                if ($employee->isManager()) return redirect('/manager/dashboard');
                 if ($employee->isWaiter())  return redirect('/waiter/dashboard');
                 if ($employee->isChef())    return redirect('/cook/dashboard');
                 if ($employee->isCashier()) return redirect('/cashier/dashboard');

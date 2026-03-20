@@ -26,12 +26,24 @@ class OrderController extends Controller
         abort_if($item->order->tenant_id !== $this->tenantId(), 403);
         return $item;
     }
+    private function branchId(): ?int
+    {
+        return auth()->guard('employee')->user()->branch_id ?? null;
+    }
+
+    private function scopeBranch($query): void
+    {
+        $branchId = $this->branchId();
+        $branchId ? $query->where('branch_id', $branchId) : $query->whereNull('branch_id');
+    }
+
     public function index()
     {
         $orders = Order::with('table.category', 'items.menuItem')
             ->whereDate('created_at', today())
             ->where('status', '!=', 'paid')
             ->where('status', '!=', 'checkout')
+            ->where(fn($q) => $this->scopeBranch($q))
             ->latest()
             ->get();
 
@@ -42,11 +54,12 @@ class OrderController extends Controller
 
     public function create()
     {
-        $tables         = RestaurantTable::where('is_occupied', false)->get();
+        $tables         = RestaurantTable::with('category')->where('is_occupied', false)->get()->groupBy(fn($t) => $t->category->name ?? 'Uncategorized');
+        $allTables      = RestaurantTable::with('category')->get()->groupBy(fn($t) => $t->category->name ?? 'Uncategorized');
         $menuItems      = MenuItem::with('menuCategory')->where('is_available', true)->get();
         $menuCategories = MenuCategory::whereHas('menuItems', fn($q) => $q->where('is_available', true))->get();
 
-        return view('waiter.orders.create', compact('tables', 'menuItems', 'menuCategories'));
+        return view('waiter.orders.create', compact('tables', 'allTables', 'menuItems', 'menuCategories'));
     }
 
     public function store(Request $request)
@@ -122,8 +135,17 @@ class OrderController extends Controller
 
     protected function notifyChefs($order, $specificItems = null)
     {
+        $senderBranchId = auth()->guard('employee')->user()->branch_id;
+
         $chefs = Employee::where('role', 'chef')
             ->where('tenant_id', $this->tenantId())
+            ->where(function ($q) use ($senderBranchId) {
+                if ($senderBranchId) {
+                    $q->where('branch_id', $senderBranchId);
+                } else {
+                    $q->whereNull('branch_id');
+                }
+            })
             ->where('is_active', true)
             ->whereNotNull('telegram_chat_id')
             ->get();

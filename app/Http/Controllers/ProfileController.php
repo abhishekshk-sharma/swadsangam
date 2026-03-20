@@ -71,6 +71,7 @@ class ProfileController extends Controller
             return 'layouts.admin';
         }
         return match($user->role ?? '') {
+            'manager' => 'layouts.manager',
             'waiter'  => 'layouts.waiter',
             'chef'    => 'layouts.cook',
             'cashier' => 'layouts.cashier',

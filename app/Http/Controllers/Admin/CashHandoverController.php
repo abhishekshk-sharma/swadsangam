@@ -18,13 +18,17 @@ class CashHandoverController extends Controller
 {
     private function admin()
     {
-        return Auth::guard('admin')->user();
+        return Auth::guard('admin')->user() ?? Auth::guard('employee')->user();
     }
 
     public function index(Request $request)
     {
+        $tenantId = app()->bound('current_tenant_id') ? app('current_tenant_id') : null;
         $query = CashHandover::with('cashier')->latest();
 
+        if ($request->filled('branch_id')) {
+            $query->whereHas('cashier', fn($q) => $q->where('branch_id', $request->branch_id));
+        }
         if ($request->filter_type === 'today') {
             $query->whereDate('handover_date', today());
         } elseif ($request->filter_type === 'month' && $request->month) {
@@ -48,13 +52,19 @@ class CashHandoverController extends Controller
             ->get()
             ->keyBy(fn($r) => $r->cashier_id . '_' . $r->paid_date);
 
-        return view('admin.handover.index', compact('handovers', 'systemTotals'));
+        $branches       = \App\Models\Branch::where('tenant_id', $tenantId)->where('is_active', true)->get();
+        $selectedBranch = $request->branch_id;
+
+        return view('admin.handover.index', compact('handovers', 'systemTotals', 'branches', 'selectedBranch'));
     }
 
     public function export(Request $request)
     {
         $query = CashHandover::with('cashier')->latest();
 
+        if ($request->filled('branch_id')) {
+            $query->whereHas('cashier', fn($q) => $q->where('branch_id', $request->branch_id));
+        }
         if ($request->filter_type === 'today') {
             $query->whereDate('handover_date', today());
             $filename = 'handovers_today_' . today()->format('d-m-Y') . '.xlsx';

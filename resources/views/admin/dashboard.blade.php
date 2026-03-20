@@ -145,9 +145,7 @@
                 <div>
                     <div class="stat-label">Total Tables</div>
                     <div class="stat-value">{{ $stats['tables'] }}</div>
-                    <div class="stat-trend">
-                        <i class="fas fa-arrow-up"></i>View All Tables
-                    </div>
+                    <div class="stat-trend"><i class="fas fa-arrow-up"></i>View All Tables</div>
                 </div>
                 <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
                     <i class="fas fa-table"></i>
@@ -155,16 +153,14 @@
             </div>
         </a>
     </div>
-    
+
     <div class="col-md-4">
         <a href="{{ route('admin.menu.index') }}" class="stat-card">
             <div class="d-flex justify-content-between align-items-start">
                 <div>
                     <div class="stat-label">Menu Items</div>
                     <div class="stat-value">{{ $stats['menu_items'] }}</div>
-                    <div class="stat-trend">
-                        <i class="fas fa-arrow-up"></i>View All Items
-                    </div>
+                    <div class="stat-trend"><i class="fas fa-arrow-up"></i>View All Items</div>
                 </div>
                 <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
                     <i class="fas fa-utensils"></i>
@@ -172,50 +168,14 @@
             </div>
         </a>
     </div>
-    
-    
-    
-    <div class="col-md-4">
-        <a href="{{ route('admin.reports.index') }}" class="stat-card">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <div class="stat-label">Revenue Today</div>
-                    <div class="stat-value">₹{{ number_format($stats['revenue_today'], 2) }}</div>
-                    <div class="stat-trend">
-                        <i class="fas fa-arrow-up"></i>View Reports
-                    </div>
-                </div>
-                <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
-                    <i class="fas fa-rupee-sign"></i>
-                </div>
-            </div>
-        </a>
-    </div>
-    <div class="col-md-4">
-        <a href="{{ route('admin.reports.index') }}" class="stat-card">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <div class="stat-label">Total Revenue</div>
-                    <div class="stat-value">₹{{ number_format($stats['total_revenue'], 2) }}</div>
-                    <div class="stat-trend">
-                        <i class="fas fa-chart-line"></i>All Time
-                    </div>
-                </div>
-                <div class="stat-icon" style="background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%);">
-                    <i class="fas fa-rupee-sign"></i>
-                </div>
-            </div>
-        </a>
-    </div>
+
     <div class="col-md-4">
         <a href="{{ route('admin.cook.index') }}" class="stat-card">
             <div class="d-flex justify-content-between align-items-start">
                 <div>
                     <div class="stat-label">Orders Today</div>
                     <div class="stat-value">{{ $stats['orders_today'] }}</div>
-                    <div class="stat-trend">
-                        <i class="fas fa-arrow-up"></i>View All Orders
-                    </div>
+                    <div class="stat-trend"><i class="fas fa-arrow-up"></i>View All Orders</div>
                 </div>
                 <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
                     <i class="fas fa-shopping-cart"></i>
@@ -223,16 +183,46 @@
             </div>
         </a>
     </div>
+
+    <div class="col-md-4">
+        <a href="{{ route('admin.reports.index') }}" class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Monthly Revenue</div>
+                    <div class="stat-value">₹{{ number_format($stats['revenue_this_month'], 2) }}</div>
+                    <div class="stat-trend"><i class="fas fa-chart-line"></i>{{ now()->format('F Y') }}</div>
+                </div>
+                <div class="stat-icon" style="background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%);">
+                    <i class="fas fa-rupee-sign"></i>
+                </div>
+            </div>
+        </a>
+    </div>
+
     
+    <div class="col-md-4">
+        <a href="{{ route('admin.reports.index') }}" class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Revenue Today</div>
+                    <div class="stat-value">₹{{ number_format($stats['revenue_today'], 2) }}</div>
+                    <div class="stat-trend"><i class="fas fa-arrow-up"></i>View Reports</div>
+                </div>
+                <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                    <i class="fas fa-rupee-sign"></i>
+                </div>
+            </div>
+        </a>
+    </div>
+
+
     <div class="col-md-4">
         <a href="{{ route('admin.handover.index') }}" class="stat-card">
             <div class="d-flex justify-content-between align-items-start">
                 <div>
                     <div class="stat-label">Cash Handovers</div>
                     <div class="stat-value">{{ $stats['pending_handovers'] }}</div>
-                    <div class="stat-trend">
-                        <i class="fas fa-clock"></i>Pending Approval
-                    </div>
+                    <div class="stat-trend"><i class="fas fa-clock"></i>Pending Approval</div>
                 </div>
                 <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
                     <i class="fas fa-hand-holding-usd"></i>
@@ -267,12 +257,12 @@
                                     $activeOrder = $table->orders->first();
                                     $mins = $activeOrder ? (int) $activeOrder->created_at->diffInMinutes(now()) : null;
                                 @endphp
-                                <div style="
+                                <a href="{{ route('admin.cook.index', array_filter(['table_id' => $table->id, 'status' => $table->is_occupied ? ($activeOrder?->status ?? null) : null])) }}" style="
                                     width:110px;min-height:80px;border-radius:10px;padding:10px 8px;
                                     border:2px solid {{ $table->is_occupied ? '#ef4444' : '#22c55e' }};
                                     background:{{ $table->is_occupied ? '#fef2f2' : '#f0fdf4' }};
                                     display:flex;flex-direction:column;align-items:center;justify-content:center;
-                                    text-align:center;gap:4px;
+                                    text-align:center;gap:4px;text-decoration:none;
                                 ">
                                     <div style="font-weight:700;font-size:14px;color:#1e293b;">{{ $table->table_number }}</div>
                                     <span style="
@@ -283,7 +273,7 @@
                                     @if($table->is_occupied && $mins !== null)
                                         <div style="font-size:11px;color:#ef4444;font-weight:600;">{{ $mins }}m ago</div>
                                     @endif
-                                </div>
+                                </a>
                             @endforeach
                         </div>
                     </div>

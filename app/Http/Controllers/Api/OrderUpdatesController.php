@@ -11,10 +11,19 @@ class OrderUpdatesController extends Controller
 {
     public function getUpdates(Request $request)
     {
-        $panel = $request->query('panel', 'all');
+        $panel    = $request->query('panel', 'all');
+        $user     = Auth::guard('employee')->user() ?? Auth::guard('admin')->user();
+        $branchId = $user?->branch_id ?? null;
 
         $query = Order::with(['table', 'orderItems.menuItem'])
-            ->whereDate('created_at', today());
+            ->whereDate('created_at', today())
+            ->where(function ($q) use ($branchId) {
+                if ($branchId) {
+                    $q->where('branch_id', $branchId);
+                } else {
+                    $q->whereNull('branch_id');
+                }
+            });
 
         match ($panel) {
             'cook'            => $query->whereIn('status', ['pending', 'preparing']),
@@ -33,9 +42,7 @@ class OrderUpdatesController extends Controller
         };
 
         // Resolve current authenticated user across all guards
-        $currentUser = Auth::guard('employee')->user()
-            ?? Auth::guard('admin')->user()
-            ?? Auth::guard('super_admin')->user();
+        $currentUser = $user;
 
         $orders = $query->get()->map(fn($order) => [
             'id'             => $order->id,

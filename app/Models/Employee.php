@@ -15,23 +15,21 @@ class Employee extends Authenticatable
     protected static function booted()
     {
         static::addGlobalScope('tenant', function (Builder $builder) {
-            $tenantId = app()->bound('current_tenant_id') ? app('current_tenant_id') : session('tenant_id');
-            if ($tenantId) {
-                $builder->where('employees.tenant_id', (int) $tenantId);
+            if (app()->bound('current_tenant_id')) {
+                $builder->where('employees.tenant_id', (int) app('current_tenant_id'));
             }
         });
 
         static::creating(function ($model) {
-            if (!$model->tenant_id) {
-                $model->tenant_id = app()->bound('current_tenant_id')
-                    ? app('current_tenant_id')
-                    : session('tenant_id');
+            if (!$model->tenant_id && app()->bound('current_tenant_id')) {
+                $model->tenant_id = app('current_tenant_id');
             }
         });
     }
     
     protected $fillable = [
-        'tenant_id', 
+        'tenant_id',
+        'branch_id',
         'name', 
         'email', 
         'password', 
@@ -61,6 +59,16 @@ class Employee extends Authenticatable
     public function isAdmin()
     {
         return false;
+    }
+
+    public function isManager()
+    {
+        return $this->role === 'manager';
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
     }
 
     public function isWaiter()

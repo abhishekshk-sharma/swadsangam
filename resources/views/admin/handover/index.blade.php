@@ -21,6 +21,17 @@
     <div class="p-3">
         <form method="GET" action="{{ route('admin.handover.index') }}">
             <div class="row g-3 align-items-end">
+                @if(isset($branches) && $branches->count() > 0)
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold small"><i class="fas fa-store me-1"></i>Branch</label>
+                    <select name="branch_id" class="form-select">
+                        <option value="">All Branches</option>
+                        @foreach($branches as $branch)
+                            <option value="{{ $branch->id }}" {{ $selectedBranch == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                @endif
                 <div class="col-md-3">
                     <label class="form-label fw-semibold small">Filter Type</label>
                     <select name="filter_type" class="form-select" id="filterType">
@@ -58,6 +69,7 @@
             <input type="hidden" name="month"       value="{{ request('month') }}">
             <input type="hidden" name="date_from"   value="{{ request('date_from') }}">
             <input type="hidden" name="date_to"     value="{{ request('date_to') }}">
+            <input type="hidden" name="branch_id"   value="{{ request('branch_id') }}">
             <button type="submit" class="btn btn-success btn-sm">
                 <i class="fas fa-download me-1"></i> Export Excel
             </button>

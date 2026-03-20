@@ -12,10 +12,15 @@ class MenuController extends BaseAdminController
     {
         $query = MenuItem::with('menuCategory');
 
+        if ($request->filled('branch_id')) {
+            $catIds = MenuCategory::where(fn($q) =>
+                $q->where('branch_id', $request->branch_id)->orWhereNull('branch_id')
+            )->pluck('id');
+            $query->whereIn('menu_category_id', $catIds);
+        }
         if ($request->menu_category_id) {
             $query->where('menu_category_id', $request->menu_category_id);
         }
-
         if ($request->status === 'available') {
             $query->where('is_available', true);
         } elseif ($request->status === 'unavailable') {
@@ -24,7 +29,9 @@ class MenuController extends BaseAdminController
 
         $menuItems      = $query->get();
         $menuCategories = MenuCategory::get();
-        return view('admin.menu.index', compact('menuItems', 'menuCategories'));
+        $branches       = \App\Models\Branch::where('tenant_id', $this->tenantId())->where('is_active', true)->get();
+        $selectedBranch = $request->branch_id;
+        return view('admin.menu.index', compact('menuItems', 'menuCategories', 'branches', 'selectedBranch'));
     }
 
     public function create()

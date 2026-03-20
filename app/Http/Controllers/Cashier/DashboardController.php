@@ -10,16 +10,19 @@ class DashboardController extends Controller
 {
     public function index()
     {
+        $branchId = auth()->guard('employee')->user()->branch_id ?? null;
+        $branch   = fn($q) => $branchId ? $q->where('branch_id', $branchId) : $q->whereNull('branch_id');
+
         $stats = [
-            'pending_payment' => Order::where('status', 'served')
-            ->whereDate('created_at', today())->count(),
-            'today_orders'    => Order::whereDate('created_at', today())->where('status', 'paid')->count(),
-            'pending_parcels' => Order::where('is_parcel', true)->whereNotIn('status', ['paid', 'cancelled'])->whereDate('created_at', today())->count(),
-            'paid_today'      => Order::whereDate('created_at', today())->where('status', 'paid')->count(),
+            'pending_payment' => Order::where('status', 'served')->whereDate('created_at', today())->where($branch)->count(),
+            'today_orders'    => Order::whereDate('created_at', today())->where('status', 'paid')->where($branch)->count(),
+            'pending_parcels' => Order::where('is_parcel', true)->whereNotIn('status', ['paid', 'cancelled'])->whereDate('created_at', today())->where($branch)->count(),
+            'paid_today'      => Order::whereDate('created_at', today())->where('status', 'paid')->where($branch)->count(),
         ];
 
         $chartData = Order::whereDate('created_at', today())
             ->where('status', 'paid')
+            ->where($branch)
             ->select(DB::raw('HOUR(paid_at) as hour'), DB::raw('COUNT(*) as count'))
             ->groupBy('hour')
             ->orderBy('hour')
@@ -35,6 +38,7 @@ class DashboardController extends Controller
         $recentPayments = Order::with('table')
             ->where('status', 'paid')
             ->whereDate('created_at', today())
+            ->where($branch)
             ->latest()
             ->take(5)
             ->get();

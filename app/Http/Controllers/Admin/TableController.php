@@ -14,19 +14,23 @@ class TableController extends BaseAdminController
     {
         $query = RestaurantTable::with('category');
 
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        }
         if ($request->category_id) {
             $query->where('category_id', $request->category_id);
         }
-
         if ($request->status === 'available') {
             $query->where('is_occupied', false);
         } elseif ($request->status === 'occupied') {
             $query->where('is_occupied', true);
         }
 
-        $tables = $query->get();
-        $categories = TableCategory::get();
-        return view('admin.tables.index', compact('tables', 'categories'));
+        $tables         = $query->get();
+        $categories     = TableCategory::get();
+        $branches       = \App\Models\Branch::where('tenant_id', $this->tenantId())->where('is_active', true)->get();
+        $selectedBranch = $request->branch_id;
+        return view('admin.tables.index', compact('tables', 'categories', 'branches', 'selectedBranch'));
     }
 
     public function create()

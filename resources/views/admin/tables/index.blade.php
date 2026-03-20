@@ -157,6 +157,24 @@
 
 <div class="content-card mb-4">
     <div class="card-body">
+        @if($branches->count() > 0)
+        <form method="GET" action="{{ route('admin.tables.index') }}" style="margin-bottom:16px;">
+            <input type="hidden" name="category_id" value="{{ request('category_id') }}">
+            <input type="hidden" name="status" value="{{ request('status') }}">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <label style="font-size:13px;font-weight:600;color:var(--gray-600);white-space:nowrap;"><i class="fas fa-store me-1"></i>Branch:</label>
+                <select name="branch_id" onchange="this.form.submit()" style="padding:7px 12px;border:1px solid var(--gray-300);border-radius:8px;font-size:13px;font-weight:500;color:var(--gray-700);background:var(--white);min-width:180px;cursor:pointer;">
+                    <option value="">All Branches</option>
+                    @foreach($branches as $branch)
+                        <option value="{{ $branch->id }}" {{ $selectedBranch == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                    @endforeach
+                </select>
+                @if($selectedBranch)
+                    <a href="{{ route('admin.tables.index', array_filter(['category_id' => request('category_id'), 'status' => request('status')])) }}" style="font-size:12px;color:var(--gray-500);text-decoration:none;"><i class="fas fa-times me-1"></i>Clear</a>
+                @endif
+            </div>
+        </form>
+        @endif
         <div class="row g-3">
             <div class="col-md-6">
                 <label class="form-label">Filter by Category</label>

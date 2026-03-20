@@ -12,8 +12,15 @@ class ReportController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Order::where('tenant_id', session('tenant_id'))
+        $tenantId = app()->bound('current_tenant_id') ? app('current_tenant_id') : null;
+        $query = Order::where('tenant_id', $tenantId)
             ->with(['table', 'orderItems.menuItem', 'user']);
+
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        } elseif (app()->bound('current_branch_id')) {
+            $query->where('branch_id', app('current_branch_id'));
+        }
 
         if ($request->filter_type === 'date' && $request->date) {
             $query->whereDate('created_at', $request->date);
@@ -24,18 +31,26 @@ class ReportController extends Controller
             $query->whereYear('created_at', $request->year);
         }
 
-        $orders = $query->orderBy('created_at', 'desc')->get();
-
+        $orders       = $query->orderBy('created_at', 'desc')->get();
         $totalRevenue = $orders->where('status', 'paid')->sum('total_amount');
-        $totalOrders = $orders->count();
+        $totalOrders  = $orders->count();
+        $branches     = \App\Models\Branch::where('tenant_id', $tenantId)->where('is_active', true)->get();
+        $selectedBranch = $request->branch_id;
 
-        return view('admin.reports.index', compact('orders', 'totalRevenue', 'totalOrders'));
+        return view('admin.reports.index', compact('orders', 'totalRevenue', 'totalOrders', 'branches', 'selectedBranch'));
     }
 
     public function export(Request $request)
     {
-        $query = Order::where('tenant_id', session('tenant_id'))
+        $tenantId = app()->bound('current_tenant_id') ? app('current_tenant_id') : null;
+        $query = Order::where('tenant_id', $tenantId)
             ->with(['table', 'orderItems.menuItem', 'user']);
+
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        } elseif (app()->bound('current_branch_id')) {
+            $query->where('branch_id', app('current_branch_id'));
+        }
 
         if ($request->filter_type === 'date' && $request->date) {
             $query->whereDate('created_at', $request->date);

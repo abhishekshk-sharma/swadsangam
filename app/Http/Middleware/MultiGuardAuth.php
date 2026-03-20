@@ -15,6 +15,9 @@ class MultiGuardAuth
             ?? Auth::guard('employee')->user();
 
         if (!$user) {
+            if ($request->expectsJson()) {
+                return response()->json(['error' => 'Unauthenticated'], 401);
+            }
             return redirect('/login');
         }
 

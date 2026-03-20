@@ -113,6 +113,17 @@
     <div class="filter-body">
         <form method="GET" action="{{ route('admin.reports.index') }}" id="filterForm">
             <div class="row g-3">
+                @if(isset($branches) && $branches->count() > 0)
+                <div class="col-md-3">
+                    <label class="form-label"><i class="fas fa-store me-1"></i>Branch</label>
+                    <select name="branch_id" class="form-select">
+                        <option value="">All Branches</option>
+                        @foreach($branches as $branch)
+                            <option value="{{ $branch->id }}" {{ $selectedBranch == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                @endif
                 <div class="col-md-3">
                     <label class="form-label">Filter Type</label>
                     <select name="filter_type" class="form-select" id="filterType" required>
@@ -173,6 +184,7 @@
             <input type="hidden" name="date" value="{{ request('date') }}">
             <input type="hidden" name="month" value="{{ request('month') }}">
             <input type="hidden" name="year" value="{{ request('year') }}">
+            <input type="hidden" name="branch_id" value="{{ request('branch_id') }}">
             <button type="submit" class="btn-success">
                 <i class="fas fa-download me-1"></i> Download Excel
             </button>

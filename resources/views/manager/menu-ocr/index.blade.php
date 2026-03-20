@@ -1,0 +1,328 @@
+@extends('layouts.manager')
+@section('title', 'Menu OCR — Extract to Menu')
+
+@section('content')
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold mb-0">📷 Menu OCR — Extract to Menu</h2>
+</div>
+
+@if(session('error'))
+    <div class="alert alert-danger alert-dismissible fade show">
+        {{ session('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+@endif
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="content-card h-100">
+            <div class="p-3 border-bottom bg-light" style="border-radius:8px 8px 0 0;">
+                <strong><i class="fas fa-upload me-2"></i>Upload Menu Image</strong>
+            </div>
+            <div class="p-4">
+                <form id="ocrForm" enctype="multipart/form-data">
+                    @csrf
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Menu Image</label>
+                        <div id="dropZone" style="border:2px dashed #cbd5e1;border-radius:10px;padding:40px 20px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;background:#f8fafc;position:relative;overflow:hidden;">
+                            <i class="fas fa-image" style="font-size:36px;color:#94a3b8;display:block;margin-bottom:10px;"></i>
+                            <p style="color:#64748b;margin:0 0 8px;">Drag & drop or <strong>click to browse</strong></p>
+                            <p style="color:#94a3b8;font-size:12px;margin:0;">JPG, PNG, WEBP — max 5MB</p>
+                            <input type="file" name="menu_image" id="menuImage" accept="image/*"
+                                   style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;z-index:1;">
+                        </div>
+                    </div>
+
+                    <div id="previewWrap" style="display:none;margin-bottom:20px;">
+                        <img id="previewImg" src="" alt="Preview"
+                             style="width:100%;max-height:280px;object-fit:contain;border-radius:8px;border:1px solid #e2e8f0;">
+                        <p id="previewName" style="font-size:12px;color:#64748b;margin-top:6px;text-align:center;"></p>
+                    </div>
+
+                    <div id="errorBox" class="alert alert-danger" style="display:none;"></div>
+
+                    <button type="submit" class="btn btn-primary w-100" id="submitBtn">
+                        <i class="fas fa-magic me-2"></i> Extract & Download Excel
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="content-card h-100">
+            <div class="p-3 border-bottom bg-light" style="border-radius:8px 8px 0 0;">
+                <strong><i class="fas fa-info-circle me-2"></i>How It Works</strong>
+            </div>
+            <div class="p-4">
+                <div style="display:flex;flex-direction:column;gap:20px;">
+                    @foreach([
+                        ['fas fa-upload',   '#3b82f6', 'Upload Menu Image',   'Take a photo or scan of your printed menu and upload it here.'],
+                        ['fas fa-eye',      '#8b5cf6', 'OCR Text Extraction', 'Google Cloud Vision reads all text from the image.'],
+                        ['fas fa-edit',     '#f59e0b', 'Review & Edit',       'A preview modal shows all detected items — edit names, prices or delete rows before saving.'],
+                        ['fas fa-database', '#059669', 'Import to Menu',      'Confirmed items are inserted into your branch menu with categories automatically.'],
+                    ] as [$icon, $color, $title, $desc])
+                    <div style="display:flex;gap:14px;align-items:flex-start;">
+                        <div style="width:38px;height:38px;border-radius:9px;background:{{ $color }}1a;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="{{ $icon }}" style="color:{{ $color }};font-size:15px;"></i>
+                        </div>
+                        <div>
+                            <div style="font-weight:700;font-size:14px;color:#1e293b;">{{ $title }}</div>
+                            <div style="font-size:13px;color:#64748b;margin-top:2px;">{{ $desc }}</div>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+                <div class="alert alert-warning mt-4 py-2 small mb-0">
+                    <strong>💡 Tips for best results:</strong>
+                    <ul style="margin:6px 0 0 16px;padding:0;">
+                        <li>Use a clear, well-lit photo</li>
+                        <li>Prices should be next to item names on the same line</li>
+                        <li>Avoid blurry or skewed images</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mt-1">
+    <div class="col-12">
+        <div class="content-card">
+            <div class="p-3 border-bottom bg-light" style="border-radius:8px 8px 0 0;">
+                <strong><i class="fas fa-file-excel me-2" style="color:#16a34a;"></i>Import from Excel / CSV</strong>
+            </div>
+            <div class="p-4">
+                <form method="POST" action="{{ route('manager.menu-ocr.excel') }}" enctype="multipart/form-data" id="excelForm">
+                    @csrf
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold">Excel / CSV File</label>
+                            <input type="file" name="excel_file" id="excelFile" accept=".xlsx,.xls,.csv" class="form-control">
+                            <div style="font-size:12px;color:#64748b;margin-top:5px;">
+                                Format: Column A = Item Name, Column B = Price.
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-primary w-100" id="excelBtn">
+                                <i class="fas fa-table me-2"></i>Upload & Review
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Review Modal --}}
+<div id="reviewOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99999;overflow-y:auto;padding:24px 12px;">
+    <div style="background:#fff;border-radius:12px;max-width:780px;margin:0 auto;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+        <div style="padding:18px 24px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;">
+            <div style="font-size:17px;font-weight:700;color:#1e293b;"><i class="fas fa-edit me-2" style="color:#f59e0b;"></i>Review Extracted Menu</div>
+            <button onclick="closeReview()" style="background:none;border:none;font-size:20px;color:#94a3b8;cursor:pointer;">✕</button>
+        </div>
+        <div style="padding:20px 24px;">
+            <p style="font-size:13px;color:#64748b;margin-bottom:16px;">
+                Edit category names, item names or prices. Click <strong>✕</strong> on any row to remove it. Empty categories are ignored on import.
+            </p>
+            <div id="reviewBody"></div>
+        </div>
+        <div style="padding:16px 24px;border-top:1px solid #e2e8f0;display:flex;gap:10px;justify-content:flex-end;">
+            <button onclick="closeReview()" class="btn btn-secondary" style="padding:9px 20px;">Cancel</button>
+            <button onclick="submitImport()" class="btn btn-primary" id="importBtn" style="padding:9px 24px;">
+                <i class="fas fa-database me-2"></i>Import to Menu
+            </button>
+        </div>
+    </div>
+</div>
+
+<form id="importForm" method="POST" action="{{ route('manager.menu-ocr.import') }}" style="display:none;">
+    @csrf
+    <input type="hidden" name="sections" id="importSections">
+</form>
+@endsection
+
+@push('scripts')
+<script>
+(function () {
+    var input       = document.getElementById('menuImage');
+    var dropZone    = document.getElementById('dropZone');
+    var preview     = document.getElementById('previewWrap');
+    var previewImg  = document.getElementById('previewImg');
+    var previewName = document.getElementById('previewName');
+    var submitBtn   = document.getElementById('submitBtn');
+    var errorBox    = document.getElementById('errorBox');
+    var form        = document.getElementById('ocrForm');
+
+    function showPreview(file) {
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function (e) {
+            previewImg.src = e.target.result;
+            previewName.textContent = file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+            preview.style.display = '';
+            dropZone.style.borderColor = '#3b82f6';
+            dropZone.style.background  = '#eff6ff';
+        };
+        reader.readAsDataURL(file);
+    }
+
+    input.addEventListener('change', function () { showPreview(this.files[0]); });
+
+    dropZone.addEventListener('dragover',  function (e) { e.preventDefault(); dropZone.style.borderColor='#3b82f6'; dropZone.style.background='#eff6ff'; });
+    dropZone.addEventListener('dragleave', function ()  { dropZone.style.borderColor='#cbd5e1'; dropZone.style.background='#f8fafc'; });
+    dropZone.addEventListener('drop', function (e) {
+        e.preventDefault();
+        var file = e.dataTransfer.files[0];
+        if (file) { var dt = new DataTransfer(); dt.items.add(file); input.files = dt.files; showPreview(file); }
+    });
+
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        errorBox.style.display = 'none';
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Extracting...';
+
+        var fd = new FormData(form);
+        fetch('{{ route('manager.menu-ocr.process') }}', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: fd
+        })
+        .then(function (r) {
+            if (!r.ok && r.status !== 422) return r.text().then(function (t) { throw new Error(t); });
+            return r.json();
+        })
+        .then(function (data) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-magic me-2"></i> Extract & Download Excel';
+            if (data.error || data.message) {
+                errorBox.textContent = data.error || data.message;
+                errorBox.style.display = '';
+                return;
+            }
+            downloadExcel(data.sections);
+        })
+        .catch(function (err) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-magic me-2"></i> Extract & Download Excel';
+            errorBox.textContent = 'Error: ' + (err.message || 'Something went wrong. Please try again.');
+            errorBox.style.display = '';
+        });
+    });
+
+    window.downloadExcel = function (sections) {
+        var rows = [['Item Name', 'Price']];
+        sections.forEach(function (section) {
+            section.items.forEach(function (item) { rows.push([item.name, item.price]); });
+        });
+        var csv = rows.map(function (r) {
+            return r.map(function (c) {
+                var s = String(c).replace(/"/g, '""');
+                return /[,"\n]/.test(s) ? '"' + s + '"' : s;
+            }).join(',');
+        }).join('\n');
+        var blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'menu-extract.csv';
+        a.click();
+        URL.revokeObjectURL(a.href);
+    };
+
+    window.openReview = function (sections) {
+        var body = document.getElementById('reviewBody');
+        body.innerHTML = '';
+        sections.forEach(function (section, si) {
+            var wrap = document.createElement('div');
+            wrap.style.cssText = 'margin-bottom:20px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;';
+            wrap.setAttribute('data-si', si);
+
+            var catRow = document.createElement('div');
+            catRow.style.cssText = 'background:#f1f5f9;padding:10px 14px;display:flex;align-items:center;gap:10px;';
+            catRow.innerHTML =
+                '<span style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;flex-shrink:0;">Category</span>' +
+                '<input type="text" value="' + esc(section.category) + '" data-field="category" data-si="' + si + '"' +
+                ' style="flex:1;border:1px solid #cbd5e1;border-radius:6px;padding:5px 10px;font-size:13px;font-weight:600;color:#1e293b;">';
+            wrap.appendChild(catRow);
+
+            var tbl = document.createElement('table');
+            tbl.style.cssText = 'width:100%;border-collapse:collapse;';
+            tbl.innerHTML = '<thead><tr style="background:#fafafa;">' +
+                '<th style="padding:8px 14px;font-size:11px;color:#64748b;text-align:left;font-weight:700;border-bottom:1px solid #e2e8f0;">Item Name</th>' +
+                '<th style="padding:8px 14px;font-size:11px;color:#64748b;text-align:left;font-weight:700;border-bottom:1px solid #e2e8f0;width:120px;">Price (₹)</th>' +
+                '<th style="padding:8px 14px;width:40px;border-bottom:1px solid #e2e8f0;"></th>' +
+                '</tr></thead>';
+            var tbody = document.createElement('tbody');
+            tbody.setAttribute('data-si', si);
+            section.items.forEach(function (item, ii) { tbody.appendChild(makeItemRow(si, ii, item)); });
+            tbl.appendChild(tbody);
+            wrap.appendChild(tbl);
+
+            var addRow = document.createElement('div');
+            addRow.style.cssText = 'padding:8px 14px;border-top:1px solid #f1f5f9;';
+            addRow.innerHTML = '<button type="button" onclick="addItem(' + si + ')" style="background:none;border:none;color:#3b82f6;font-size:13px;font-weight:600;cursor:pointer;padding:0;"><i class="fas fa-plus me-1"></i>Add item</button>';
+            wrap.appendChild(addRow);
+            body.appendChild(wrap);
+        });
+        document.getElementById('reviewOverlay').style.display = '';
+    };
+
+    window.makeItemRow = function (si, ii, item) {
+        var tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid #f1f5f9';
+        tr.setAttribute('data-ii', ii);
+        tr.innerHTML =
+            '<td style="padding:7px 14px;"><input type="text" value="' + esc(item.name) + '" data-field="name" data-si="' + si + '" data-ii="' + ii + '" style="width:100%;border:1px solid #e2e8f0;border-radius:6px;padding:5px 8px;font-size:13px;"></td>' +
+            '<td style="padding:7px 14px;"><input type="number" value="' + item.price + '" data-field="price" data-si="' + si + '" data-ii="' + ii + '" min="0" step="0.01" style="width:100%;border:1px solid #e2e8f0;border-radius:6px;padding:5px 8px;font-size:13px;"></td>' +
+            '<td style="padding:7px 14px;text-align:center;"><button type="button" onclick="deleteItem(this)" style="background:none;border:none;color:#ef4444;font-size:15px;cursor:pointer;line-height:1;">✕</button></td>';
+        return tr;
+    };
+
+    window.addItem    = function (si) { var tbody = document.querySelector('tbody[data-si="' + si + '"]'); tbody.appendChild(makeItemRow(si, tbody.rows.length, { name: '', price: '' })); };
+    window.deleteItem = function (btn) { btn.closest('tr').remove(); };
+    window.closeReview = function () { document.getElementById('reviewOverlay').style.display = 'none'; };
+
+    window.submitImport = function () {
+        var sections = [];
+        document.querySelectorAll('#reviewBody > div[data-si]').forEach(function (wrap) {
+            var catInput = wrap.querySelector('input[data-field="category"]');
+            var category = catInput ? catInput.value.trim() : '';
+            var items = [];
+            wrap.querySelectorAll('tbody tr').forEach(function (tr) {
+                var nameEl  = tr.querySelector('input[data-field="name"]');
+                var priceEl = tr.querySelector('input[data-field="price"]');
+                var name    = nameEl  ? nameEl.value.trim()  : '';
+                var price   = priceEl ? parseFloat(priceEl.value) : 0;
+                if (name && price > 0) items.push({ name: name, price: price });
+            });
+            if (category && items.length) sections.push({ category: category, items: items });
+        });
+
+        if (!sections.length) { alert('No valid items to import. Add at least one item with a name and price.'); return; }
+
+        document.getElementById('importSections').value = JSON.stringify(sections);
+        document.getElementById('importBtn').disabled = true;
+        document.getElementById('importBtn').innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Importing...';
+        document.getElementById('importForm').submit();
+    };
+
+    function esc(str) {
+        return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    @if(session('excel_sections'))
+    document.addEventListener('DOMContentLoaded', function () {
+        openReview({!! json_encode(session('excel_sections')) !!});
+    });
+    @endif
+
+    document.getElementById('excelForm').addEventListener('submit', function () {
+        var btn = document.getElementById('excelBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Processing...';
+    });
+}());
+</script>
+@endpush

@@ -11,19 +11,23 @@
         <span class="text-xl">📦</span> Parcel Order
     </button>
 
-    <div class="grid grid-cols-3 gap-3">
-        @foreach($tables as $table)
-            <div onclick="selectTable({{ $table->id }}, '{{ $table->table_number }}', {{ $table->is_occupied ? 'false' : 'true' }})" 
-                 class="relative aspect-square rounded-lg shadow-md flex flex-col items-center justify-center cursor-pointer transition-all
-                        {{ $table->is_occupied ? 'bg-red-100 border-2 border-red-300' : 'bg-green-100 border-2 border-green-300 hover:shadow-lg hover:scale-105' }}">
-                <div class="text-3xl font-bold text-gray-700">{{ $table->table_number }}</div>
-                <div class="text-xs mt-1 px-2 py-1 rounded-full {{ $table->is_occupied ? 'bg-red-500' : 'bg-green-500' }} text-white font-semibold">
-                    {{ $table->is_occupied ? 'Occupied' : 'Available' }}
-                </div>
-                <div class="text-xs text-gray-600 mt-1">{{ $table->capacity }} seats</div>
+    @foreach($allTables as $catName => $catTables)
+        <div class="mb-5">
+            <div class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">{{ $catName }}</div>
+            <div class="grid grid-cols-3 gap-3">
+                @foreach($catTables as $table)
+                    <div onclick="selectTable({{ $table->id }}, '{{ $table->table_number }}', {{ $table->is_occupied ? 'false' : 'true' }})"
+                         class="relative aspect-square rounded-lg shadow-md flex flex-col items-center justify-center cursor-pointer transition-all
+                                {{ $table->is_occupied ? 'bg-red-100 border-2 border-red-300' : 'bg-green-100 border-2 border-green-300 hover:shadow-lg hover:scale-105' }}">
+                        <div class="text-3xl font-bold text-gray-700">{{ $table->table_number }}</div>
+                        <div class="text-xs mt-1 px-2 py-1 rounded-full {{ $table->is_occupied ? 'bg-red-500' : 'bg-green-500' }} text-white font-semibold">
+                            {{ $table->is_occupied ? 'Occupied' : 'Free' }}
+                        </div>
+                    </div>
+                @endforeach
             </div>
-        @endforeach
-    </div>
+        </div>
+    @endforeach
 </div>
 
 <div id="menuSelection" class="hidden">

@@ -9,6 +9,8 @@ use App\Http\Controllers\Admin\CookController;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EmployeeController;
+use App\Http\Controllers\Admin\ManagerController;
+use App\Http\Controllers\Admin\StaffController;
 use App\Http\Controllers\Customer\OrderController;
 use App\Http\Controllers\SuperAdmin\TenantController;
 use App\Http\Controllers\Waiter\DashboardController as WaiterDashboardController;
@@ -24,6 +26,16 @@ use App\Http\Controllers\Admin\CashHandoverController as AdminCashHandoverContro
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\MenuOcrController;
 use App\Http\Controllers\Cashier\CashHandoverController as CashierCashHandoverController;
+use App\Http\Controllers\Manager\DashboardController as ManagerDashboardController;
+use App\Http\Controllers\Manager\StaffController as ManagerStaffController;
+use App\Http\Controllers\Manager\MenuController as ManagerMenuController;
+use App\Http\Controllers\Manager\TableController as ManagerTableController;
+use App\Http\Controllers\Manager\CookController as ManagerCookController;
+use App\Http\Controllers\Manager\ReportController as ManagerReportController;
+use App\Http\Controllers\Manager\CashHandoverController as ManagerCashHandoverController;
+use App\Http\Controllers\Manager\TableCategoryController as ManagerTableCategoryController;
+use App\Http\Controllers\Manager\MenuCategoryController as ManagerMenuCategoryController;
+use App\Http\Controllers\Manager\MenuOcrController as ManagerMenuOcrController;
 
 Route::get('/', function () {
     try {
@@ -118,9 +130,16 @@ Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
 // Admin Routes
 Route::prefix('admin')->name('admin.')->group(function () {
-    Route::middleware(['multi.auth', 'role:admin,manager,super_admin'])->group(function () {
+    Route::middleware(['multi.auth', 'role:admin,super_admin'])->group(function () {
         Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::resource('employees', EmployeeController::class);
+        Route::post('employees/{manager}/assign', [EmployeeController::class, 'assignEmployee'])->name('employees.assign');
+        Route::post('employees/{employee}/unassign', [EmployeeController::class, 'unassignEmployee'])->name('employees.unassign');
+        Route::get('managers/ajax', [ManagerController::class, 'ajaxIndex'])->name('managers.ajax');
+        Route::resource('managers', ManagerController::class);
+        Route::get('staff/ajax', [StaffController::class, 'ajaxIndex'])->name('staff.ajax');
+        Route::resource('staff', StaffController::class);
+        Route::resource('branches', \App\Http\Controllers\Admin\BranchController::class);
         Route::resource('tables', TableController::class);
         Route::get('categories', [TableCategoryController::class, 'index'])->name('categories.index');
         Route::post('categories', [TableCategoryController::class, 'store'])->name('categories.store');
@@ -193,6 +212,51 @@ Route::prefix('cook')->name('cook.')->middleware(['multi.auth', 'role:chef'])->g
     Route::patch('orders/{id}/cancel', [CookOrderController::class, 'cancelOrder'])->name('orders.cancel');
     Route::patch('order-items/{id}/cancel', [CookOrderController::class, 'cancelItem'])->name('orderItems.cancel');
     Route::patch('order-items/{id}/update', [CookOrderController::class, 'updateItem'])->name('orderItems.update');
+});
+
+// Manager Routes (dedicated panel — no admin role mixing)
+Route::prefix('manager')->name('manager.')->middleware(['multi.auth', 'role:manager'])->group(function () {
+    Route::get('dashboard', [ManagerDashboardController::class, 'index'])->name('dashboard');
+    // Staff
+    Route::resource('staff', ManagerStaffController::class);
+    // Menu
+    Route::resource('menu', ManagerMenuController::class);
+    // Tables
+    Route::resource('tables', ManagerTableController::class);
+    // Cook / Orders
+    Route::get('cook', [ManagerCookController::class, 'index'])->name('cook.index');
+    Route::post('cook/{id}/start', [ManagerCookController::class, 'startPreparing'])->name('cook.start');
+    Route::post('cook/{id}/ready', [ManagerCookController::class, 'markReady'])->name('cook.ready');
+    Route::post('cook/{id}/served', [ManagerCookController::class, 'markServed'])->name('cook.served');
+    Route::patch('cook/{id}/payment', [ManagerCookController::class, 'processPayment'])->name('cook.payment');
+    Route::patch('cook/orders/{id}/cancel', [ManagerCookController::class, 'cancelOrder'])->name('cook.orders.cancel');
+    Route::patch('cook/order-items/{id}/cancel', [ManagerCookController::class, 'cancelItem'])->name('cook.orderItems.cancel');
+    Route::patch('cook/order-items/{id}/update', [ManagerCookController::class, 'updateItem'])->name('cook.orderItems.update');
+    // Reports
+    Route::get('reports', [ManagerReportController::class, 'index'])->name('reports.index');
+    Route::get('reports/export', [ManagerReportController::class, 'export'])->name('reports.export');
+    // Table Categories
+    Route::get('table-categories', [ManagerTableCategoryController::class, 'index'])->name('table-categories.index');
+    Route::post('table-categories', [ManagerTableCategoryController::class, 'store'])->name('table-categories.store');
+    Route::put('table-categories/{id}', [ManagerTableCategoryController::class, 'update'])->name('table-categories.update');
+    Route::delete('table-categories/{id}', [ManagerTableCategoryController::class, 'destroy'])->name('table-categories.destroy');
+    Route::post('table-categories/quick-create', [ManagerTableCategoryController::class, 'quickCreate'])->name('table-categories.quickCreate');
+    // Menu Categories
+    Route::get('menu-categories', [ManagerMenuCategoryController::class, 'index'])->name('menu-categories.index');
+    Route::post('menu-categories', [ManagerMenuCategoryController::class, 'store'])->name('menu-categories.store');
+    Route::put('menu-categories/{id}', [ManagerMenuCategoryController::class, 'update'])->name('menu-categories.update');
+    Route::delete('menu-categories/{id}', [ManagerMenuCategoryController::class, 'destroy'])->name('menu-categories.destroy');
+    Route::post('menu-categories/quick-create', [ManagerMenuCategoryController::class, 'quickCreate'])->name('menu-categories.quickCreate');
+    // Menu OCR
+    Route::get('menu-ocr', [ManagerMenuOcrController::class, 'index'])->name('menu-ocr.index');
+    Route::post('menu-ocr', [ManagerMenuOcrController::class, 'process'])->name('menu-ocr.process');
+    Route::post('menu-ocr/import', [ManagerMenuOcrController::class, 'import'])->name('menu-ocr.import');
+    Route::post('menu-ocr/excel', [ManagerMenuOcrController::class, 'importExcel'])->name('menu-ocr.excel');
+    // Cash Handover
+    Route::get('handover', [ManagerCashHandoverController::class, 'index'])->name('handover.index');
+    Route::get('handover/{handover}/edit', [ManagerCashHandoverController::class, 'edit'])->name('handover.edit');
+    Route::patch('handover/{handover}', [ManagerCashHandoverController::class, 'update'])->name('handover.update');
+    Route::post('handover/{handover}/approve', [ManagerCashHandoverController::class, 'approve'])->name('handover.approve');
 });
 
 // Cashier Routes

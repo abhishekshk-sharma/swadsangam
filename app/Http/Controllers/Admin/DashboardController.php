@@ -10,13 +10,13 @@ class DashboardController extends Controller
     public function index()
     {
         $stats = [
-            'tables'        => RestaurantTable::count(),
-            'menu_items'    => MenuItem::count(),
-            'orders_today'  => Order::whereDate('created_at', today())->count(),
-            'revenue_today'      => Order::where('status', 'paid')->whereDate('created_at', today())->sum('total_amount'),
-            'total_revenue'      => Order::where('status', 'paid')->sum('total_amount'),
-            'employees'          => Employee::count(),
-            'pending_handovers'  => CashHandover::where('status', 'pending')->count(),
+            'tables'           => RestaurantTable::count(),
+            'menu_items'       => MenuItem::count(),
+            'orders_today'     => Order::whereDate('created_at', today())->count(),
+            'revenue_today'    => Order::where('status', 'paid')->whereDate('created_at', today())->sum('total_amount'),
+            'revenue_this_month' => Order::where('status', 'paid')->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->sum('total_amount'),
+            'employees'        => Employee::count(),
+            'pending_handovers'=> CashHandover::where('status', 'pending')->count(),
         ];
 
         $recentOrders    = Order::with(['table', 'orderItems.menuItem'])->latest()->take(5)->get();

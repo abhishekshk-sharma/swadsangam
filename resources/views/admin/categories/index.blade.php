@@ -5,7 +5,7 @@
 @section('content')
 <div class="content-card">
     <div class="card-header">
-        <div class="d-flex justify-content-between align-items-center">
+        <div class="d-flex justify-content-between align-items-center" style="width: 100%">
             <h1 class="card-title mb-0"><i class="fas fa-layer-group me-2"></i>Table Categories</h1>
             <a href="{{ route('admin.tables.index') }}" class="btn-secondary">
                 <i class="fas fa-arrow-left me-2"></i>Back to Tables
@@ -18,15 +18,31 @@
                 <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
             </div>
         @endif
-
         @if(session('error'))
             <div class="alert alert-danger">
                 <i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}
             </div>
         @endif
 
+        @if(isset($branches) && $branches->count() > 0)
+        <form method="GET" action="{{ route('admin.categories.index') }}" style="margin-bottom:16px;">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <label style="font-size:13px;font-weight:600;color:var(--gray-600);white-space:nowrap;"><i class="fas fa-store me-1"></i>Branch:</label>
+                <select name="branch_id" onchange="this.form.submit()" style="padding:7px 12px;border:1px solid var(--gray-300);border-radius:8px;font-size:13px;font-weight:500;color:var(--gray-700);background:var(--white);min-width:180px;cursor:pointer;">
+                    <option value="">All Branches</option>
+                    @foreach($branches as $branch)
+                        <option value="{{ $branch->id }}" {{ $selectedBranch == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                    @endforeach
+                </select>
+                @if($selectedBranch)
+                    <a href="{{ route('admin.categories.index') }}" style="font-size:12px;color:var(--gray-500);text-decoration:none;"><i class="fas fa-times me-1"></i>Clear</a>
+                @endif
+            </div>
+        </form>
+        @endif
+
         <div class="content-card mb-4">
-            <div class="card-header" style="background: linear-gradient(135deg, #ff9900 0%, #ec8b00 100%);">
+            <div class="card-header" style="background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);">
                 <h2 class="card-title mb-0" style="color: white; font-size: 16px;">
                     <i class="fas fa-plus-circle me-2"></i>Add New Category
                 </h2>
@@ -60,14 +76,14 @@
                 </h2>
             </div>
             <div class="card-body p-0" style="overflow-x:auto;">
-                <table class="table-custom" style="min-width:600px;">
+                <table class="table" style="min-width:600px;">
                     <thead>
-                        <tr>
-                            <th style="min-width:140px;">Name</th>
-                            <th style="min-width:180px;">Description</th>
-                            <th style="min-width:100px;">Type</th>
-                            <th style="min-width:110px;">Tables Count</th>
-                            <th style="text-align:center; min-width:160px;">Actions</th>
+                        <tr style="background:#eff6ff;">
+                            <th style="min-width:140px;color:#1d4ed8;">Name</th>
+                            <th style="min-width:180px;color:#1d4ed8;">Description</th>
+                            <th style="min-width:100px;color:#1d4ed8;">Type</th>
+                            <th style="min-width:110px;color:#1d4ed8;">Tables Count</th>
+                            <th style="text-align:center;min-width:160px;color:#1d4ed8;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -75,7 +91,7 @@
                         <tr>
                             <td>
                                 <div style="font-weight: 600; color: #232f3e;">
-                                    <i class="fas fa-tag me-2" style="color: #ff9900;"></i>{{ $category->name }}
+                                    <i class="fas fa-tag me-2" style="color: #1d4ed8;"></i>{{ $category->name }}
                                 </div>
                             </td>
                             <td style="color: #666;">
@@ -93,7 +109,7 @@
                                 @endif
                             </td>
                             <td>
-                                <span class="badge-custom" style="background: #fff3e0; color: #e65100;">
+                                <span class="badge-custom" style="background: #dbeafe; color: #1d4ed8;">
                                     {{ $category->tables_count }} {{ Str::plural('table', $category->tables_count) }}
                                 </span>
                             </td>
@@ -117,7 +133,7 @@
                             </td>
                         </tr>
                         @if($category->tenant_id)
-                        <tr id="editRow{{ $category->id }}" style="display:none; background:#fffbf0;">
+                        <tr id="editRow{{ $category->id }}" style="display:none; background:#eff6ff;">
                             <td colspan="5" style="padding: 12px 16px;">
                                 <form action="{{ route('admin.categories.update', $category->id) }}" method="POST" class="d-flex gap-2 align-items-end flex-wrap">
                                     @csrf

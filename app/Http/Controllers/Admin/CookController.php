@@ -9,13 +9,26 @@ use App\Events\OrderStatusUpdated;
 
 class CookController extends BaseAdminController
 {
-    public function index()
+    public function index(Request $request)
     {
-        $orders = Order::with(['table.category', 'items.menuItem'])
+        $query = Order::with(['table.category', 'items.menuItem'])
             ->whereIn('status', ['pending', 'preparing', 'ready', 'served', 'checkout', 'paid', 'cancelled'])
-            ->orderBy('created_at', 'asc')
-            ->get();
-        return view('admin.cook.index', compact('orders'));
+            ->orderBy('created_at', 'asc');
+
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        }
+        if ($request->filled('table_id')) {
+            $query->where('table_id', $request->table_id);
+        }
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $orders   = $query->get();
+        $branches = \App\Models\Branch::where('tenant_id', $this->tenantId())->where('is_active', true)->get();
+        $selectedBranch = $request->branch_id;
+        return view('admin.cook.index', compact('orders', 'branches', 'selectedBranch'));
     }
 
     public function startPreparing($id)

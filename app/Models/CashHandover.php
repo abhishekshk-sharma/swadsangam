@@ -4,11 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use App\Models\Concerns\BelongsToBranch;
 
 class CashHandover extends Model
 {
+    use BelongsToBranch;
     protected $fillable = [
-        'tenant_id', 'cashier_id', 'handover_date',
+        'tenant_id', 'branch_id', 'cashier_id', 'handover_date',
         'denom_1', 'denom_2', 'denom_5', 'denom_10', 'denom_20',
         'denom_50', 'denom_100', 'denom_200', 'denom_500',
         'total_cash', 'notes', 'status', 'approved_by', 'approved_at',
@@ -19,8 +21,9 @@ class CashHandover extends Model
     protected static function booted(): void
     {
         static::addGlobalScope('tenant', function (Builder $q) {
-            $tid = app()->bound('current_tenant_id') ? app('current_tenant_id') : session('tenant_id');
-            if ($tid) $q->where('cash_handovers.tenant_id', (int) $tid);
+            if (app()->bound('current_tenant_id')) {
+                $q->where('cash_handovers.tenant_id', (int) app('current_tenant_id'));
+            }
         });
     }
 

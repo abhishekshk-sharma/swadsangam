@@ -9,8 +9,15 @@ class TableCategoryController extends BaseAdminController
 {
     public function index()
     {
-        $categories = TableCategory::withCount('tables')->get();
-        return view('admin.categories.index', compact('categories'));
+        $categories     = TableCategory::withCount('tables')->get();
+        $branches       = \App\Models\Branch::where('tenant_id', $this->tenantId())->where('is_active', true)->get();
+        $selectedBranch = request('branch_id');
+        if ($selectedBranch) {
+            $categories = TableCategory::withCount('tables')
+                ->where(fn($q) => $q->whereNull('branch_id')->orWhere('branch_id', $selectedBranch))
+                ->get();
+        }
+        return view('admin.categories.index', compact('categories', 'branches', 'selectedBranch'));
     }
 
     public function store(Request $request)

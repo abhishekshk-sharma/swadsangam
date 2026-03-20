@@ -4,11 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Concerns\BelongsToTenant;
+use App\Models\Concerns\BelongsToBranch;
 
 class OrderItem extends Model
 {
-    use BelongsToTenant;
-    protected $fillable = ['tenant_id', 'order_id', 'menu_item_id', 'quantity', 'price', 'status', 'notes'];
+    use BelongsToTenant, BelongsToBranch;
+    protected $fillable = ['tenant_id', 'branch_id', 'order_id', 'menu_item_id', 'quantity', 'price', 'status', 'notes'];
 
     public function order()
     {

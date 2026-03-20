@@ -19,15 +19,26 @@
 
                     <div class="mb-3">
                         <label class="form-label">Role <span class="text-danger">*</span></label>
-                        <select name="role" class="form-select" required>
+                        <select name="role" class="form-select" id="roleSelect" required onchange="toggleBranch()">
                             <option value="">Select Role</option>
+                            <option value="manager" {{ old('role') === 'manager' ? 'selected' : '' }}>Manager</option>
                             <option value="waiter" {{ old('role') === 'waiter' ? 'selected' : '' }}>Waiter</option>
                             <option value="chef" {{ old('role') === 'chef' ? 'selected' : '' }}>Chef</option>
                             <option value="cashier" {{ old('role') === 'cashier' ? 'selected' : '' }}>Cashier</option>
                         </select>
-                        @error('role')
-                            <div class="text-danger small mt-1">{{ $message }}</div>
-                        @enderror
+                        @error('role')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div class="mb-3" id="branchWrap">
+                        <label class="form-label fw-semibold">Assign Branch</label>
+                        <select name="branch_id" class="form-select">
+                            <option value="">— No Branch (Admin-level) —</option>
+                            @foreach($branches as $b)
+                                <option value="{{ $b->id }}" {{ old('branch_id') == $b->id ? 'selected' : '' }}>{{ $b->name }}</option>
+                            @endforeach
+                        </select>
+                        <small class="text-muted">Manager/staff assigned to a branch can only see that branch's data.</small>
+                        @error('branch_id')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                     </div>
 
                     <div class="mb-3">
@@ -96,6 +107,11 @@
     </div>
 </div>
 <script>
+function toggleBranch() {
+    var role = document.getElementById('roleSelect').value;
+    document.getElementById('branchWrap').style.display = role ? '' : 'none';
+}
+toggleBranch();
 function togglePassword(id, btn) {
     const input = document.getElementById(id);
     const icon = btn.querySelector('i');
