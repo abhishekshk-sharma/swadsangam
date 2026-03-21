@@ -535,8 +535,6 @@ function updateAdditionalItemNotes(index, notes) {
 }
 </script>
 
-<script>window.ORDER_POLL = { panel: 'waiter' };</script>
-<script src="/js/order-poll.js"></script>
 
 <script>
 (function() {

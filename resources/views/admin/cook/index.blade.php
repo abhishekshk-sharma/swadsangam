@@ -696,8 +696,7 @@ function closeAdminQr() {
     document.getElementById('adminQrModal').style.display = 'none';
 }
 </script>
-<script>window.ORDER_POLL = { panel: 'admin' };</script>
-<script src="/js/order-poll.js"></script>
+
 
 <script>
 (function() {

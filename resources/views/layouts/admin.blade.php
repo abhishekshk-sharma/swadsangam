@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Dashboard') · {{ $tenant->name ?? 'Restaurant' }}</title>
     
+    <script src="/js/pusher.min.js"></script>
+    <script src="/js/echo.iife.js"></script>
     <!-- Core CSS -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" media="print" onload="this.media='all'">
@@ -809,6 +811,8 @@
             
             .content-area {
                 padding: var(--space-4);
+                margin-bottom: 5rem;
+                padding-bottom: 5rem;
             }
             
             .user-details {
@@ -1070,6 +1074,17 @@
     })();
 </script>
 
+<script>
+window.ORDER_WS = {
+    panel:       'admin',
+    tenantId:    {{ $tenant->id ?? 0 }},
+    reverbKey:   '{{ config('broadcasting.connections.reverb.key') }}',
+    reverbHost:  '{{ env('REVERB_HOST', 'localhost') }}',
+    reverbPort:  {{ env('REVERB_PORT', 8080) }},
+    reverbScheme:'{{ env('REVERB_SCHEME', 'http') }}',
+};
+</script>
+<script src="/js/order-ws.js"></script>
 <!-- Bootstrap (deferred) -->
 <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 

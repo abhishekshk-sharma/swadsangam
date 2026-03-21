@@ -91,7 +91,8 @@
             .sidebar { position: fixed; transform: translateX(-100%); box-shadow: var(--shadow-lg); }
             .sidebar.open { transform: translateX(0); }
             .hamburger { display: flex; }
-            .content-area { padding: 1rem; }
+            .content-area { padding: 1rem; margin-bottom: 5rem;
+                padding-bottom: 5rem;}
             .user-details { display: none; }
         }
         .d-flex { display: flex; } .align-center { align-items: center; } .justify-between { justify-content: space-between; }

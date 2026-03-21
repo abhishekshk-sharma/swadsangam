@@ -217,5 +217,3 @@ function toggleCookEdit(id) {
 })();
 </script>
 
-<script>window.ORDER_POLL = { panel: 'cook' };</script>
-<script src="/js/order-poll.js"></script>

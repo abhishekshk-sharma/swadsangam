@@ -271,7 +271,5 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
-<script>window.ORDER_POLL = { panel: 'cashier' };</script>
-<script src="/js/order-poll.js"></script>
 @endsection
 
