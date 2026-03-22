@@ -15,7 +15,7 @@ class OrderUpdatesController extends Controller
         $user     = Auth::guard('employee')->user() ?? Auth::guard('admin')->user();
         $branchId = $user?->branch_id ?? null;
 
-        $query = Order::with(['table', 'orderItems.menuItem'])
+        $query = Order::with(['table', 'orderItems' => fn($q) => $q->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()])])
             ->whereDate('created_at', today())
             ->where(function ($q) use ($branchId) {
                 if ($branchId) {

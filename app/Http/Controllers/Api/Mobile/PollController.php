@@ -15,7 +15,7 @@ class PollController extends Controller
         $branchId = $employee->branch_id ?? null;
         $panel    = $request->query('panel', 'waiter');
 
-        $query = Order::with(['table.category', 'orderItems.menuItem'])
+        $query = Order::with(['table.category', 'orderItems' => fn($q) => $q->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()])])
             ->where('tenant_id', $tenantId)
             ->whereDate('created_at', today())
             ->where(function ($q) use ($branchId) {
