@@ -120,7 +120,7 @@
     @foreach($order->orderItems->where('status', '!=', 'cancelled') as $item)
         <div style="margin: 3px 0;">
             <div class="row">
-                <span class="left item-name">{{ $item->menuItem->name }}</span>
+                <span class="left item-name">{{ $item->menuItem?->name ?? '[Deleted Item]' }}</span>
                 <span style="padding: 0 8px;">{{ $item->quantity }}</span>
                 <span class="right">₹{{ number_format($item->price * $item->quantity, 2) }}</span>
             </div>
