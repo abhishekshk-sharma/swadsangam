@@ -209,12 +209,12 @@
                     @forelse($orders as $order)
                     <tr>
                         <td><strong>#{{ $order->id }}</strong></td>
-                        <td>{{ $order->is_parcel ? '📦 Parcel' : 'Table ' . $order->table->table_number }}</td>
+                        <td>{{ $order->is_parcel ? '📦 Parcel' : 'Table ' . ($order->table?->table_number ?? '?') }}</td>
                         <td>
                             <div style="display:flex;flex-wrap:wrap;gap:4px;">
                             @foreach($order->orderItems as $item)
                                 <span style="display:inline-flex;align-items:center;gap:4px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:5px;padding:2px 8px;font-size:12.5px;white-space:nowrap;">
-                                    {{ $item->menuItem->name }}
+                                    {{ $item->menuItem?->name ?? '[Deleted Item]' }}
                                     <span style="background:#3b82f6;color:#fff;border-radius:3px;padding:0 5px;font-size:11px;font-weight:700;">×{{ $item->quantity }}</span>
                                 </span>
                             @endforeach

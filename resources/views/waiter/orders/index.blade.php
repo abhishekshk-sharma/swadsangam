@@ -35,8 +35,8 @@
                     @if($order->is_parcel)
                         <span style="background:#ea580c;color:#fff;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;letter-spacing:0.03em;">📦 Parcel</span>
                     @else
-                        <span style="background:#1e3a5f;color:#fff;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;letter-spacing:0.03em;">T{{ $order->table->table_number }}</span>
-                        @if($order->table->category)
+                        <span style="background:#1e3a5f;color:#fff;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;letter-spacing:0.03em;">T{{ $order->table?->table_number }}</span>
+                        @if($order->table?->category)
                             <span style="background:#e0e7ff;color:#3730a3;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;letter-spacing:0.02em;">{{ $order->table->category->name }}</span>
                         @endif
                     @endif
@@ -64,7 +64,7 @@
                 <li class="text-sm flex flex-col gap-1" data-item-id="{{ $item->id }}" data-item-status="{{ $item->status }}">
                     <div class="flex justify-between items-start gap-2">
                         <div class="flex-1">
-                            <span class="{{ $item->status === 'cancelled' ? 'line-through text-gray-400' : '' }}" data-item-name>{{ $item->quantity }}x {{ $item->menuItem->name }}</span>
+                            <span class="{{ $item->status === 'cancelled' ? 'line-through text-gray-400' : '' }}" data-item-name>{{ $item->quantity }}x {{ $item->menuItem?->name ?? '[Deleted Item]' }}</span>
                             @if($item->status === 'cancelled')
                                 <span class="text-xs text-red-500 ml-1">(cancelled)</span>
                             @endif

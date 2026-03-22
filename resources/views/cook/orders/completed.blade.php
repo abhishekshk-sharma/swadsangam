@@ -16,8 +16,8 @@
                             @if($order->is_parcel)
                                 <span style="background:#ea580c;color:#fff;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;letter-spacing:0.03em;">📦 Parcel</span>
                             @else
-                                <span style="background:#1e3a5f;color:#fff;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;letter-spacing:0.03em;">T{{ $order->table->table_number }}</span>
-                                @if($order->table->category)
+                                <span style="background:#1e3a5f;color:#fff;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;letter-spacing:0.03em;">T{{ $order->table?->table_number }}</span>
+                                @if($order->table?->category)
                                     <span style="background:#e0e7ff;color:#3730a3;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;letter-spacing:0.02em;">{{ $order->table->category->name }}</span>
                                 @endif
                             @endif
@@ -33,7 +33,7 @@
                     @foreach($order->orderItems as $item)
                         <div class="flex justify-between items-center py-2 border-b">
                             <div>
-                                <div class="font-semibold">{{ $item->menuItem->name }}</div>
+                                <div class="font-semibold">{{ $item->menuItem?->name ?? '[Deleted Item]' }}</div>
                                 <div class="text-sm text-gray-600">Qty: {{ $item->quantity }}</div>
                             </div>
                             <div class="text-right">

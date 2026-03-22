@@ -57,7 +57,7 @@
                         <div class="flex-1">
                             <div class="flex items-center gap-2">
                                 <span class="font-semibold text-sm {{ $item->status === 'prepared' ? 'line-through text-gray-400' : ($item->status === 'cancelled' ? 'line-through text-red-300' : '') }}">
-                                    {{ $item->menuItem->name }}
+                                    {{ $item->menuItem?->name ?? '[Deleted Item]' }}
                                 </span>
                                 @if($item->status === 'cancelled')
                                     <span class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded">Cancelled</span>

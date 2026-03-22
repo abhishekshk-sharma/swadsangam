@@ -82,8 +82,10 @@ class OrderController extends Controller
         }
 
         $order = Order::create([
+            'tenant_id'      => $this->tenantId(),
+            'branch_id'      => $this->branchId(),
             'table_id'       => $isParcel ? null : $request->table_id,
-            'user_id'        => current_user_id(),
+            'user_id'        => auth()->guard('employee')->id(),
             'status'         => 'pending',
             'total_amount'   => $total,
             'customer_notes' => $request->customer_notes,
@@ -93,6 +95,8 @@ class OrderController extends Controller
         foreach ($request->items as $item) {
             $menuItem = MenuItem::findOrFail($item['menu_item_id']);
             OrderItem::create([
+                'tenant_id'    => $this->tenantId(),
+                'branch_id'    => $this->branchId(),
                 'order_id'     => $order->id,
                 'menu_item_id' => $menuItem->id,
                 'quantity'     => $item['quantity'],
@@ -205,6 +209,8 @@ class OrderController extends Controller
             $additionalTotal += $menuItem->price * $item['quantity'];
 
             $orderItem = OrderItem::create([
+                'tenant_id'    => $this->tenantId(),
+                'branch_id'    => $this->branchId(),
                 'order_id'     => $order->id,
                 'menu_item_id' => $menuItem->id,
                 'quantity'     => $item['quantity'],
