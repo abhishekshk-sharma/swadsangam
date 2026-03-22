@@ -811,7 +811,7 @@
             
             .content-area {
                 padding: var(--space-4);
-                margin-bottom: 5rem;
+                margin-bottom: 3rem;
                 padding-bottom: 5rem;
             }
             

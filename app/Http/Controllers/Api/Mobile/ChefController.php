@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Events\OrderStatusUpdated;
 use App\Models\{Order, OrderItem, Employee};
 use Illuminate\Http\Request;
 
@@ -77,9 +78,10 @@ class ChefController extends Controller
 
         if ($allPrepared) {
             $order->update(['status' => 'ready']);
-            event(new \App\Events\OrderStatusUpdated($order, $oldStatus));
+            event(new OrderStatusUpdated($order, $oldStatus));
         } elseif (in_array($order->status, ['pending', 'ready'])) {
             $order->update(['status' => 'preparing']);
+            event(new OrderStatusUpdated($order, $oldStatus));
         }
 
         return response()->json(['message' => 'Item status updated.', 'order_status' => $order->fresh()->status]);
@@ -95,11 +97,13 @@ class ChefController extends Controller
         if ($order->orderItems()->where('status', 'prepared')->exists()) {
             return response()->json(['message' => 'Some items are already prepared.'], 422);
         }
+        $oldStatus = $order->status;
         $order->orderItems()->update(['status' => 'cancelled']);
         $order->update(['status' => 'cancelled']);
         if (!$order->is_parcel && $order->table) {
             $order->table->update(['is_occupied' => false]);
         }
+        event(new OrderStatusUpdated($order, $oldStatus));
         return response()->json(['message' => 'Order cancelled.']);
     }
 
@@ -125,7 +129,7 @@ class ChefController extends Controller
             }
         } elseif ($nonCancelled->where('status', '!=', 'prepared')->count() === 0) {
             $order->update(['status' => 'ready']);
-            event(new \App\Events\OrderStatusUpdated($order, 'preparing'));
+            event(new OrderStatusUpdated($order, 'preparing'));
         } elseif (in_array($order->status, ['cancelled', 'pending'])) {
             $order->update(['status' => 'preparing']);
         }

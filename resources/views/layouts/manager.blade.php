@@ -91,7 +91,7 @@
             .sidebar { position: fixed; transform: translateX(-100%); box-shadow: var(--shadow-lg); }
             .sidebar.open { transform: translateX(0); }
             .hamburger { display: flex; }
-            .content-area { padding: 1rem; margin-bottom: 5rem;
+            .content-area { padding: 1rem; margin-bottom: 4rem;
                 padding-bottom: 5rem;}
             .user-details { display: none; }
         }

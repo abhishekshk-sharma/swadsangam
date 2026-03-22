@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Events\{OrderCreated, OrderStatusUpdated};
 use App\Models\{Order, OrderItem, MenuItem, MenuCategory};
 use Illuminate\Http\Request;
 
@@ -73,7 +74,7 @@ class CashierController extends Controller
             $order->table->update(['is_occupied' => false]);
         }
 
-        event(new \App\Events\OrderStatusUpdated($order, 'served'));
+        event(new OrderStatusUpdated($order, 'served'));
 
         $change = null;
         if ($request->payment_mode === 'cash' && $request->cash_received) {
@@ -159,6 +160,7 @@ class CashierController extends Controller
         }
 
         $order->load('orderItems.menuItem');
+        event(new OrderCreated($order));
         return response()->json($this->formatOrder($order), 201);
     }
 
@@ -203,6 +205,7 @@ class CashierController extends Controller
         ]);
 
         $order->refresh()->load('orderItems.menuItem');
+        event(new OrderStatusUpdated($order, $order->status === 'preparing' ? 'ready' : $order->status));
         return response()->json($this->formatOrder($order));
     }
 
@@ -220,8 +223,10 @@ class CashierController extends Controller
         if ($order->orderItems()->where('status', 'prepared')->exists()) {
             return response()->json(['message' => 'Some items are already prepared.'], 422);
         }
+        $oldStatus = $order->status;
         $order->orderItems()->update(['status' => 'cancelled']);
         $order->update(['status' => 'cancelled']);
+        event(new OrderStatusUpdated($order, $oldStatus));
         return response()->json(['message' => 'Parcel order cancelled.']);
     }
 

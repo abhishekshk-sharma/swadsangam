@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Events\{OrderCreated, OrderStatusUpdated};
 use App\Models\{Order, OrderItem, MenuItem, MenuCategory, RestaurantTable};
 use Illuminate\Http\Request;
 
@@ -136,7 +137,7 @@ class WaiterController extends Controller
             RestaurantTable::find($request->table_id)?->update(['is_occupied' => true]);
         }
 
-        event(new \App\Events\OrderCreated($order));
+        event(new OrderCreated($order));
 
         $order->load('table.category', 'items.menuItem');
         return response()->json($this->formatOrder($order), 201);
@@ -175,12 +176,14 @@ class WaiterController extends Controller
             ]);
         }
 
+        $oldStatus = $order->status;
         $order->update([
             'total_amount' => $order->total_amount + $extra,
             'status'       => in_array($order->status, ['ready', 'served']) ? 'preparing' : $order->status,
         ]);
 
         $order->refresh()->load('table.category', 'items.menuItem');
+        event(new OrderStatusUpdated($order, $oldStatus));
         return response()->json($this->formatOrder($order));
     }
 
@@ -188,7 +191,9 @@ class WaiterController extends Controller
     public function markServed(int $id)
     {
         $order = $this->findOrder($id);
+        $oldStatus = $order->status;
         $order->update(['status' => 'served']);
+        event(new OrderStatusUpdated($order, $oldStatus));
         return response()->json(['message' => 'Order marked as served.']);
     }
 
@@ -199,10 +204,12 @@ class WaiterController extends Controller
         if ($order->status !== 'served') {
             return response()->json(['message' => 'Only served orders can be checked out.'], 422);
         }
+        $oldStatus = $order->status;
         $order->update(['status' => 'checkout']);
         if (!$order->is_parcel && $order->table) {
             $order->table->update(['is_occupied' => false]);
         }
+        event(new OrderStatusUpdated($order, $oldStatus));
         return response()->json(['message' => 'Order checked out.']);
     }
 
@@ -216,11 +223,13 @@ class WaiterController extends Controller
         if ($order->orderItems()->where('status', 'prepared')->exists()) {
             return response()->json(['message' => 'Some items are already prepared.'], 422);
         }
+        $oldStatus = $order->status;
         $order->orderItems()->update(['status' => 'cancelled']);
         $order->update(['status' => 'cancelled']);
         if (!$order->is_parcel && $order->table) {
             $order->table->update(['is_occupied' => false]);
         }
+        event(new OrderStatusUpdated($order, $oldStatus));
         return response()->json(['message' => 'Order cancelled.']);
     }
 
