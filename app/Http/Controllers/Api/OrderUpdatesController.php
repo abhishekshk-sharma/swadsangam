@@ -26,7 +26,7 @@ class OrderUpdatesController extends Controller
             });
 
         match ($panel) {
-            'cook'            => $query->whereIn('status', ['pending', 'preparing']),
+            'cook'            => $query->whereIn('status', ['pending', 'preparing', 'ready', 'served']),
             'cashier'         => $query->where(function ($q) {
                 $q->where(function ($q2) {
                     $q2->where('is_parcel', false)->whereIn('status', ['served', 'checkout']);
@@ -37,7 +37,7 @@ class OrderUpdatesController extends Controller
             }),
             'cashier_parcels' => $query->where('is_parcel', true)
                                        ->whereNotIn('status', ['paid', 'cancelled']),
-            'waiter'          => $query->whereNotIn('status', ['paid']),
+            'waiter'          => $query->whereNotIn('status', ['paid', 'checkout', 'cancelled']),
             default           => null,
         };
 

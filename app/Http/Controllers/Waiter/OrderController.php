@@ -111,7 +111,7 @@ class OrderController extends Controller
         }
 
         event(new \App\Events\OrderCreated($order));
-        $this->notifyChefs($order);
+        try { $this->notifyChefs($order); } catch (\Exception $e) {}
 
         return redirect('/waiter/orders')->with('success', 'Order created successfully');
     }
@@ -227,7 +227,7 @@ class OrderController extends Controller
         ]);
 
         $order->refresh();
-        $this->notifyChefs($order, $newItems);
+        try { $this->notifyChefs($order, $newItems); } catch (\Exception $e) {}
 
         return redirect('/waiter/orders')->with('success', 'Items added successfully');
     }

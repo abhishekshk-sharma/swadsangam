@@ -43,7 +43,6 @@ public function processPayment(Request $request, Order $order)
     {
         abort_if($order->tenant_id !== (int) $this->currentTenantId(), 403);
 
-        // Parcel orders can be billed at 'ready'; table orders need served/checkout
         if ($order->is_parcel) {
             abort_if(!in_array($order->status, ['ready', 'served', 'checkout']), 422);
         }
@@ -64,9 +63,15 @@ public function processPayment(Request $request, Order $order)
             $order->table->update(['is_occupied' => false]);
         }
 
+        $billUrl = URL::signedRoute('bill.show', ['orderId' => $order->id]);
+
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true, 'bill_url' => $billUrl, 'order_id' => $order->id]);
+        }
+
         return redirect()->route('cashier.payments.index', ['paid_order' => $order->id])
             ->with('success', 'Payment received! Order closed.')
-            ->with('bill_url', URL::signedRoute('bill.show', ['orderId' => $order->id]));
+            ->with('bill_url', $billUrl);
     }
 
     public function history()

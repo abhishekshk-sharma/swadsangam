@@ -113,6 +113,7 @@ class TelegramService
 
         try {
             $response = Http::withOptions(['verify' => false])
+                ->timeout(5)
                 ->post("https://api.telegram.org/bot{$this->botToken}/sendMessage", [
                     'chat_id' => $chatId,
                     'text' => $text,

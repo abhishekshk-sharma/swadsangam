@@ -38,7 +38,8 @@
                         <p class="text-xs text-gray-400" style='margin-top: 3px;'>{{ $order->created_at->format('h:i A') }}</p>
                     </div>
                     <span class="px-3 py-1 rounded-full text-sm font-semibold
-                        {{ $order->status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
+                        {{ $order->status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}"
+                        data-order-status-badge>
                         {{ ucfirst($order->status) }}
                     </span>
                 </div>
@@ -200,19 +201,19 @@ function selectPaymentMode(orderId, mode) {
     event.target.classList.remove('border-gray-300');
     event.target.classList.add('border-blue-500', 'bg-blue-50');
     document.getElementById(`paymentMode${orderId}`).value = mode;
-    const cashSection  = document.getElementById(`cashSection${orderId}`);
+    const cashSection   = document.getElementById(`cashSection${orderId}`);
     const changeSection = document.getElementById(`changeSection${orderId}`);
-    const submitBtn    = document.getElementById(`submitBtn${orderId}`);
+    const submitBtn     = document.getElementById(`submitBtn${orderId}`);
     if (mode === 'cash') {
-        cashSection.style.display  = 'block';
+        cashSection.style.display   = 'block';
         changeSection.style.display = 'none';
-        submitBtn.style.display    = 'none';
-        submitBtn.disabled         = true;
+        submitBtn.style.display     = 'none';
+        submitBtn.disabled          = true;
     } else {
-        cashSection.style.display  = 'none';
+        cashSection.style.display   = 'none';
         changeSection.style.display = 'none';
-        submitBtn.style.display    = 'block';
-        submitBtn.disabled         = false;
+        submitBtn.style.display     = 'block';
+        submitBtn.disabled          = false;
     }
 }
 
@@ -225,49 +226,94 @@ function calculateChange(orderId, totalAmount) {
     const change = cashReceived - totalAmount;
     document.getElementById(`changeAmount${orderId}`).textContent = `₹${change.toFixed(2)}`;
     document.getElementById(`changeSection${orderId}`).style.display = 'block';
-    document.getElementById(`submitBtn${orderId}`).style.display    = 'block';
-    document.getElementById(`submitBtn${orderId}`).disabled         = false;
+    document.getElementById(`submitBtn${orderId}`).style.display     = 'block';
+    document.getElementById(`submitBtn${orderId}`).disabled          = false;
 }
 
-function showQrModal(orderId) {
-    const billUrl = BILL_URLS[orderId] || `{{ url('/bill') }}/${orderId}`;
+function showQrModal(orderId, billUrl) {
+    billUrl = billUrl || BILL_URLS[orderId] || `{{ url('/bill') }}/${orderId}`;
     document.getElementById('billLink').textContent = billUrl;
     document.getElementById('billLink').href        = billUrl;
     document.getElementById('openBillBtn').href     = billUrl;
-
-    // Clear previous QR and generate new one
     const container = document.getElementById('qrCodeContainer');
     container.innerHTML = '';
     new QRCode(container, {
-        text:   billUrl,
-        width:  200,
-        height: 200,
-        colorDark:  '#111827',
-        colorLight: '#ffffff',
+        text: billUrl, width: 200, height: 200,
+        colorDark: '#111827', colorLight: '#ffffff',
         correctLevel: QRCode.CorrectLevel.M,
     });
-
     const modal = document.getElementById('qrModal');
-    modal.style.display = 'flex';
-    modal.style.removeProperty('display'); // remove the !important none
+    modal.style.removeProperty('display');
     modal.style.display = 'flex';
 }
 
 function closeQrModal() {
     document.getElementById('qrModal').style.display = 'none';
-    // Remove paid_order from URL without reload
     const url = new URL(window.location);
     url.searchParams.delete('paid_order');
     window.history.replaceState({}, '', url);
 }
 
-// Auto-open QR modal if redirected after payment
+// ── AJAX payment submission ───────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function () {
-    const params   = new URLSearchParams(window.location.search);
+    // Auto-open QR if redirected after payment (fallback for non-JS)
+    const params = new URLSearchParams(window.location.search);
     const paidOrder = params.get('paid_order');
-    if (paidOrder) {
-        showQrModal(paidOrder);
-    }
+    if (paidOrder) showQrModal(paidOrder);
+
+    // Intercept all payment forms
+    document.querySelectorAll('[id^="paymentForm"]').forEach(function (form) {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const orderId  = form.id.replace('paymentForm', '');
+            const submitBtn = document.getElementById('submitBtn' + orderId);
+            submitBtn.disabled   = true;
+            submitBtn.textContent = 'Processing…';
+
+            const data = new FormData(form);
+            // Switch to JSON request so controller returns JSON
+            fetch(form.action, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                body: data,
+            })
+            .then(r => r.json())
+            .then(function (res) {
+                if (res.success) {
+                    BILL_URLS[res.order_id] = res.bill_url;
+                    // Animate card out then show QR
+                    const card = document.querySelector(`[data-order-id="${orderId}"]`);
+                    if (card) {
+                        card.style.transition = 'opacity .35s, transform .35s';
+                        card.style.opacity    = '0';
+                        card.style.transform  = 'scale(0.97)';
+                        setTimeout(function () {
+                            card.remove();
+                            const count = document.getElementById('pendingCount');
+                            if (count) count.textContent = document.querySelectorAll('[data-order-id]').length;
+                            const cont = document.querySelector('.space-y-3');
+                            if (cont && !cont.querySelector('[data-order-id]')) {
+                                const empty = document.createElement('div');
+                                empty.className = 'bg-white rounded-lg shadow p-8 text-center';
+                                empty.innerHTML = '<div class="text-4xl mb-2">✓</div><p class="text-gray-600">All payments cleared!</p>';
+                                cont.appendChild(empty);
+                            }
+                        }, 350);
+                    }
+                    showQrModal(res.order_id, res.bill_url);
+                } else {
+                    submitBtn.disabled    = false;
+                    submitBtn.textContent = 'Complete Payment';
+                    alert('Payment failed. Please try again.');
+                }
+            })
+            .catch(function () {
+                submitBtn.disabled    = false;
+                submitBtn.textContent = 'Complete Payment';
+                alert('Network error. Please try again.');
+            });
+        });
+    });
 });
 </script>
 
