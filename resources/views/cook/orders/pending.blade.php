@@ -58,8 +58,8 @@
                             @if($order->is_parcel)
                                 <span style="background:#ea580c;color:#fff;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;letter-spacing:0.03em;">📦 Parcel</span>
                             @else
-                                <span style="background:#1e3a5f;color:#fff;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;letter-spacing:0.03em;">T{{ $order->table->table_number }}</span>
-                                @if($order->table->category)
+                                <span style="background:#1e3a5f;color:#fff;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;letter-spacing:0.03em;">T{{ $order->table?->table_number }}</span>
+                                @if($order->table?->category)
                                     <span style="background:#e0e7ff;color:#3730a3;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;letter-spacing:0.02em;">{{ $order->table->category->name }}</span>
                                 @endif
                             @endif
@@ -92,7 +92,7 @@
                                 <div class="flex-1">
                                     <div class="flex items-center gap-2">
                                         <span class="font-semibold {{ $item->status === 'prepared' ? 'line-through text-gray-400' : ($item->status === 'cancelled' ? 'line-through text-red-300' : '') }}" data-item-name>
-                                            {{ $item->menuItem->name }}
+                                            {{ $item->menuItem?->name ?? '[Deleted Item]' }}
                                         </span>
                                         @if($item->status === 'cancelled')
                                             <span class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded">Cancelled</span>

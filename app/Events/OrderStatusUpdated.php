@@ -44,7 +44,7 @@ class OrderStatusUpdated implements ShouldBroadcastNow
                 'total_amount'   => (float) $this->order->total_amount,
                 'table_number'   => $this->order->table->table_number ?? null,
                 'customer_notes' => $this->order->customer_notes,
-                'created_by_id'  => $this->order->created_by_id ?? null,
+                'created_by_id'  => $this->order->user_id ?? null,
                 'payment_mode'   => $this->order->payment_mode,
                 'created_at'     => $this->order->created_at->format('h:i A'),
                 'items'          => $this->order->orderItems->map(fn($i) => [
