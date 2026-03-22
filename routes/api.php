@@ -17,6 +17,7 @@ Route::prefix('mobile')->group(function () {
         Route::post('logout',  [AuthController::class, 'logout']);
         Route::post('refresh', [AuthController::class, 'refresh']);
         Route::get('profile',  [AuthController::class, 'profile']);
+        Route::get('orders/poll', [\App\Http\Controllers\Api\Mobile\PollController::class, 'poll']);
 
         // Waiter
         Route::middleware('api.role:waiter')->prefix('waiter')->group(function () {

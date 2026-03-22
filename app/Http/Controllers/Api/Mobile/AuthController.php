@@ -66,13 +66,18 @@ class AuthController extends Controller
 
     private function formatUser(Employee $employee): array
     {
+        $tenant = \App\Models\Tenant::find($employee->tenant_id);
+        $branch = $employee->branch_id ? \App\Models\Branch::find($employee->branch_id) : null;
+
         return [
-            'id'        => $employee->id,
-            'name'      => $employee->name,
-            'email'     => $employee->email,
-            'role'      => $employee->role,
-            'tenant_id' => $employee->tenant_id,
-            'branch_id' => $employee->branch_id,
+            'id'          => $employee->id,
+            'name'        => $employee->name,
+            'email'       => $employee->email,
+            'role'        => $employee->role,
+            'tenant_id'   => $employee->tenant_id,
+            'tenant_name' => $tenant?->name ?? '',
+            'branch_id'   => $employee->branch_id,
+            'branch_name' => $branch?->name ?? '',
         ];
     }
 }
