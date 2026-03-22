@@ -83,7 +83,6 @@ class OrderController extends Controller
 
         if ($allPrepared) {
             $order->update(['status' => 'ready']);
-            event(new \App\Events\OrderStatusUpdated($order, $oldStatus));
         } elseif (in_array($order->status, ['pending', 'ready'])) {
             $order->update(['status' => 'preparing']);
         }
@@ -144,7 +143,6 @@ class OrderController extends Controller
             }
         } elseif ($nonCancelled->where('status', '!=', 'prepared')->count() === 0) {
             $order->update(['status' => 'ready']);
-            event(new \App\Events\OrderStatusUpdated($order, 'preparing'));
         } elseif (in_array($order->status, ['cancelled', 'pending'])) {
             $order->update(['status' => 'preparing']);
         }

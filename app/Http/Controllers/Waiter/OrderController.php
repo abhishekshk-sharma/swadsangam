@@ -133,7 +133,6 @@ class OrderController extends Controller
     {
         $order = $this->findOrder($id);
         $order->update(['status' => 'served']);
-        event(new \App\Events\OrderStatusUpdated($order, 'ready'));
         return response()->json(['success' => true]);
     }
 

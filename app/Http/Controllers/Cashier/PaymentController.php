@@ -64,8 +64,6 @@ public function processPayment(Request $request, Order $order)
             $order->table->update(['is_occupied' => false]);
         }
 
-        event(new \App\Events\OrderStatusUpdated($order, 'served'));
-
         return redirect()->route('cashier.payments.index', ['paid_order' => $order->id])
             ->with('success', 'Payment received! Order closed.')
             ->with('bill_url', URL::signedRoute('bill.show', ['orderId' => $order->id]));
@@ -110,8 +108,10 @@ public function processPayment(Request $request, Order $order)
         }
 
         $order = Order::create([
+            'tenant_id'      => $this->currentTenantId(),
+            'branch_id'      => $this->branchId(),
             'table_id'       => null,
-            'user_id'        => current_user_id(),
+            'user_id'        => auth()->guard('employee')->id(),
             'status'         => 'pending',
             'total_amount'   => $total,
             'customer_notes' => $request->customer_notes,
@@ -121,6 +121,8 @@ public function processPayment(Request $request, Order $order)
         foreach ($request->items as $item) {
             $menuItem = MenuItem::findOrFail($item['menu_item_id']);
             OrderItem::create([
+                'tenant_id'    => $this->currentTenantId(),
+                'branch_id'    => $this->branchId(),
                 'order_id'     => $order->id,
                 'menu_item_id' => $menuItem->id,
                 'quantity'     => $item['quantity'],
@@ -175,6 +177,8 @@ public function processPayment(Request $request, Order $order)
             $additionalTotal += $menuItem->price * $item['quantity'];
 
             $newItems[] = OrderItem::create([
+                'tenant_id'    => $this->currentTenantId(),
+                'branch_id'    => $this->branchId(),
                 'order_id'     => $order->id,
                 'menu_item_id' => $menuItem->id,
                 'quantity'     => $item['quantity'],

@@ -7,8 +7,6 @@
     <title>@yield('title') - {{ $tenant->name }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="/js/pusher.min.js"></script>
-    <script src="/js/echo.iife.js"></script>
 </head>
 <body class="bg-gray-100">
     <!-- Mobile Layout -->
@@ -71,16 +69,7 @@
             </div>
         </div>
     </div>
-<script>
-window.ORDER_WS = {
-    panel:       'cashier',
-    tenantId:    {{ $tenant->id ?? 0 }},
-    reverbKey:   '{{ config('broadcasting.connections.reverb.key') }}',
-    reverbHost:  '{{ env('REVERB_HOST', 'localhost') }}',
-    reverbPort:  {{ env('REVERB_PORT', 8080) }},
-    reverbScheme:'{{ env('REVERB_SCHEME', 'http') }}',
-};
-</script>
-<script src="/js/order-ws.js"></script>
+<script>window.ORDER_POLL = { panel: 'cashier' };</script>
+<script src="/js/order-poll.js"></script>
 </body>
 </html>

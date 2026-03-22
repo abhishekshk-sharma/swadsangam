@@ -56,7 +56,7 @@ class OrderUpdatesController extends Controller
             'items'          => $order->orderItems->map(fn($item) => [
                 'id'       => $item->id,
                 'status'   => $item->status,
-                'name'     => $item->menuItem->name,
+                'name'     => $item->menuItem?->name ?? '[Deleted Item]',
                 'quantity' => $item->quantity,
                 'price'    => (float) $item->price,
                 'notes'    => $item->notes,

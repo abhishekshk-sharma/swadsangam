@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Manager;
 use App\Models\Order;
 use App\Models\OrderItem;
 use Illuminate\Http\Request;
-use App\Events\OrderStatusUpdated;
 
 class CookController extends BaseManagerController
 {
@@ -28,7 +27,6 @@ class CookController extends BaseManagerController
     {
         $order = $this->findForTenant(Order::class, $id);
         $order->update(['status' => 'preparing']);
-        event(new OrderStatusUpdated($order, 'pending'));
         return response()->json(['success' => true]);
     }
 
@@ -36,7 +34,6 @@ class CookController extends BaseManagerController
     {
         $order = $this->findForTenant(Order::class, $id);
         $order->update(['status' => 'ready']);
-        event(new OrderStatusUpdated($order, 'preparing'));
         return response()->json(['success' => true]);
     }
 
@@ -44,7 +41,6 @@ class CookController extends BaseManagerController
     {
         $order = $this->findForTenant(Order::class, $id);
         $order->update(['status' => 'served']);
-        event(new OrderStatusUpdated($order, 'ready'));
         return response()->json(['success' => true]);
     }
 
@@ -58,7 +54,6 @@ class CookController extends BaseManagerController
         if (!$order->is_parcel && $order->table) {
             $order->table->update(['is_occupied' => false]);
         }
-        event(new OrderStatusUpdated($order, 'served'));
 
         return redirect()->route('manager.cook.index')->with('success', 'Payment received! Order closed.');
     }
@@ -111,7 +106,6 @@ class CookController extends BaseManagerController
             if (!$order->is_parcel && $order->table) $order->table->update(['is_occupied' => false]);
         } elseif ($nonCancelled->where('status', '!=', 'prepared')->count() === 0) {
             $order->update(['status' => 'ready']);
-            event(new OrderStatusUpdated($order, 'preparing'));
         } elseif (in_array($order->status, ['cancelled', 'pending'])) {
             $order->update(['status' => 'preparing']);
         }
