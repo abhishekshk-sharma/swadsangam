@@ -77,15 +77,29 @@ class WaiterController extends Controller
             ->where('tenant_id', $this->tenantId())
             ->where(fn($q) => $this->branchScope($q))
             ->get()
-            ->map(fn($t) => [
-                'id'           => $t->id,
-                'table_number' => $t->table_number,
-                'capacity'     => $t->capacity,
-                'is_occupied'  => $t->is_occupied,
-                'category'     => $t->category?->name,
-            ]);
+            ->map(fn($t) => $this->formatTable($t));
 
         return response()->json($tables);
+    }
+
+    private function formatTable(RestaurantTable $t): array
+    {
+        $activeOrderId = null;
+        if ($t->is_occupied) {
+            $activeOrderId = \App\Models\Order::where('table_id', $t->id)
+                ->whereNotIn('status', ['paid', 'cancelled', 'checkout'])
+                ->whereDate('created_at', today())
+                ->value('id');
+        }
+
+        return [
+            'id'              => $t->id,
+            'table_number'    => $t->table_number,
+            'capacity'        => $t->capacity,
+            'is_occupied'     => $t->is_occupied,
+            'category'        => $t->category?->name,
+            'active_order_id' => $activeOrderId,
+        ];
     }
 
     // POST /api/mobile/waiter/orders
