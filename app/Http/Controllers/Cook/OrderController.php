@@ -43,7 +43,7 @@ class OrderController extends Controller
 
     public function pending()
     {
-        $orders = Order::with(['table.category', 'orderItems.menuItem'])
+        $orders = Order::with(['table.category', 'orderItems' => fn($q) => $q->withoutGlobalScopes()->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()])])
             ->whereIn('status', ['pending', 'preparing'])
             ->whereIn('user_id', $this->waiterManagerIds())
             ->whereDate('created_at', today())
@@ -55,7 +55,7 @@ class OrderController extends Controller
 
     public function completed()
     {
-        $orders = Order::with(['table.category', 'orderItems.menuItem'])
+        $orders = Order::with(['table.category', 'orderItems' => fn($q) => $q->withoutGlobalScopes()->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()])])
             ->where('status', 'ready')
             ->whereIn('user_id', $this->waiterManagerIds())
             ->whereDate('created_at', today())

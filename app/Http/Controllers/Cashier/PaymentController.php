@@ -22,7 +22,7 @@ class PaymentController extends Controller
 
     public function index()
     {
-        $orders = Order::with(['table.category', 'orderItems.menuItem'])
+        $orders = Order::with(['table.category', 'orderItems' => fn($q) => $q->withoutGlobalScopes()->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()])])
             ->where(function ($q) {
                 $q->where(function ($q2) {
                       $q2->where('is_parcel', false)->whereIn('status', ['served', 'checkout']);
@@ -76,7 +76,7 @@ public function processPayment(Request $request, Order $order)
 
     public function history()
     {
-        $orders = Order::with(['table', 'orderItems.menuItem'])
+        $orders = Order::with(['table', 'orderItems' => fn($q) => $q->withoutGlobalScopes()->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()])])
             ->where('status', 'paid')
             ->where($this->branchScope())
             ->whereDate('created_at', today())
@@ -146,7 +146,7 @@ public function processPayment(Request $request, Order $order)
 
     public function parcelsIndex()
     {
-        $orders = Order::with(['orderItems.menuItem'])
+        $orders = Order::with(['orderItems' => fn($q) => $q->withoutGlobalScopes()->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()])])
             ->where('is_parcel', true)
             ->whereNotIn('status', ['paid', 'cancelled'])
             ->where($this->branchScope())

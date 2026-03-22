@@ -25,7 +25,7 @@ class DashboardController extends BaseManagerController
             'employees'     => Employee::where('branch_id', $branchId)->count(),
         ];
 
-        $recentOrders    = (clone $orderQuery)->with(['table', 'orderItems.menuItem'])->latest()->take(5)->get();
+        $recentOrders    = (clone $orderQuery)->with(['table', 'orderItems' => fn($q) => $q->withoutGlobalScopes()->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()])])->latest()->take(5)->get();
         $recentTables    = (clone $tableQuery)->with(['category', 'orders' => fn($q) => $q->whereIn('status', ['pending','preparing','served'])->latest()->limit(1)])->get();
         $recentMenuItems = MenuItem::with('category')->latest()->take(5)->get();
         $pendingOrders   = (clone $orderQuery)->whereIn('status', ['pending', 'preparing'])->count();

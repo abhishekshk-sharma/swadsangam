@@ -39,7 +39,7 @@ class OrderController extends Controller
 
     public function index()
     {
-        $orders = Order::with('table.category', 'items.menuItem')
+        $orders = Order::with(['table.category', 'items' => fn($q) => $q->withoutGlobalScopes()->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()])])
             ->whereDate('created_at', today())
             ->where('status', '!=', 'paid')
             ->where('status', '!=', 'checkout')

@@ -12,7 +12,7 @@ class ReportController extends BaseManagerController
     public function index(Request $request)
     {
         $query = Order::where('tenant_id', $this->tenantId())
-            ->with(['table', 'orderItems.menuItem', 'user']);
+            ->with(['table', 'orderItems' => fn($q) => $q->withoutGlobalScopes()->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()]), 'user']);
 
         $this->scopeBranch($query);
 
@@ -35,7 +35,7 @@ class ReportController extends BaseManagerController
     public function export(Request $request)
     {
         $query = Order::where('tenant_id', $this->tenantId())
-            ->with(['table', 'orderItems.menuItem', 'user']);
+            ->with(['table', 'orderItems' => fn($q) => $q->withoutGlobalScopes()->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()]), 'user']);
 
         $this->scopeBranch($query);
 

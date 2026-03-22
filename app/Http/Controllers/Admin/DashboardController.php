@@ -19,7 +19,7 @@ class DashboardController extends Controller
             'pending_handovers'=> CashHandover::where('status', 'pending')->count(),
         ];
 
-        $recentOrders    = Order::with(['table', 'orderItems.menuItem'])->latest()->take(5)->get();
+        $recentOrders = Order::with(['table', 'orderItems' => fn($q) => $q->withoutGlobalScopes()->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()])])->latest()->take(5)->get();
         $recentTables    = RestaurantTable::with(['category', 'orders' => fn($q) => $q->whereIn('status', ['pending','preparing','served'])->latest()->limit(1)])->get();
         $recentMenuItems = MenuItem::with('category')->latest()->take(5)->get();
         $recentEmployees = Employee::latest()->take(5)->get();

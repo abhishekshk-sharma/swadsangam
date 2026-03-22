@@ -14,7 +14,7 @@ class ReportController extends Controller
     {
         $tenantId = app()->bound('current_tenant_id') ? app('current_tenant_id') : null;
         $query = Order::where('tenant_id', $tenantId)
-            ->with(['table', 'orderItems.menuItem', 'user']);
+            ->with(['table', 'orderItems' => fn($q) => $q->withoutGlobalScopes()->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()]), 'user']);
 
         if ($request->filled('branch_id')) {
             $query->where('branch_id', $request->branch_id);
@@ -44,7 +44,7 @@ class ReportController extends Controller
     {
         $tenantId = app()->bound('current_tenant_id') ? app('current_tenant_id') : null;
         $query = Order::where('tenant_id', $tenantId)
-            ->with(['table', 'orderItems.menuItem', 'user']);
+            ->with(['table', 'orderItems' => fn($q) => $q->withoutGlobalScopes()->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()]), 'user']);
 
         if ($request->filled('branch_id')) {
             $query->where('branch_id', $request->branch_id);
