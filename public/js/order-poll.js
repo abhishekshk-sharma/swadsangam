@@ -587,6 +587,21 @@
                                 toast('✅ "' + item.name + '" ×' + item.quantity + ' in Order #' + order.id + ' is prepared.', 'success');
                             else if (panel === 'waiter')
                                 toast('✅ "' + item.name + '" in Order #' + order.id + ' is ready.', 'success');
+                            else if (panel === 'cashier_parcels') {
+                                toast('✅ "' + item.name + '" in Parcel #' + order.id + ' is prepared by chef.', 'success');
+                                var preparedRow = document.querySelector('[data-item-id="' + iid + '"]');
+                                if (preparedRow) {
+                                    preparedRow.dataset.itemStatus = 'prepared';
+                                    var nameSpan = preparedRow.querySelector('.font-semibold');
+                                    if (nameSpan) { nameSpan.classList.add('line-through', 'text-gray-400'); nameSpan.classList.remove('text-red-300'); }
+                                    // Replace edit/cancel buttons with Ready badge
+                                    var btnWrap = preparedRow.querySelector('.flex.items-center.gap-2.ml-2');
+                                    if (btnWrap) btnWrap.innerHTML = '<span class="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">Ready</span>';
+                                    // Hide edit form if open
+                                    var editForm = document.getElementById('edit-' + iid);
+                                    if (editForm) editForm.classList.add('hidden');
+                                }
+                            }
                         }
                         if (item.status === 'cancelled') {
                             toast('❌ "' + item.name + '" in Order #' + order.id + ' was cancelled.', 'danger');
