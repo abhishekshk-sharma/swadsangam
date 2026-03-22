@@ -83,8 +83,6 @@
                                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                                         </svg>
                                     </button>
-                                @endif
-                                @if($item->status !== 'prepared' && $item->status !== 'cancelled')
                                     <form action="{{ route('waiter.orderItems.cancel', $item->id) }}" method="POST" style="display:flex;align-items:center;margin:0;">
                                         @csrf @method('PATCH')
                                         <button type="submit" title="Cancel Item"
@@ -164,7 +162,7 @@
                     </svg>
                 </button>
                 @endif
-                @if(!in_array($order->status, ['paid', 'cancelled', 'served', 'checkout']) && $order->items->where('status', 'prepared')->count() === 0)
+                @if($order->status === 'pending')
                 <form action="{{ route('waiter.orders.cancel', $order->id) }}" method="POST"
                       onsubmit="return confirm('Cancel entire order #{{ $order->id }}?')"
                       style="display:flex;align-items:center;margin:0;">

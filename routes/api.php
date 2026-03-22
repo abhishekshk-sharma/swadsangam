@@ -40,6 +40,7 @@ Route::prefix('mobile')->group(function () {
             Route::patch('order-items/{id}/status',     [ChefController::class, 'updateItemStatus']);
             Route::patch('orders/{id}/cancel',          [ChefController::class, 'cancelOrder']);
             Route::patch('order-items/{id}/cancel',     [ChefController::class, 'cancelItem']);
+            Route::patch('order-items/{id}',            [ChefController::class, 'updateItem']);
         });
 
         // Cashier

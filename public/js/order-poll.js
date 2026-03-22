@@ -24,7 +24,9 @@
             var oid = card.dataset.orderId;
             snap[oid] = { status: card.dataset.orderStatus || '', items: {} };
             card.querySelectorAll('[data-item-id]').forEach(function (row) {
-                snap[oid].items[row.dataset.itemId] = row.dataset.itemStatus || '';
+                var qtyEl = row.querySelector('.text-sm.text-gray-500, .text-xs.text-gray-500');
+                var qty = qtyEl ? parseInt(qtyEl.textContent.replace('Qty:', '').trim()) || 0 : 0;
+                snap[oid].items[row.dataset.itemId] = { status: row.dataset.itemStatus || '', qty: qty };
             });
         });
     }
@@ -391,7 +393,7 @@
                 if (!s) {
                     // Register in snap immediately to prevent repeat triggers
                     snap[oid] = { status: order.status, items: {} };
-                    order.items.forEach(function (i) { snap[oid].items[String(i.id)] = i.status; });
+                    order.items.forEach(function (i) { snap[oid].items[String(i.id)] = { status: i.status, qty: i.quantity }; });
 
                     if (panel === 'cashier') {
                         // Inject new card into cashier payments page
@@ -472,9 +474,11 @@
                 order.items.forEach(function (item) {
                     var iid  = String(item.id);
                     var prev = s.items[iid];
+                    var prevStatus = prev ? prev.status : undefined;
+                    var prevQty    = prev ? prev.qty    : undefined;
 
                     if (prev === undefined) {
-                        s.items[iid] = item.status;
+                        s.items[iid] = { status: item.status, qty: item.quantity };
                         if (panel === 'cook' || panel === 'admin') {
                             if (!reloadTriggered['item_' + iid]) {
                                 reloadTriggered['item_' + iid] = true;
@@ -576,8 +580,8 @@
                         return;
                     }
 
-                    if (prev !== item.status) {
-                        s.items[iid] = item.status;
+                    if (prevStatus !== item.status) {
+                        s.items[iid] = { status: item.status, qty: item.quantity };
                         if (item.status === 'prepared') {
                             if (panel === 'cook' || panel === 'admin')
                                 toast('✅ "' + item.name + '" ×' + item.quantity + ' in Order #' + order.id + ' is prepared.', 'success');
@@ -586,8 +590,108 @@
                         }
                         if (item.status === 'cancelled') {
                             toast('❌ "' + item.name + '" in Order #' + order.id + ' was cancelled.', 'danger');
+                            // For cashier_parcels: update row DOM directly
+                            if (panel === 'cashier_parcels') {
+                                var cancelledRow = document.querySelector('[data-item-id="' + iid + '"]');
+                                if (cancelledRow) {
+                                    cancelledRow.dataset.itemStatus = 'cancelled';
+                                    var nameEl = cancelledRow.querySelector('[data-item-name], .font-semibold');
+                                    if (nameEl) { nameEl.style.textDecoration = 'line-through'; nameEl.classList.add('text-red-300'); }
+                                    var actEl = cancelledRow.querySelector('[data-item-actions]');
+                                    if (actEl) actEl.innerHTML = '<span class="text-xs text-red-400 px-2">Cancelled</span>';
+                                    // Hide edit form if open
+                                    var editForm = document.getElementById('edit-' + iid);
+                                    if (editForm) editForm.classList.add('hidden');
+                                    // Hide edit/cancel buttons
+                                    var btnWrap = cancelledRow.querySelector('.flex.items-center.gap-2.ml-2');
+                                    if (btnWrap) btnWrap.innerHTML = '<span class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded">Cancelled</span>';
+                                    return;
+                                }
+                            }
+                            // For cook panel: update row DOM directly instead of reloading
+                            if (panel === 'cook' || panel === 'admin') {
+                                var cancelledRow = document.querySelector('[data-item-id="' + iid + '"]');
+                                if (cancelledRow) {
+                                    cancelledRow.dataset.itemStatus = 'cancelled';
+                                    var nameEl = cancelledRow.querySelector('[data-item-name]');
+                                    if (nameEl) { nameEl.style.textDecoration = 'line-through'; nameEl.classList.add('text-red-300'); }
+                                    var actEl = cancelledRow.querySelector('[data-item-actions]');
+                                    if (actEl) actEl.innerHTML = '<span class="text-xs text-red-400 px-2">Cancelled</span>';
+                                    // Update progress counter
+                                    var card = document.querySelector('[data-order-id="' + order.id + '"]');
+                                    if (card) {
+                                        var counter = card.querySelector('.border-t span.text-sm');
+                                        if (counter) {
+                                            var allRows = card.querySelectorAll('[data-item-id]');
+                                            var preparedCount = Array.from(allRows).filter(function(r){ return r.dataset.itemStatus === 'prepared'; }).length;
+                                            var nonCancelledCount = Array.from(allRows).filter(function(r){ return r.dataset.itemStatus !== 'cancelled'; }).length;
+                                            counter.textContent = preparedCount + ' / ' + nonCancelledCount + ' items prepared';
+                                        }
+                                    }
+                                    return;
+                                }
+                            }
                         }
                         updateCard(order);
+                    }
+
+                    // ── Item edited by cashier on parcel (qty or notes changed, status same) ──
+                    if (prevStatus === item.status && panel === 'cashier_parcels') {
+                        var editedRow = document.querySelector('[data-item-id="' + iid + '"]');
+                        if (editedRow && prevQty !== undefined && prevQty !== item.quantity) {
+                            s.items[iid].qty = item.quantity;
+                            var qtyEl = editedRow.querySelector('.text-xs.text-gray-500');
+                            if (qtyEl && qtyEl.textContent.trim().startsWith('Qty:')) {
+                                qtyEl.textContent = 'Qty: ' + item.quantity;
+                                toast('✏️ "' + item.name + '" qty updated to ×' + item.quantity + ' in Parcel #' + order.id, 'info');
+                            }
+                            // Update line total if present
+                            var totalEl = card.querySelector('[data-order-total]');
+                            if (totalEl) totalEl.textContent = '₹' + parseFloat(order.total_amount).toFixed(2);
+                        }
+                        if (editedRow) {
+                            var notesEl = editedRow.querySelector('.text-xs.text-orange-600');
+                            if (item.notes) {
+                                if (notesEl) { notesEl.textContent = '→ ' + item.notes; }
+                                else {
+                                    var notesDiv = document.createElement('div');
+                                    notesDiv.className = 'text-xs text-orange-600 italic mt-0.5 bg-orange-50 px-2 py-0.5 rounded';
+                                    notesDiv.textContent = '→ ' + item.notes;
+                                    var nameParent = editedRow.querySelector('.flex-1');
+                                    if (nameParent) nameParent.appendChild(notesDiv);
+                                }
+                            } else if (notesEl) {
+                                notesEl.remove();
+                            }
+                        }
+                    }
+                    // ── Item edited by waiter (qty or notes changed, status same) ──
+                    if (prevStatus === item.status && (panel === 'cook' || panel === 'admin')) {
+                        var editedRow = document.querySelector('[data-item-id="' + iid + '"]');
+                        if (editedRow && prevQty !== undefined && prevQty !== item.quantity) {
+                            s.items[iid].qty = item.quantity;
+                            var qtyEl = editedRow.querySelector('.text-sm.text-gray-500');
+                            if (qtyEl && qtyEl.textContent.trim().startsWith('Qty:')) {
+                                qtyEl.textContent = 'Qty: ' + item.quantity;
+                                toast('✏️ "' + item.name + '" qty updated to ×' + item.quantity + ' in Order #' + order.id, 'info');
+                            }
+                        }
+                        if (editedRow) {
+                            var notesEl = editedRow.querySelector('.text-xs.text-orange-600');
+                            if (item.notes) {
+                                if (notesEl) {
+                                    notesEl.textContent = '→ ' + item.notes;
+                                } else {
+                                    var notesDiv = document.createElement('div');
+                                    notesDiv.className = 'text-xs text-orange-600 italic mt-1 bg-orange-50 px-2 py-1 rounded';
+                                    notesDiv.textContent = '→ ' + item.notes;
+                                    var nameParent = editedRow.querySelector('.flex-1');
+                                    if (nameParent) nameParent.appendChild(notesDiv);
+                                }
+                            } else if (notesEl) {
+                                notesEl.remove();
+                            }
+                        }
                     }
                 });
             });

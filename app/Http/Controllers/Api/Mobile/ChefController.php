@@ -107,6 +107,24 @@ class ChefController extends Controller
         return response()->json(['message' => 'Order cancelled.']);
     }
 
+    // PATCH /api/mobile/chef/order-items/{id}
+    public function updateItem(Request $request, int $id)
+    {
+        $item = OrderItem::with('order')->findOrFail($id);
+        abort_if($item->order->tenant_id !== $this->tenantId(), 403);
+        if ($item->status !== 'pending') {
+            return response()->json(['message' => 'Only pending items can be edited.'], 422);
+        }
+        $request->validate([
+            'quantity' => 'required|integer|min:1',
+            'notes'    => 'nullable|string|max:500',
+        ]);
+        $oldTotal = $item->price * $item->quantity;
+        $item->update(['quantity' => $request->quantity, 'notes' => $request->notes]);
+        $item->order->increment('total_amount', ($item->price * $request->quantity) - $oldTotal);
+        return response()->json(['message' => 'Item updated.']);
+    }
+
     // PATCH /api/mobile/chef/order-items/{id}/cancel
     public function cancelItem(int $id)
     {

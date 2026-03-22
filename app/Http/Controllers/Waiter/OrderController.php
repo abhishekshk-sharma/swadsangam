@@ -252,11 +252,8 @@ class OrderController extends Controller
     public function cancelOrder($id)
     {
         $order = $this->findOrder($id);
-        if ($order->status === 'paid') {
-            return back()->with('error', 'Cannot cancel a paid order.');
-        }
-        if ($order->orderItems()->where('status', 'prepared')->exists()) {
-            return back()->with('error', 'Cannot cancel order — some items are already prepared. Cancel individual items instead.');
+        if ($order->status !== 'pending') {
+            return back()->with('error', 'Only pending orders can be cancelled.');
         }
         $order->orderItems()->update(['status' => 'cancelled']);
         $order->update(['status' => 'cancelled']);
@@ -269,6 +266,9 @@ class OrderController extends Controller
     public function cancelItem($id)
     {
         $item = $this->findItem($id);
+        if ($item->status !== 'pending') {
+            return back()->with('error', 'Only pending items can be cancelled.');
+        }
         $item->update(['status' => 'cancelled']);
         $item->order->decrement('total_amount', $item->price * $item->quantity);
         $this->syncOrderStatus($item->order);

@@ -52,7 +52,7 @@
             {{-- Items --}}
             <div class="space-y-1 mb-3">
                 @foreach($order->orderItems as $item)
-                <div class="py-1.5 border-b last:border-0" data-item-id="{{ $item->id }}">
+                <div class="py-1.5 border-b last:border-0" data-item-id="{{ $item->id }}" data-item-status="{{ $item->status }}">
                     <div class="flex justify-between items-center">
                         <div class="flex-1">
                             <div class="flex items-center gap-2">
