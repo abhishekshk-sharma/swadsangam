@@ -16,6 +16,8 @@
     var snap = {};
     // Track order IDs that have already triggered a reload request
     var reloadTriggered = {};
+    // Timestamp when the page finished loading — used to ignore pre-existing orders
+    var pageLoadTime = Date.now();
 
     function buildSnapshot() {
         document.querySelectorAll('[data-order-id]').forEach(function (card) {
@@ -412,14 +414,19 @@
                             safeReload(1500);
                         }
                     }
-                    // waiter: new order not in snap means it was just created by
-                    // this waiter (redirect brings them back) or another session.
-                    // The API now excludes checkout/cancelled so this should only
-                    // happen for genuinely new orders. Reload once per order ID.
+                    // waiter: only reload for orders that arrived AFTER page load
+                    // (i.e. created_at > pageLoadTime). Pre-existing orders missing
+                    // from the DOM just mean the index hasn't rendered them yet —
+                    // reloading for those causes an infinite loop.
                     else if (panel === 'waiter') {
-                        if (!reloadTriggered[oid]) {
+                        var orderTs = order.created_at_ts ? order.created_at_ts * 1000 : 0;
+                        if (!reloadTriggered[oid] && orderTs > pageLoadTime) {
                             reloadTriggered[oid] = true;
+                            toast(orderMsg(order, order.status), 'info');
                             safeReload(1500);
+                        } else {
+                            // Pre-existing order not in DOM — just register it, no reload
+                            reloadTriggered[oid] = true;
                         }
                     }
                     return;
@@ -590,9 +597,8 @@
 
     // ── Init ──────────────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', function () {
-        // Don't poll on create/form pages — no order cards exist and reload would
-        // reset the multi-step form (table selection → menu → cart).
-        if (panel === 'waiter' && !document.querySelector('[data-order-id]')) return;
+        // Don't poll on create/form pages — reloading would reset the multi-step form.
+        if (panel === 'waiter' && /\/orders\/create/.test(window.location.pathname)) return;
         buildSnapshot();
         setInterval(poll, 7000);
     });

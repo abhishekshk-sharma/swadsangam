@@ -51,6 +51,7 @@ class OrderUpdatesController extends Controller
             'total_amount'   => (float) $order->total_amount,
             'table_number'   => $order->table?->table_number,
             'created_at'     => $order->created_at->format('h:i A'),
+            'created_at_ts'  => $order->created_at->timestamp,
             'customer_notes' => $order->customer_notes,
             'created_by_id'  => $order->user_id,
             'items'          => $order->orderItems->map(fn($item) => [
