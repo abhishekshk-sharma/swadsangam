@@ -39,6 +39,7 @@ Route::prefix('mobile')->group(function () {
             Route::get('orders/completed',              [ChefController::class, 'completed']);
             Route::patch('order-items/{id}/status',     [ChefController::class, 'updateItemStatus']);
             Route::patch('orders/{id}/cancel',          [ChefController::class, 'cancelOrder']);
+            Route::patch('orders/{id}/ready',            [ChefController::class, 'markOrderReady']);
             Route::patch('order-items/{id}/cancel',     [ChefController::class, 'cancelItem']);
             Route::patch('order-items/{id}',            [ChefController::class, 'updateItem']);
         });

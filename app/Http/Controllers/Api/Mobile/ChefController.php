@@ -87,6 +87,25 @@ class ChefController extends Controller
         return response()->json(['message' => 'Item status updated.', 'order_status' => $order->fresh()->status]);
     }
 
+    // PATCH /api/mobile/chef/orders/{id}/ready
+    public function markOrderReady(int $id)
+    {
+        $order = Order::where('id', $id)->where('tenant_id', $this->tenantId())->firstOrFail();
+
+        if ($order->status === 'paid') {
+            return response()->json(['message' => 'Cannot change a paid order.'], 422);
+        }
+
+        // Mark all remaining pending items as prepared
+        $order->orderItems()->where('status', 'pending')->update(['status' => 'prepared']);
+
+        $oldStatus = $order->status;
+        $order->update(['status' => 'ready']);
+        event(new OrderStatusUpdated($order, $oldStatus));
+
+        return response()->json(['message' => 'Order marked as ready.']);
+    }
+
     // PATCH /api/mobile/chef/orders/{id}/cancel
     public function cancelOrder(int $id)
     {
@@ -156,11 +175,13 @@ class ChefController extends Controller
     private function formatOrder(Order $order): array
     {
         return [
-            'id'         => $order->id,
-            'status'     => $order->status,
-            'is_parcel'  => $order->is_parcel,
-            'created_at' => $order->created_at,
-            'table'      => $order->table ? [
+            'id'             => $order->id,
+            'status'         => $order->status,
+            'is_parcel'      => $order->is_parcel,
+            'total_amount'   => $order->total_amount,
+            'customer_notes' => $order->customer_notes,
+            'created_at'     => $order->created_at,
+            'table'          => $order->table ? [
                 'id'           => $order->table->id,
                 'table_number' => $order->table->table_number,
                 'category'     => $order->table->category?->name,
@@ -169,6 +190,7 @@ class ChefController extends Controller
                 'id'       => $i->id,
                 'name'     => $i->menuItem?->name,
                 'quantity' => $i->quantity,
+                'price'    => $i->price,
                 'status'   => $i->status,
                 'notes'    => $i->notes,
             ]),

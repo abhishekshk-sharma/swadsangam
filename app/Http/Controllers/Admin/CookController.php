@@ -76,8 +76,11 @@ class CookController extends BaseAdminController
     public function updateItem(Request $request, $id)
     {
         $item = $this->findTenantItem($id);
-        if ($item->status !== 'pending') {
-            return back()->with('error', 'Only pending items can be edited.');
+        if (in_array($item->status, ['cancelled', 'paid'])) {
+            return back()->with('error', 'Cannot edit a cancelled or paid item.');
+        }
+        if (in_array($item->order->status, ['paid', 'cancelled'])) {
+            return back()->with('error', 'Cannot edit items on a paid or cancelled order.');
         }
         $request->validate([
             'quantity' => 'required|integer|min:1',
@@ -109,6 +112,9 @@ class CookController extends BaseAdminController
     public function cancelItem($id)
     {
         $item = $this->findTenantItem($id);
+        if (in_array($item->order->status, ['paid', 'cancelled'])) {
+            return back()->with('error', 'Cannot cancel items on a paid or cancelled order.');
+        }
         $item->update(['status' => 'cancelled']);
         $item->order->decrement('total_amount', $item->price * $item->quantity);
         $this->syncOrderStatus($item->order);

@@ -291,21 +291,19 @@
                     </div>
                     <div class="d-flex align-items-center gap-1" data-item-actions>
                         <span class="item-qty">x{{ $item->quantity }}</span>
-                        @if(!in_array($order->status, ['paid','cancelled']))
-                            @if($item->status === 'pending')
-                                <button onclick="toggleAdminEdit('aedit-{{ $item->id }}')" 
-                                        style="font-size:11px;padding:2px 6px;border:1px solid #3b82f6;background:#eff6ff;color:#1d4ed8;border-radius:4px;cursor:pointer;">Edit</button>
-                                <form action="{{ route('cook.orderItems.cancel', $item->id) }}" method="POST" class="mb-0">
-                                    @csrf @method('PATCH')
-                                    <button class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size:11px;">Cancel</button>
-                                </form>
-                            @endif
+                        @if(!in_array($order->status, ['paid','cancelled']) && $item->status !== 'cancelled')
+                            <button onclick="toggleAdminEdit('aedit-{{ $item->id }}')" 
+                                    style="font-size:11px;padding:2px 6px;border:1px solid #3b82f6;background:#eff6ff;color:#1d4ed8;border-radius:4px;cursor:pointer;">Edit</button>
+                            <form action="{{ route('admin.cook.orderItems.cancel', $item->id) }}" method="POST" class="mb-0">
+                                @csrf @method('PATCH')
+                                <button class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size:11px;">Cancel</button>
+                            </form>
                         @endif
                     </div>
                 </div>
-                @if($item->status === 'pending' && !in_array($order->status, ['paid','cancelled']))
+                @if(!in_array($order->status, ['paid','cancelled']) && $item->status !== 'cancelled')
                 <div id="aedit-{{ $item->id }}" style="display:none;background:#f8fafc;border-radius:6px;padding:8px;margin-top:4px;">
-                    <form action="{{ route('cook.orderItems.update', $item->id) }}" method="POST" class="d-flex flex-column gap-2">
+                    <form action="{{ route('admin.cook.orderItems.update', $item->id) }}" method="POST" class="d-flex flex-column gap-2">
                         @csrf @method('PATCH')
                         <div class="d-flex align-items-center gap-2">
                             <label style="font-size:12px;color:#666;min-width:40px;">Qty:</label>
@@ -369,7 +367,7 @@
             </div>
             @endif
             @if(!in_array($order->status, ['paid','cancelled']))
-            <form action="{{ route('cook.orders.cancel', $order->id) }}" method="POST" class="mt-2"
+            <form action="{{ route('admin.cook.orders.cancel', $order->id) }}" method="POST" class="mt-2"
                   onsubmit="return confirm('Cancel entire order #{{ $order->id }}?')">
                 @csrf @method('PATCH')
                 <button class="w-100" style="background:#fee2e2;color:#dc2626;border:none;padding:8px;border-radius:6px;font-size:13px;font-weight:600;">
