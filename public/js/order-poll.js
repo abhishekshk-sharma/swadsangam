@@ -408,13 +408,16 @@
                             updatePendingCount();
                             toast(orderMsg(order, order.status), 'success');
                         }
-                    } else if (panel === 'cook' || panel === 'admin') {
+                    } else if (panel === 'cook') {
                         // Only reload once per new order ID
                         if (!reloadTriggered[oid] && order.status === 'pending') {
                             reloadTriggered[oid] = true;
                             toast(orderMsg(order, 'pending'), 'warning');
                             safeReload(1500);
                         }
+                    } else if (panel === 'admin') {
+                        // Admin sees all orders — never reload or toast for new orders
+                        reloadTriggered[oid] = true;
                     }
                     // waiter: only reload for orders that arrived AFTER page load
                     // (i.e. created_at > pageLoadTime). Pre-existing orders missing
@@ -464,7 +467,7 @@
                         return;
                     }
 
-                    if ((panel === 'cook' || panel === 'admin') && !reloadTriggered['status_' + oid + '_' + order.status]) {
+                    if (panel === 'cook' && !reloadTriggered['status_' + oid + '_' + order.status]) {
                         reloadTriggered['status_' + oid + '_' + order.status] = true;
                         safeReload(1500);
                     }
@@ -479,7 +482,7 @@
 
                     if (prev === undefined) {
                         s.items[iid] = { status: item.status, qty: item.quantity };
-                        if (panel === 'cook' || panel === 'admin') {
+                        if (panel === 'cook') {
                             if (!reloadTriggered['item_' + iid]) {
                                 reloadTriggered['item_' + iid] = true;
                                 toast(itemAddedMsg(item, order.id), 'warning');
@@ -583,7 +586,7 @@
                     if (prevStatus !== item.status) {
                         s.items[iid] = { status: item.status, qty: item.quantity };
                         if (item.status === 'prepared') {
-                            if (panel === 'cook' || panel === 'admin')
+                            if (panel === 'cook')
                                 toast('✅ "' + item.name + '" ×' + item.quantity + ' in Order #' + order.id + ' is prepared.', 'success');
                             else if (panel === 'waiter')
                                 toast('✅ "' + item.name + '" in Order #' + order.id + ' is ready.', 'success');
@@ -624,7 +627,7 @@
                                 }
                             }
                             // For cook panel: update row DOM directly instead of reloading
-                            if (panel === 'cook' || panel === 'admin') {
+                            if (panel === 'cook') {
                                 var cancelledRow = document.querySelector('[data-item-id="' + iid + '"]');
                                 if (cancelledRow) {
                                     cancelledRow.dataset.itemStatus = 'cancelled';
@@ -681,7 +684,7 @@
                         }
                     }
                     // ── Item edited by waiter (qty or notes changed, status same) ──
-                    if (prevStatus === item.status && (panel === 'cook' || panel === 'admin')) {
+                    if (prevStatus === item.status && panel === 'cook') {
                         var editedRow = document.querySelector('[data-item-id="' + iid + '"]');
                         if (editedRow && prevQty !== undefined && prevQty !== item.quantity) {
                             s.items[iid].qty = item.quantity;
