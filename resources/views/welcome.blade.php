@@ -233,6 +233,26 @@
             color: white;
             opacity: 0.8;
         }
+        .btn-download-hero {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            color: white;
+            box-shadow: 0 8px 24px rgba(67,233,123,0.4);
+        }
+        .btn-download-hero:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(67,233,123,0.5);
+            color: white;
+        }
+        .download-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.25);
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
     </style>
 </head>
 <body>
@@ -247,6 +267,9 @@
             <div class="cta-buttons">
                 <a href="/login" class="btn-hero btn-primary-hero">
                     <i class="fas fa-sign-in-alt me-2"></i>Staff Login
+                </a>
+                <a href="/swad-sangam.apk" download="SwadSangam.apk" class="btn-hero btn-download-hero">
+                    <i class="fab fa-android me-2"></i>Download App<span class="download-badge">v1.0.0</span>
                 </a>
                 <a href="#services" class="btn-hero btn-secondary-hero">
                     <i class="fas fa-arrow-down me-2"></i>Explore Services
