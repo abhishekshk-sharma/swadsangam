@@ -88,7 +88,9 @@
         .empty-state { text-align: center; padding: 2.5rem; }
         .empty-state i { font-size: 3rem; color: var(--gray-300); margin-bottom: 1rem; }
         @media (max-width: 768px) {
-            .sidebar { position: fixed; transform: translateX(-100%); box-shadow: var(--shadow-lg); }
+            .sidebar { position: fixed; transform: translateX(-100%); box-shadow: var(--shadow-lg); 
+            margin-bottom: 3rem;
+                padding-bottom: 5rem;}
             .sidebar.open { transform: translateX(0); }
             .hamburger { display: flex; }
             .content-area { padding: 1rem; margin-bottom: 4rem;

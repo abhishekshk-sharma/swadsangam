@@ -792,6 +792,8 @@
                 position: fixed;
                 transform: translateX(-100%);
                 box-shadow: var(--shadow-lg);
+                margin-bottom: 3rem;
+                padding-bottom: 5rem;
             }
             
             .sidebar.open {

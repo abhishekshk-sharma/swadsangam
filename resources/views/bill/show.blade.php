@@ -102,7 +102,7 @@
 
     {{-- Order meta --}}
     <div class="row"><span>Order #</span><span>{{ $order->id }}</span></div>
-    <div class="row"><span>{{ $order->is_parcel ? 'Type' : 'Table' }}</span><span>{{ $order->is_parcel ? '📦 Parcel' : $order->table->table_number }}</span></div>
+    <div class="row"><span>{{ $order->is_parcel ? 'Type' : 'Table' }}</span><span>{{ $order->is_parcel ? '📦 Parcel' : ($order->table?->table_number ?? 'N/A') }}</span></div>
     <div class="row"><span>Date</span><span>{{ $order->paid_at->format('d/m/Y') }}</span></div>
     <div class="row"><span>Time</span><span>{{ $order->paid_at->format('h:i A') }}</span></div>
 
