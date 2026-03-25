@@ -3,28 +3,17 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\{RestaurantTable, MenuItem, Order, Employee, CashHandover};
+use App\Models\{RestaurantTable, MenuItem, Order, Employee};
 
 class DashboardController extends Controller
 {
     public function index()
     {
-        $stats = [
-            'tables'           => RestaurantTable::count(),
-            'menu_items'       => MenuItem::count(),
-            'orders_today'     => Order::whereDate('created_at', today())->count(),
-            'revenue_today'    => Order::where('status', 'paid')->whereDate('created_at', today())->sum('total_amount'),
-            'revenue_this_month' => Order::where('status', 'paid')->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->sum('total_amount'),
-            'employees'        => Employee::count(),
-            'pending_handovers'=> CashHandover::where('status', 'pending')->count(),
-        ];
-
-        $recentOrders = Order::with(['table', 'orderItems' => fn($q) => $q->withoutGlobalScopes()->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()])])->latest()->take(5)->get();
+        $recentOrders    = Order::with(['table', 'orderItems' => fn($q) => $q->withoutGlobalScopes()->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()])])->latest()->take(5)->get();
         $recentTables    = RestaurantTable::with(['category', 'orders' => fn($q) => $q->whereIn('status', ['pending','preparing','served'])->latest()->limit(1)])->get();
         $recentMenuItems = MenuItem::with('category')->latest()->take(5)->get();
         $recentEmployees = Employee::latest()->take(5)->get();
-        $pendingOrders   = Order::whereIn('status', ['pending', 'preparing'])->count();
 
-        return view('admin.dashboard', compact('stats', 'recentOrders', 'recentTables', 'recentMenuItems', 'recentEmployees', 'pendingOrders'));
+        return view('admin.dashboard', compact('recentOrders', 'recentTables', 'recentMenuItems', 'recentEmployees'));
     }
 }

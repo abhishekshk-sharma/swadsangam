@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\OrderUpdatesController;
 use App\Http\Controllers\Admin\CashHandoverController as AdminCashHandoverController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\MenuOcrController;
+use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Cashier\CashHandoverController as CashierCashHandoverController;
 use App\Http\Controllers\Manager\DashboardController as ManagerDashboardController;
 use App\Http\Controllers\Manager\StaffController as ManagerStaffController;
@@ -120,6 +121,27 @@ Route::prefix('superadmin')->name('superadmin.')->group(function () {
         Route::get('menu-categories', [App\Http\Controllers\SuperAdmin\MenuCategoryController::class, 'index'])->name('menu-categories.index');
         Route::post('menu-categories', [App\Http\Controllers\SuperAdmin\MenuCategoryController::class, 'store'])->name('menu-categories.store');
         Route::delete('menu-categories/{id}', [App\Http\Controllers\SuperAdmin\MenuCategoryController::class, 'destroy'])->name('menu-categories.destroy');
+
+        // Branches
+        Route::get('branches', [\App\Http\Controllers\SuperAdmin\BranchController::class, 'index'])->name('branches.index');
+        Route::get('branches/create', [\App\Http\Controllers\SuperAdmin\BranchController::class, 'create'])->name('branches.create');
+        Route::post('branches', [\App\Http\Controllers\SuperAdmin\BranchController::class, 'store'])->name('branches.store');
+        Route::get('branches/{id}/edit', [\App\Http\Controllers\SuperAdmin\BranchController::class, 'edit'])->name('branches.edit');
+        Route::put('branches/{id}', [\App\Http\Controllers\SuperAdmin\BranchController::class, 'update'])->name('branches.update');
+        Route::delete('branches/{id}', [\App\Http\Controllers\SuperAdmin\BranchController::class, 'destroy'])->name('branches.destroy');
+
+        // Staff
+        Route::get('staff', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'index'])->name('staff.index');
+        Route::get('staff/create', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'create'])->name('staff.create');
+        Route::get('staff/branches/{tenantId}', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'branchesByTenant'])->name('staff.branches');
+        Route::post('staff', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'store'])->name('staff.store');
+        Route::get('staff/{id}/edit', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'edit'])->name('staff.edit');
+        Route::put('staff/{id}', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'update'])->name('staff.update');
+        Route::delete('staff/{id}', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'destroy'])->name('staff.destroy');
+
+        // Reports
+        Route::get('reports', [\App\Http\Controllers\SuperAdmin\ReportController::class, 'index'])->name('reports.index');
+        Route::get('reports/export', [\App\Http\Controllers\SuperAdmin\ReportController::class, 'export'])->name('reports.export');
     });
 });
 
@@ -167,11 +189,23 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::delete('telegram/unlink/{id}', [TelegramIntegrationController::class, 'unlink'])->name('telegram.unlink');
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('reports/export', [ReportController::class, 'export'])->name('reports.export');
+        // Waiter Panel (admin)
+        Route::get('orders', [AdminOrderController::class, 'index'])->name('orders.index');
+        Route::get('orders/create', [AdminOrderController::class, 'create'])->name('orders.create');
+        Route::post('orders', [AdminOrderController::class, 'store'])->name('orders.store');
+        Route::post('orders/{id}/add-items', [AdminOrderController::class, 'addItems'])->name('orders.addItems');
+        Route::post('orders/{id}/assign', [AdminOrderController::class, 'assign'])->name('orders.assign');
+        Route::patch('orders/{id}/cancel', [AdminOrderController::class, 'cancelOrder'])->name('orders.cancel');
+        Route::patch('orders/{id}/payment', [AdminOrderController::class, 'processPayment'])->name('orders.payment');
+        Route::patch('order-items/{id}/cancel', [AdminOrderController::class, 'cancelItem'])->name('orders.items.cancel');
+        Route::patch('order-items/{id}/update', [AdminOrderController::class, 'updateItem'])->name('orders.items.update');
+        Route::get('assignment-logs', [\App\Http\Controllers\Admin\AssignmentLogController::class, 'index'])->name('assignment-logs.index');
         // Menu OCR
         Route::get('menu-ocr', [MenuOcrController::class, 'index'])->name('menu-ocr.index');
         Route::post('menu-ocr', [MenuOcrController::class, 'process'])->name('menu-ocr.process');
         Route::post('menu-ocr/import', [MenuOcrController::class, 'import'])->name('menu-ocr.import');
         Route::post('menu-ocr/excel', [MenuOcrController::class, 'importExcel'])->name('menu-ocr.excel');
+        Route::post('menu-ocr/excel-variant', [MenuOcrController::class, 'importExcelVariant'])->name('menu-ocr.excel-variant');
         // Cash Handover
         Route::get('handover', [AdminCashHandoverController::class, 'index'])->name('handover.index');
         Route::get('handover/export', [AdminCashHandoverController::class, 'export'])->name('handover.export');
@@ -201,6 +235,7 @@ Route::prefix('waiter')->name('waiter.')->middleware(['multi.auth', 'role:waiter
     Route::patch('orders/{id}/cancel', [WaiterOrderController::class, 'cancelOrder'])->name('orders.cancel');
     Route::patch('order-items/{id}/cancel', [WaiterOrderController::class, 'cancelItem'])->name('orderItems.cancel');
     Route::patch('order-items/{id}/update', [WaiterOrderController::class, 'updateItem'])->name('orderItems.update');
+    Route::post('orders/{id}/assign', [WaiterOrderController::class, 'assign'])->name('orders.assign');
 });
 
 // Cook Routes

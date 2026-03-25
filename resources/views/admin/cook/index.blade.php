@@ -172,13 +172,9 @@
     </div>
 </div>
 
-@if(session('success'))
-    <div class="alert alert-success" style="margin-bottom: 24px;">
-        <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
-    </div>
-@endif
 
-{{-- Branch Filter --}}
+
+
 @if($branches->count() > 0)
 <form method="GET" action="{{ route('admin.cook.index') }}" style="margin-bottom:16px;">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -387,7 +383,7 @@
     @endforelse
 </div>
 
-<!-- Payment Modal -->
+
 <div id="paymentModal" class="modal fade" tabindex="-1" style="display: none;">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
@@ -687,8 +683,7 @@ function showAdminQr(orderId) {
     const container = document.getElementById('adminQrContainer');
     container.innerHTML = '';
     new QRCode(container, { text: url, width: 200, height: 200, colorDark: '#111827', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
-    const modal = document.getElementById('adminQrModal');
-    modal.style.display = 'flex';
+    document.getElementById('adminQrModal').style.display = 'flex';
 }
 function closeAdminQr() {
     document.getElementById('adminQrModal').style.display = 'none';

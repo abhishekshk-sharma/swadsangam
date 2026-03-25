@@ -68,6 +68,15 @@
         }, ms || 1500);
     }
 
+    // ── Dedup toasts across reloads (cook panel) ──────────────────────────────
+    function toastOnce(msg, type, key) {
+        var ssKey = 'toast_shown_' + key;
+        if (sessionStorage.getItem(ssKey)) return;
+        sessionStorage.setItem(ssKey, '1');
+        setTimeout(function () { sessionStorage.removeItem(ssKey); }, 10000);
+        toast(msg, type);
+    }
+
     // ── Status badge ──────────────────────────────────────────────────────────
     var STATUS_CLS = {
         pending:   'bg-yellow-100 text-yellow-800',
@@ -409,11 +418,15 @@
                             toast(orderMsg(order, order.status), 'success');
                         }
                     } else if (panel === 'cook') {
-                        // Only reload once per new order ID
-                        if (!reloadTriggered[oid] && order.status === 'pending') {
-                            reloadTriggered[oid] = true;
-                            toast(orderMsg(order, 'pending'), 'warning');
+                        // Only reload once per new order (use sessionStorage to survive the reload)
+                        var ssNewKey = 'new_order_' + oid;
+                        if (!sessionStorage.getItem(ssNewKey)) {
+                            sessionStorage.setItem(ssNewKey, '1');
+                            setTimeout(function() { sessionStorage.removeItem(ssNewKey); }, 15000);
+                            toastOnce(orderMsg(order, order.status), 'warning', 'new_' + oid);
                             safeReload(1500);
+                        } else {
+                            reloadTriggered[oid] = true;
                         }
                     } else if (panel === 'admin') {
                         // Admin sees all orders — never reload or toast for new orders
@@ -467,10 +480,7 @@
                         return;
                     }
 
-                    if (panel === 'cook' && !reloadTriggered['status_' + oid + '_' + order.status]) {
-                        reloadTriggered['status_' + oid + '_' + order.status] = true;
-                        safeReload(1500);
-                    }
+                    // cook: no reload on status change — DOM is already updated by updateCard above
                 }
 
                 // ── Item status changes ───────────────────────────────────────
@@ -483,12 +493,13 @@
                     if (prev === undefined) {
                         s.items[iid] = { status: item.status, qty: item.quantity };
                         if (panel === 'cook') {
-                            if (!reloadTriggered['item_' + iid]) {
-                                reloadTriggered['item_' + iid] = true;
-                                toast(itemAddedMsg(item, order.id), 'warning');
+                            var ssItemKey = 'new_item_' + iid;
+                            if (!sessionStorage.getItem(ssItemKey)) {
+                                sessionStorage.setItem(ssItemKey, '1');
+                                setTimeout(function() { sessionStorage.removeItem(ssItemKey); }, 15000);
+                                toastOnce(itemAddedMsg(item, order.id), 'warning', 'item_' + iid);
                                 var card = document.querySelector('[data-order-id="' + order.id + '"]');
                                 if (!card) {
-                                    // Order not visible on current page (e.g. served order on pending view) — reload
                                     safeReload(1500);
                                 } else if (!card.querySelector('[data-item-id="' + iid + '"]')) {
                                     var itemsContainer = card.querySelector('.space-y-2');
@@ -538,6 +549,8 @@
                                         card.classList.add('border-red-500');
                                     }
                                 }
+                            } else {
+                                reloadTriggered['item_' + iid] = true;
                             }
                         } else {
                             // waiter / cashier / cashier_parcels: inject item into card if visible, toast always

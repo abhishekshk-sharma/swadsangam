@@ -31,6 +31,13 @@
         <div class="flex justify-between items-start mb-3">
             <div>
                 <h3 class="text-lg font-bold">Order #{{ $order->id }}</h3>
+                @if($order->assignedTo || ($order->user && $order->user->id !== auth()->guard('employee')->id()))
+                <div class="text-xs text-blue-600 font-semibold mt-1">
+                    @if($order->user && $order->user->id !== auth()->guard('employee')->id())
+                        <span>👤 Originally by {{ $order->user->name }}</span>
+                    @endif
+                </div>
+                @endif
                 <div class="flex items-center gap-2 mt-1">
                     @if($order->is_parcel)
                         <span style="background:#ea580c;color:#fff;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;letter-spacing:0.03em;">📦 Parcel</span>
@@ -141,6 +148,18 @@
             </div>
             
             <div class="order-actions waiter-order-actions">
+                @if(!in_array($order->status, ['paid', 'cancelled', 'checkout']) && $freeWaiters->count() > 0)
+                <button type="button"
+                        onclick="openAssign({{ $order->id }}, '#{{ $order->id }} — {{ $order->is_parcel ? 'Parcel' : 'T'.$order->table?->table_number }}')"
+                        title="Assign to another waiter"
+                        class="waiter-action-btn" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;width:44px;height:44px;border-radius:10px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <polyline points="16 11 18 13 22 9"/>
+                    </svg>
+                </button>
+                @endif
                 @if(!in_array($order->status, ['paid', 'cancelled', 'checkout']))
                 <button type="button" onclick="addItemsToOrder({{ $order->id }}, '{{ $order->is_parcel ? 'Parcel' : $order->table?->table_number }}')" 
                         data-add-items-btn title="Add Items"
@@ -680,4 +699,46 @@ function updateAdditionalItemNotes(index, notes) {
     overflow: hidden;
 }
 </style>
+{{-- Assign Order Modal --}}
+<div id="assignModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end">
+    <div class="bg-white w-full rounded-t-3xl p-6">
+        <div class="flex justify-between items-center mb-4">
+            <div>
+                <h2 class="text-lg font-bold">Assign Order</h2>
+                <p class="text-sm text-gray-500" id="assignOrderLabel"></p>
+            </div>
+            <button onclick="closeAssign()" class="text-gray-400 text-2xl">&times;</button>
+        </div>
+        <form id="assignForm" method="POST">
+            @csrf
+            <div class="mb-4">
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Assign to Waiter</label>
+                <select name="to_user_id" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                    <option value="">Select waiter...</option>
+                    @foreach($freeWaiters as $w)
+                        <option value="{{ $w->id }}">{{ $w->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="mb-5">
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Note (optional)</label>
+                <input type="text" name="note" placeholder="e.g. I'm going on break..."
+                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            </div>
+            <button type="submit" class="w-full bg-green-600 text-white py-3 rounded-lg font-bold text-base">Assign Order</button>
+        </form>
+    </div>
+</div>
+
+<script>
+function openAssign(orderId, label) {
+    document.getElementById('assignOrderLabel').textContent = label;
+    document.getElementById('assignForm').action = `/waiter/orders/${orderId}/assign`;
+    document.getElementById('assignModal').classList.remove('hidden');
+}
+function closeAssign() {
+    document.getElementById('assignModal').classList.add('hidden');
+}
+</script>
+
 @endsection

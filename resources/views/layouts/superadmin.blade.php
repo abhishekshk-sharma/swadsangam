@@ -46,6 +46,18 @@
                     <i class="fas fa-utensils w-5"></i>
                     <span class="ml-3">Menu Categories</span>
                 </a>
+                <a href="/superadmin/branches" class="flex items-center px-6 py-3 hover:bg-blue-800 {{ request()->is('superadmin/branches*') ? 'bg-blue-800 border-l-4 border-white' : '' }}">
+                    <i class="fas fa-store w-5"></i>
+                    <span class="ml-3">Branches</span>
+                </a>
+                <a href="/superadmin/staff" class="flex items-center px-6 py-3 hover:bg-blue-800 {{ request()->is('superadmin/staff*') ? 'bg-blue-800 border-l-4 border-white' : '' }}">
+                    <i class="fas fa-users w-5"></i>
+                    <span class="ml-3">Staff</span>
+                </a>
+                <a href="/superadmin/reports" class="flex items-center px-6 py-3 hover:bg-blue-800 {{ request()->is('superadmin/reports*') ? 'bg-blue-800 border-l-4 border-white' : '' }}">
+                    <i class="fas fa-chart-bar w-5"></i>
+                    <span class="ml-3">Reports</span>
+                </a>
             </nav>
         </aside>
 

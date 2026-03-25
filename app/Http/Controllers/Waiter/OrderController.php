@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Waiter;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Order, OrderItem, RestaurantTable, MenuItem, Employee, MenuCategory};
+use App\Models\{Order, OrderItem, RestaurantTable, MenuItem, Employee, MenuCategory, OrderAssignmentLog};
 use Illuminate\Http\Request;
 
 class OrderController extends Controller
@@ -39,17 +39,28 @@ class OrderController extends Controller
 
     public function index()
     {
-        $orders = Order::with(['table.category', 'items' => fn($q) => $q->withoutGlobalScopes()->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()])])
+        $myId = auth()->guard('employee')->id();
+
+        $orders = Order::with(['table.category', 'user', 'assignedTo', 'items' => fn($q) => $q->withoutGlobalScopes()->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()])])
             ->whereDate('created_at', today())
             ->where('status', '!=', 'paid')
             ->where('status', '!=', 'checkout')
             ->where(fn($q) => $this->scopeBranch($q))
+            ->where(fn($q) => $q->where('user_id', $myId)->orWhere('assigned_to', $myId))
             ->latest()
             ->get();
 
         $menuItems = MenuItem::where('is_available', true)->get();
 
-        return view('waiter.orders.index', compact('orders', 'menuItems'));
+        // Free waiters in same branch (excluding self)
+        $freeWaiters = Employee::where('role', 'waiter')
+            ->where('tenant_id', $this->tenantId())
+            ->where('id', '!=', $myId)
+            ->where('is_active', true)
+            ->when($this->branchId(), fn($q) => $q->where('branch_id', $this->branchId()))
+            ->get();
+
+        return view('waiter.orders.index', compact('orders', 'menuItems', 'freeWaiters'));
     }
 
     public function create()
@@ -60,6 +71,41 @@ class OrderController extends Controller
         $menuCategories = MenuCategory::whereHas('menuItems', fn($q) => $q->where('is_available', true))->get();
 
         return view('waiter.orders.create', compact('tables', 'allTables', 'menuItems', 'menuCategories'));
+    }
+
+    public function assign(Request $request, $id)
+    {
+        $order = $this->findOrder($id);
+        $myId  = auth()->guard('employee')->id();
+
+        // Only the current owner can reassign
+        abort_if($order->user_id !== $myId && $order->assigned_to !== $myId, 403);
+
+        $request->validate([
+            'to_user_id' => 'required|exists:employees,id',
+            'note'       => 'nullable|string|max:255',
+        ]);
+
+        $toUser = Employee::where('id', $request->to_user_id)
+            ->where('tenant_id', $this->tenantId())
+            ->where('role', 'waiter')
+            ->firstOrFail();
+
+        // Transfer ownership
+        $order->update([
+            'user_id'     => $toUser->id,
+            'assigned_to' => null,
+        ]);
+
+        OrderAssignmentLog::create([
+            'tenant_id'    => $this->tenantId(),
+            'order_id'     => $order->id,
+            'from_user_id' => $myId,
+            'to_user_id'   => $toUser->id,
+            'note'         => $request->note,
+        ]);
+
+        return back()->with('success', 'Order #' . $order->id . ' assigned to ' . $toUser->name . '.');
     }
 
     public function store(Request $request)

@@ -870,12 +870,13 @@
                         ['icon' => 'fa-chart-pie', 'label' => 'Dashboard', 'route' => 'admin.dashboard', 'badge' => null],
                     ],
                     'Operations' => [
-                        ['icon' => 'fa-clipboard-list', 'label' => 'Orders',   'route' => 'admin.cook.index',      'badge' => $pendingOrders ?? 0],
-                        ['icon' => 'fa-utensils',       'label' => 'Tables',   'route' => 'admin.tables.index',    'badge' => $activeTables ?? 0],
-                        ['icon' => 'fa-book-open',      'label' => 'Menu',     'route' => 'admin.menu.index',      'badge' => null],
-                        ['icon' => 'fa-user-tie',       'label' => 'Managers', 'route' => 'admin.managers.index',  'badge' => null],
-                        ['icon' => 'fa-users',          'label' => 'Staff',    'route' => 'admin.staff.index',     'badge' => null],
-                        ['icon' => 'fa-store',          'label' => 'Branches', 'route' => 'admin.branches.index',  'badge' => null],
+                        ['icon' => 'fa-clipboard-list', 'label' => 'Orders',       'route' => 'admin.cook.index',      'badge' => $pendingOrders ?? 0],
+                        ['icon' => 'fa-concierge-bell', 'label' => 'Waiter Panel', 'route' => 'admin.orders.index',    'badge' => null],
+                        ['icon' => 'fa-utensils',       'label' => 'Tables',       'route' => 'admin.tables.index',    'badge' => $activeTables ?? 0],
+                        ['icon' => 'fa-book-open',      'label' => 'Menu',         'route' => 'admin.menu.index',      'badge' => null],
+                        ['icon' => 'fa-user-tie',       'label' => 'Managers',     'route' => 'admin.managers.index',  'badge' => null],
+                        ['icon' => 'fa-users',          'label' => 'Staff',        'route' => 'admin.staff.index',     'badge' => null],
+                        ['icon' => 'fa-store',          'label' => 'Branches',     'route' => 'admin.branches.index',  'badge' => null],
                     ],
                     'Management' => [
                         ['icon' => 'fa-layer-group', 'label' => 'Categories', 'route' => 'admin.categories.index',      'badge' => null],
@@ -883,8 +884,9 @@
                         ['icon' => 'fa-camera',      'label' => 'Menu OCR',   'route' => 'admin.menu-ocr.index',        'badge' => null],
                     ],
                     'Reports' => [
-                        ['icon' => 'fa-chart-bar',     'label' => 'Reports',  'route' => 'admin.reports.index',  'badge' => null],
-                        ['icon' => 'fa-cash-register', 'label' => 'Handover', 'route' => 'admin.handover.index', 'badge' => null],
+                        ['icon' => 'fa-chart-bar',     'label' => 'Reports',          'route' => 'admin.reports.index',          'badge' => null],
+                        ['icon' => 'fa-exchange-alt',  'label' => 'Assignment Logs',  'route' => 'admin.assignment-logs.index',  'badge' => null],
+                        ['icon' => 'fa-cash-register', 'label' => 'Handover',         'route' => 'admin.handover.index',         'badge' => null],
                     ],
                     'Settings' => [
                         ['icon' => 'fa-telegram',    'label' => 'Telegram', 'route' => 'admin.telegram.index', 'badge' => null],

@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Tenant;
+use App\Models\{Tenant, Branch};
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
@@ -61,14 +61,20 @@ class TenantController extends Controller
             'slug' => 'required|unique:tenants|alpha_dash',
         ]);
 
-        Tenant::create([
-            'name' => $request->name,
-            'slug' => $request->slug,
+        $tenant = Tenant::create([
+            'name'   => $request->name,
+            'slug'   => $request->slug,
             'domain' => $request->domain,
             'status' => 'active',
         ]);
 
-        return redirect('/superadmin/tenants')->with('success', 'Tenant created');
+        Branch::create([
+            'tenant_id' => $tenant->id,
+            'name'      => 'Main',
+            'is_active' => true,
+        ]);
+
+        return redirect('/superadmin/tenants')->with('success', 'Tenant created with default Main branch');
     }
 
     public function edit($id)

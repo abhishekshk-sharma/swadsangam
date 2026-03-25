@@ -39,4 +39,8 @@ return [
         'key' => env('GOOGLE_CLOUD_VISION_API_KEY'),
     ],
 
+    'google_translate' => [
+        'key' => env('GOOGLE_TRANSLATE_API_KEY', env('GOOGLE_CLOUD_VISION_API_KEY')),
+    ],
+
 ];

@@ -27,7 +27,23 @@ class CookController extends BaseAdminController
         $orders   = $query->get();
         $branches = \App\Models\Branch::where('tenant_id', $this->tenantId())->where('is_active', true)->get();
         $selectedBranch = $request->branch_id;
-        return view('admin.cook.index', compact('orders', 'branches', 'selectedBranch'));
+
+        $paymentQuery = Order::with(['table.category', 'orderItems' => fn($q) => $q->with('menuItem')])
+            ->where('tenant_id', $this->tenantId())
+            ->whereDate('created_at', today())
+            ->where(function ($q) {
+                $q->where(function ($q2) {
+                    $q2->where('is_parcel', false)->whereIn('status', ['served', 'checkout']);
+                })->orWhere(function ($q2) {
+                    $q2->where('is_parcel', true)->where('status', 'ready');
+                });
+            });
+        if ($request->filled('branch_id')) {
+            $paymentQuery->where('branch_id', $request->branch_id);
+        }
+        $paymentOrders = $paymentQuery->latest()->get();
+
+        return view('admin.cook.index', compact('orders', 'branches', 'selectedBranch', 'paymentOrders'));
     }
 
     public function startPreparing($id)
@@ -68,6 +84,12 @@ class CookController extends BaseAdminController
 
         if (!$order->is_parcel && $order->table) {
             $order->table->update(['is_occupied' => false]);
+        }
+
+        $billUrl = \Illuminate\Support\Facades\URL::signedRoute('bill.show', ['orderId' => $order->id]);
+
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true, 'bill_url' => $billUrl, 'order_id' => $order->id]);
         }
 
         return redirect('/admin/cook')->with('success', 'Payment received! Order closed.');

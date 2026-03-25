@@ -17,9 +17,7 @@
         background: #f9f9f9;
         border-radius: 8px 8px 0 0;
     }
-    .filter-body {
-        padding: 24px;
-    }
+    .filter-body { padding: 24px; }
     .form-label {
         font-size: 13px;
         font-weight: 600;
@@ -46,10 +44,7 @@
         font-weight: 600;
         font-size: 14px;
     }
-    .btn-primary:hover {
-        background: #2563eb;
-        border-color: #2563eb;
-    }
+    .btn-primary:hover { background: #2563eb; border-color: #2563eb; }
     .btn-secondary {
         background: #fff;
         border: 1px solid #d5d9d9;
@@ -59,9 +54,7 @@
         font-weight: 600;
         font-size: 14px;
     }
-    .btn-secondary:hover {
-        background: #f7f7f7;
-    }
+    .btn-secondary:hover { background: #f7f7f7; }
     .btn-success {
         background: #067d62;
         border: 1px solid #067d62;
@@ -71,9 +64,7 @@
         font-weight: 600;
         font-size: 13px;
     }
-    .btn-success:hover {
-        background: #055a47;
-    }
+    .btn-success:hover { background: #055a47; }
     .stat-card-report {
         background: #fff;
         border-radius: 8px;
@@ -104,6 +95,28 @@
     }
 </style>
 
+{{-- Always-visible summary stats --}}
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card-report" style="border-left: 4px solid #4facfe;">
+            <h5>Orders Today</h5>
+            <h2>{{ $stats['orders_today'] }}</h2>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card-report" style="border-left: 4px solid #43e97b;">
+            <h5>Revenue Today</h5>
+            <h2>₹{{ number_format($stats['revenue_today'], 2) }}</h2>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card-report" style="border-left: 4px solid #f7971e;">
+            <h5>{{ now()->format('F Y') }} Revenue</h5>
+            <h2>₹{{ number_format($stats['revenue_this_month'], 2) }}</h2>
+        </div>
+    </div>
+</div>
+
 <div class="filter-card">
     <div class="filter-header">
         <h5 class="mb-0" style="font-weight: 600; color: #232f3e;">
@@ -133,22 +146,18 @@
                         <option value="year" {{ request('filter_type') === 'year' ? 'selected' : '' }}>By Year</option>
                     </select>
                 </div>
-
                 <div class="col-md-3" id="dateFilter" style="display: none;">
                     <label class="form-label">Select Date</label>
                     <input type="date" name="date" class="form-control" value="{{ request('date') }}">
                 </div>
-
                 <div class="col-md-3" id="monthFilter" style="display: none;">
                     <label class="form-label">Select Month</label>
                     <input type="month" name="month" class="form-control" value="{{ request('month') }}">
                 </div>
-
                 <div class="col-md-3" id="yearFilter" style="display: none;">
                     <label class="form-label">Select Year</label>
                     <input type="number" name="year" class="form-control" min="2020" max="2099" value="{{ request('year') }}">
                 </div>
-
                 <div class="col-md-3 d-flex align-items-end gap-2">
                     <button type="submit" class="btn-primary">Apply Filter</button>
                     <a href="{{ route('admin.reports.index') }}" class="btn-secondary">Clear</a>
@@ -162,13 +171,13 @@
 <div class="row g-4 mb-4">
     <div class="col-md-6">
         <div class="stat-card-report" style="border-left: 4px solid #4facfe;">
-            <h5>Total Orders</h5>
+            <h5>Total Orders (Filtered)</h5>
             <h2>{{ $totalOrders }}</h2>
         </div>
     </div>
     <div class="col-md-6">
         <div class="stat-card-report" style="border-left: 4px solid #43e97b;">
-            <h5>Total Revenue (Paid Orders)</h5>
+            <h5>Total Revenue (Filtered, Paid)</h5>
             <h2>₹{{ number_format($totalRevenue, 2) }}</h2>
         </div>
     </div>
@@ -245,38 +254,25 @@
 </div>
 @else
 <div class="alert-info">
-    <i class="fas fa-info-circle me-2"></i> Please select a filter type to view reports
+    <i class="fas fa-info-circle me-2"></i> Please select a filter type to view detailed reports
 </div>
 @endif
 
 <script>
 document.getElementById('filterType').addEventListener('change', function() {
-    const dateFilter = document.getElementById('dateFilter');
-    const monthFilter = document.getElementById('monthFilter');
-    const yearFilter = document.getElementById('yearFilter');
-    
-    dateFilter.style.display = 'none';
-    monthFilter.style.display = 'none';
-    yearFilter.style.display = 'none';
-    
-    if (this.value === 'date') {
-        dateFilter.style.display = 'block';
-    } else if (this.value === 'month') {
-        monthFilter.style.display = 'block';
-    } else if (this.value === 'year') {
-        yearFilter.style.display = 'block';
-    }
+    document.getElementById('dateFilter').style.display = 'none';
+    document.getElementById('monthFilter').style.display = 'none';
+    document.getElementById('yearFilter').style.display = 'none';
+    if (this.value === 'date') document.getElementById('dateFilter').style.display = 'block';
+    else if (this.value === 'month') document.getElementById('monthFilter').style.display = 'block';
+    else if (this.value === 'year') document.getElementById('yearFilter').style.display = 'block';
 });
 
 document.addEventListener('DOMContentLoaded', function() {
     const filterType = document.getElementById('filterType').value;
-    if (filterType === 'date') {
-        document.getElementById('dateFilter').style.display = 'block';
-    } else if (filterType === 'month') {
-        document.getElementById('monthFilter').style.display = 'block';
-    } else if (filterType === 'year') {
-        document.getElementById('yearFilter').style.display = 'block';
-    }
+    if (filterType === 'date') document.getElementById('dateFilter').style.display = 'block';
+    else if (filterType === 'month') document.getElementById('monthFilter').style.display = 'block';
+    else if (filterType === 'year') document.getElementById('yearFilter').style.display = 'block';
 });
 </script>
 @endsection

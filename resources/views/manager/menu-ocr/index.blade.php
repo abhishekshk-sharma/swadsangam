@@ -14,6 +14,7 @@
 @endif
 
 <div class="row g-4">
+    {{-- Upload Card --}}
     <div class="col-md-6">
         <div class="content-card h-100">
             <div class="p-3 border-bottom bg-light" style="border-radius:8px 8px 0 0;">
@@ -22,6 +23,44 @@
             <div class="p-4">
                 <form id="ocrForm" enctype="multipart/form-data">
                     @csrf
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Output Language</label>
+                        <div class="d-flex gap-2">
+                            @foreach(['en' => '🇬🇧 English', 'hi' => '🇮🇳 Hindi', 'gu' => '🇮🇳 Gujarati'] as $code => $label)
+                            <label style="flex:1;cursor:pointer;">
+                                <input type="radio" name="language" value="{{ $code }}" class="d-none lang-radio"
+                                    {{ $code === 'en' ? 'checked' : '' }}>
+                                <div class="lang-btn text-center py-2 px-1 rounded border fw-semibold"
+                                     style="font-size:13px;transition:all .15s;
+                                     {{ $code === 'en' ? 'background:#3b82f6;color:#fff;border-color:#3b82f6;' : 'background:#f8fafc;color:#475569;border-color:#cbd5e1;' }}">
+                                    {{ $label }}
+                                </div>
+                            </label>
+                            @endforeach
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">OCR Mode</label>
+                        <div class="d-flex gap-2">
+                            <label style="flex:1;cursor:pointer;">
+                                <input type="radio" name="ocr_mode" value="standard" class="d-none mode-radio" checked>
+                                <div class="mode-btn text-center py-2 px-1 rounded border fw-semibold"
+                                     style="font-size:13px;transition:all .15s;background:#3b82f6;color:#fff;border-color:#3b82f6;">
+                                    <i class="fas fa-list me-1"></i> Standard
+                                </div>
+                            </label>
+                            <label style="flex:1;cursor:pointer;">
+                                <input type="radio" name="ocr_mode" value="variant" class="d-none mode-radio">
+                                <div class="mode-btn text-center py-2 px-1 rounded border fw-semibold"
+                                     style="font-size:13px;transition:all .15s;background:#f8fafc;color:#475569;border-color:#cbd5e1;">
+                                    <i class="fas fa-layer-group me-1"></i> Variant
+                                </div>
+                            </label>
+                        </div>
+                        <div id="variantHint" style="display:none;font-size:12px;color:#7c3aed;margin-top:6px;padding:6px 10px;background:#f5f3ff;border-radius:6px;">
+                            <i class="fas fa-info-circle me-1"></i> Use when image has items with multiple variants like <strong>dabeli (oil/butter) 15/25</strong>
+                        </div>
+                    </div>
                     <div class="mb-4">
                         <label class="form-label fw-semibold">Menu Image</label>
                         <div id="dropZone" style="border:2px dashed #cbd5e1;border-radius:10px;padding:40px 20px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;background:#f8fafc;position:relative;overflow:hidden;">
@@ -42,13 +81,14 @@
                     <div id="errorBox" class="alert alert-danger" style="display:none;"></div>
 
                     <button type="submit" class="btn btn-primary w-100" id="submitBtn">
-                        <i class="fas fa-magic me-2"></i> Extract & Download Excel
+                        <i class="fas fa-magic me-2"></i> Extract & Review
                     </button>
                 </form>
             </div>
         </div>
     </div>
 
+    {{-- How it works --}}
     <div class="col-md-6">
         <div class="content-card h-100">
             <div class="p-3 border-bottom bg-light" style="border-radius:8px 8px 0 0;">
@@ -86,6 +126,7 @@
     </div>
 </div>
 
+{{-- Excel Upload Row --}}
 <div class="row g-4 mt-1">
     <div class="col-12">
         <div class="content-card">
@@ -97,11 +138,8 @@
                     @csrf
                     <div class="row g-3 align-items-end">
                         <div class="col-md-8">
-                            <label class="form-label fw-semibold">Excel / CSV File</label>
+                            <label class="form-label fw-semibold">Standard Format <span style="font-size:11px;color:#64748b;font-weight:400;">(Col A = Name, Col B = Price)</span></label>
                             <input type="file" name="excel_file" id="excelFile" accept=".xlsx,.xls,.csv" class="form-control">
-                            <div style="font-size:12px;color:#64748b;margin-top:5px;">
-                                Format: Column A = Item Name, Column B = Price.
-                            </div>
                         </div>
                         <div class="col-md-4">
                             <button type="submit" class="btn btn-primary w-100" id="excelBtn">
@@ -128,10 +166,13 @@
             </p>
             <div id="reviewBody"></div>
         </div>
-        <div style="padding:16px 24px;border-top:1px solid #e2e8f0;display:flex;gap:10px;justify-content:flex-end;">
-            <button onclick="closeReview()" class="btn btn-secondary" style="padding:9px 20px;">Cancel</button>
-            <button onclick="submitImport()" class="btn btn-primary" id="importBtn" style="padding:9px 24px;">
-                <i class="fas fa-database me-2"></i>Import to Menu
+        <div style="padding:16px 24px;border-top:1px solid #e2e8f0;display:flex;flex-wrap:wrap;gap:8px;">
+            <button onclick="closeReview()" class="btn btn-secondary" style="flex:1;min-width:100px;">Cancel</button>
+            <button onclick="exportReviewExcel()" class="btn btn-success" style="flex:1;min-width:120px;">
+                <i class="fas fa-file-excel me-1"></i>Export Excel
+            </button>
+            <button onclick="submitImport()" class="btn btn-primary" id="importBtn" style="flex:2;min-width:140px;">
+                <i class="fas fa-database me-1"></i>Import to Menu
             </button>
         </div>
     </div>
@@ -155,6 +196,31 @@
     var errorBox    = document.getElementById('errorBox');
     var form        = document.getElementById('ocrForm');
 
+    // ── Language toggle ───────────────────────────────────────────────────────
+    document.querySelectorAll('.lang-radio').forEach(function (radio) {
+        radio.addEventListener('change', function () {
+            document.querySelectorAll('.lang-radio').forEach(function (r) {
+                var btn = r.nextElementSibling;
+                if (r.checked) { btn.style.background='#3b82f6'; btn.style.color='#fff'; btn.style.borderColor='#3b82f6'; }
+                else           { btn.style.background='#f8fafc'; btn.style.color='#475569'; btn.style.borderColor='#cbd5e1'; }
+            });
+        });
+    });
+
+    // ── OCR Mode toggle ───────────────────────────────────────────────────────
+    document.querySelectorAll('.mode-radio').forEach(function (radio) {
+        radio.addEventListener('change', function () {
+            document.querySelectorAll('.mode-radio').forEach(function (r) {
+                var btn = r.nextElementSibling;
+                if (r.checked) { btn.style.background='#3b82f6'; btn.style.color='#fff'; btn.style.borderColor='#3b82f6'; }
+                else           { btn.style.background='#f8fafc'; btn.style.color='#475569'; btn.style.borderColor='#cbd5e1'; }
+            });
+            document.getElementById('variantHint').style.display =
+                document.querySelector('.mode-radio[value="variant"]').checked ? '' : 'none';
+        });
+    });
+
+    // ── Preview ───────────────────────────────────────────────────────────────
     function showPreview(file) {
         if (!file) return;
         var reader = new FileReader();
@@ -169,7 +235,6 @@
     }
 
     input.addEventListener('change', function () { showPreview(this.files[0]); });
-
     dropZone.addEventListener('dragover',  function (e) { e.preventDefault(); dropZone.style.borderColor='#3b82f6'; dropZone.style.background='#eff6ff'; });
     dropZone.addEventListener('dragleave', function ()  { dropZone.style.borderColor='#cbd5e1'; dropZone.style.background='#f8fafc'; });
     dropZone.addEventListener('drop', function (e) {
@@ -178,6 +243,7 @@
         if (file) { var dt = new DataTransfer(); dt.items.add(file); input.files = dt.files; showPreview(file); }
     });
 
+    // ── AJAX submit ───────────────────────────────────────────────────────────
     form.addEventListener('submit', function (e) {
         e.preventDefault();
         errorBox.style.display = 'none';
@@ -196,44 +262,64 @@
         })
         .then(function (data) {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fas fa-magic me-2"></i> Extract & Download Excel';
+            submitBtn.innerHTML = '<i class="fas fa-magic me-2"></i> Extract & Review';
             if (data.error || data.message) {
                 errorBox.textContent = data.error || data.message;
                 errorBox.style.display = '';
                 return;
             }
-            downloadExcel(data.sections);
+            openReview(data.sections);
         })
         .catch(function (err) {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fas fa-magic me-2"></i> Extract & Download Excel';
+            submitBtn.innerHTML = '<i class="fas fa-magic me-2"></i> Extract & Review';
             errorBox.textContent = 'Error: ' + (err.message || 'Something went wrong. Please try again.');
             errorBox.style.display = '';
         });
     });
 
-    window.downloadExcel = function (sections) {
-        var rows = [['Item Name', 'Price']];
-        sections.forEach(function (section) {
-            section.items.forEach(function (item) { rows.push([item.name, item.price]); });
+    // ── Export Excel (standard format: category row + item rows) ─────────────
+    window.exportReviewExcel = function () {
+        var rows = [];
+        var lastCat = null;
+
+        document.querySelectorAll('#reviewBody > div[data-si]').forEach(function (wrap) {
+            var catInput = wrap.querySelector('input[data-field="category"]');
+            var category = catInput ? catInput.value.trim() : '';
+
+            wrap.querySelectorAll('tbody tr').forEach(function (tr) {
+                var nameEl  = tr.querySelector('input[data-field="name"]');
+                var priceEl = tr.querySelector('input[data-field="price"]');
+                var name    = nameEl  ? nameEl.value.trim()  : '';
+                var price   = priceEl ? priceEl.value.trim() : '';
+                if (!name) return;
+                if (category !== lastCat) { rows.push([category, '']); lastCat = category; }
+                rows.push([name, price]);
+            });
         });
+
+        if (!rows.length) { alert('No items to export.'); return; }
+
         var csv = rows.map(function (r) {
             return r.map(function (c) {
                 var s = String(c).replace(/"/g, '""');
                 return /[,"\n]/.test(s) ? '"' + s + '"' : s;
             }).join(',');
         }).join('\n');
-        var blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
-        var a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'menu-extract.csv';
+
+        var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+        var a    = document.createElement('a');
+        a.href   = URL.createObjectURL(blob);
+        a.download = 'menu-ocr-export.csv';
         a.click();
         URL.revokeObjectURL(a.href);
     };
 
+    // ── Review modal ──────────────────────────────────────────────────────────
     window.openReview = function (sections) {
         var body = document.getElementById('reviewBody');
         body.innerHTML = '';
+
         sections.forEach(function (section, si) {
             var wrap = document.createElement('div');
             wrap.style.cssText = 'margin-bottom:20px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;';
@@ -266,6 +352,7 @@
             wrap.appendChild(addRow);
             body.appendChild(wrap);
         });
+
         document.getElementById('reviewOverlay').style.display = '';
     };
 
@@ -289,7 +376,7 @@
         document.querySelectorAll('#reviewBody > div[data-si]').forEach(function (wrap) {
             var catInput = wrap.querySelector('input[data-field="category"]');
             var category = catInput ? catInput.value.trim() : '';
-            var items = [];
+            var items    = [];
             wrap.querySelectorAll('tbody tr').forEach(function (tr) {
                 var nameEl  = tr.querySelector('input[data-field="name"]');
                 var priceEl = tr.querySelector('input[data-field="price"]');
@@ -313,9 +400,7 @@
     }
 
     @if(session('excel_sections'))
-    document.addEventListener('DOMContentLoaded', function () {
-        openReview({!! json_encode(session('excel_sections')) !!});
-    });
+    openReview({!! json_encode(session('excel_sections')) !!});
     @endif
 
     document.getElementById('excelForm').addEventListener('submit', function () {
