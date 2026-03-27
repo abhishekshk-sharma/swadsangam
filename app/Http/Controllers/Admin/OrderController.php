@@ -116,7 +116,7 @@ class OrderController extends BaseAdminController
             'tenant_id'      => $this->tenantId(),
             'branch_id'      => $branchId,
             'table_id'       => $isParcel ? null : $request->table_id,
-            'user_id'        => auth()->guard('admin')->id() ?? auth()->guard('employee')->id(),
+            'user_id'        => auth()->guard('employee')->id() ?? null,
             'status'         => 'pending',
             'total_amount'   => $total,
             'customer_notes' => $request->customer_notes,
@@ -292,7 +292,7 @@ class OrderController extends BaseAdminController
             'status'       => 'paid',
             'payment_mode' => $request->payment_mode,
             'paid_at'      => now(),
-            'cashier_id'   => auth()->guard('admin')->id() ?? auth()->guard('employee')->id(),
+            'cashier_id'   => auth()->guard('employee')->id() ?? null,
         ]);
 
         if (!$order->is_parcel && $order->table) {
