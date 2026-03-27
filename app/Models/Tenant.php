@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Tenant extends Model
 {
-    protected $fillable = ['name', 'slug', 'domain', 'status'];
+    protected $fillable = ['name', 'slug', 'domain', 'status', 'gst_slab_id', 'gst_mode'];
 
     public function isActive()
     {
@@ -26,5 +26,10 @@ class Tenant extends Model
     public function orders()
     {
         return $this->hasMany(Order::class);
+    }
+
+    public function gstSlab()
+    {
+        return $this->belongsTo(GstSlab::class);
     }
 }

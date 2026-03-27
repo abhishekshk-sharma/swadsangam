@@ -3,28 +3,44 @@
 
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="fw-bold mb-0">💵 Cash Handover Reports</h2>
+    <div>
+        <h1 class="section-title"><i class="fas fa-cash-register me-2"></i>Cash Handover Reports</h1>
+        <p style="font-size:13px;color:var(--gray-500);">{{ now()->format('l, F j, Y') }}</p>
+    </div>
 </div>
 
 @if(session('success'))
-    <div class="alert alert-success alert-dismissible fade show">{{ session('success') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+    <div class="alert alert-success"><i class="fas fa-check-circle me-2"></i>{{ session('success') }}</div>
 @endif
 @if(session('error'))
-    <div class="alert alert-danger alert-dismissible fade show">{{ session('error') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+    <div class="alert alert-error"><i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}</div>
 @endif
 
 {{-- Filter Card --}}
-<div class="content-card mb-4">
-    <div class="p-3 border-bottom bg-light" style="border-radius:8px 8px 0 0;">
-        <strong><i class="fas fa-filter me-2"></i>Filter Handovers</strong>
+<div class="content-card" style="margin-bottom:20px;">
+    <div style="padding:14px 20px;border-bottom:1px solid #e5e7eb;background:#f9fafb;border-radius:12px 12px 0 0;">
+        <strong style="font-size:14px;color:#374151;"><i class="fas fa-filter" style="margin-right:8px;color:#3b82f6;"></i>Filter Handovers</strong>
     </div>
-    <div class="p-3">
-        <form method="GET" action="{{ route('admin.handover.index') }}">
-            <div class="row g-3 align-items-end">
+    <div style="padding:20px;">
+        <form method="GET" action="{{ route('admin.handover.index') }}" id="handoverFilterForm">
+
+            {{-- Period tabs --}}
+            <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+                @foreach(['today'=>'Today','month'=>'Monthly','custom'=>'Custom Range'] as $val=>$label)
+                <button type="button" onclick="setHFilterType('{{ $val }}')" id="hftab-{{ $val }}"
+                    style="padding:8px 20px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;border:2px solid {{ request('filter_type')===$val ? '#2563eb' : '#d1d5db' }};background:{{ request('filter_type')===$val ? '#eff6ff' : '#fff' }};color:{{ request('filter_type')===$val ? '#2563eb' : '#6b7280' }};transition:all 0.15s;">
+                    {{ $label }}
+                </button>
+                @endforeach
+            </div>
+
+            <input type="hidden" name="filter_type" id="hFilterType" value="{{ request('filter_type') }}">
+
+            <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;">
                 @if(isset($branches) && $branches->count() > 0)
-                <div class="col-md-3">
-                    <label class="form-label fw-semibold small"><i class="fas fa-store me-1"></i>Branch</label>
-                    <select name="branch_id" class="form-select">
+                <div style="display:flex;flex-direction:column;gap:6px;min-width:180px;">
+                    <label style="font-size:12px;font-weight:600;color:#374151;"><i class="fas fa-store" style="margin-right:4px;"></i>Branch</label>
+                    <select name="branch_id" style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;background:#fff;color:#374151;">
                         <option value="">All Branches</option>
                         @foreach($branches as $branch)
                             <option value="{{ $branch->id }}" {{ $selectedBranch == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
@@ -32,30 +48,28 @@
                     </select>
                 </div>
                 @endif
-                <div class="col-md-3">
-                    <label class="form-label fw-semibold small">Filter Type</label>
-                    <select name="filter_type" class="form-select" id="filterType">
-                        <option value="">All</option>
-                        <option value="today"  {{ request('filter_type') === 'today'  ? 'selected' : '' }}>Today</option>
-                        <option value="month"  {{ request('filter_type') === 'month'  ? 'selected' : '' }}>By Month</option>
-                        <option value="custom" {{ request('filter_type') === 'custom' ? 'selected' : '' }}>Custom Range</option>
-                    </select>
+
+                <div id="hpanel-month" style="display:{{ request('filter_type')==='month' ? 'flex' : 'none' }};flex-direction:column;gap:6px;min-width:160px;">
+                    <label style="font-size:12px;font-weight:600;color:#374151;">Month</label>
+                    <input type="month" name="month" value="{{ request('month', now()->format('Y-m')) }}"
+                           style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;background:#fff;color:#374151;">
                 </div>
-                <div class="col-md-3" id="monthField" style="display:none;">
-                    <label class="form-label fw-semibold small">Month</label>
-                    <input type="month" name="month" class="form-control" value="{{ request('month') }}">
+
+                <div id="hpanel-custom-from" style="display:{{ request('filter_type')==='custom' ? 'flex' : 'none' }};flex-direction:column;gap:6px;min-width:140px;">
+                    <label style="font-size:12px;font-weight:600;color:#374151;">From</label>
+                    <input type="date" name="date_from" value="{{ request('date_from') }}"
+                           style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;background:#fff;color:#374151;">
                 </div>
-                <div class="col-md-2" id="dateFromField" style="display:none;">
-                    <label class="form-label fw-semibold small">From</label>
-                    <input type="date" name="date_from" class="form-control" value="{{ request('date_from') }}">
+
+                <div id="hpanel-custom-to" style="display:{{ request('filter_type')==='custom' ? 'flex' : 'none' }};flex-direction:column;gap:6px;min-width:140px;">
+                    <label style="font-size:12px;font-weight:600;color:#374151;">To</label>
+                    <input type="date" name="date_to" value="{{ request('date_to') }}"
+                           style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;background:#fff;color:#374151;">
                 </div>
-                <div class="col-md-2" id="dateToField" style="display:none;">
-                    <label class="form-label fw-semibold small">To</label>
-                    <input type="date" name="date_to" class="form-control" value="{{ request('date_to') }}">
-                </div>
-                <div class="col-md-2 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary">Apply</button>
-                    <a href="{{ route('admin.handover.index') }}" class="btn btn-outline-secondary">Clear</a>
+
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <button type="submit" style="padding:9px 22px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Apply</button>
+                    <a href="{{ route('admin.handover.index') }}" style="padding:9px 22px;background:#fff;color:#374151;border:1px solid #d1d5db;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;">Clear</a>
                 </div>
             </div>
         </form>
@@ -63,26 +77,33 @@
 </div>
 
 <div class="content-card">
-    <div class="p-3 border-bottom d-flex justify-content-end">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--gray-200);display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-size:15px;font-weight:600;color:var(--gray-800);"><i class="fas fa-cash-register me-2" style="color:var(--blue-500);"></i>Handover Records</div>
         <form method="GET" action="{{ route('admin.handover.export') }}">
             <input type="hidden" name="filter_type" value="{{ request('filter_type') }}">
             <input type="hidden" name="month"       value="{{ request('month') }}">
             <input type="hidden" name="date_from"   value="{{ request('date_from') }}">
             <input type="hidden" name="date_to"     value="{{ request('date_to') }}">
             <input type="hidden" name="branch_id"   value="{{ request('branch_id') }}">
-            <button type="submit" class="btn btn-success btn-sm">
-                <i class="fas fa-download me-1"></i> Export Excel
+            <button type="submit" style="display:inline-flex;align-items:center;gap:6px;background:#059669;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">
+                <i class="fas fa-download"></i> Export Excel
             </button>
         </form>
     </div>
 
-    <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
-                <tr>
-                    <th>#</th><th>Cashier</th><th>Date</th><th>Submitted</th>
-                    <th>System Cash</th><th>Difference</th><th>Status</th>
-                    <th>Approved By</th><th>Actions</th>
+    <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;">
+            <thead>
+                <tr style="background:var(--gray-50);">
+                    <th style="padding:10px 16px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500);border-bottom:1px solid var(--gray-200);text-align:left;white-space:nowrap;">#</th>
+                    <th style="padding:10px 16px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500);border-bottom:1px solid var(--gray-200);text-align:left;white-space:nowrap;">Cashier</th>
+                    <th style="padding:10px 16px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500);border-bottom:1px solid var(--gray-200);text-align:left;white-space:nowrap;">Date</th>
+                    <th style="padding:10px 16px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500);border-bottom:1px solid var(--gray-200);text-align:left;white-space:nowrap;">Submitted</th>
+                    <th style="padding:10px 16px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500);border-bottom:1px solid var(--gray-200);text-align:left;white-space:nowrap;">System Cash</th>
+                    <th style="padding:10px 16px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500);border-bottom:1px solid var(--gray-200);text-align:left;white-space:nowrap;">Difference</th>
+                    <th style="padding:10px 16px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500);border-bottom:1px solid var(--gray-200);text-align:left;white-space:nowrap;">Status</th>
+                    <th style="padding:10px 16px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500);border-bottom:1px solid var(--gray-200);text-align:left;white-space:nowrap;">Approved By</th>
+                    <th style="padding:10px 16px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500);border-bottom:1px solid var(--gray-200);text-align:left;white-space:nowrap;">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -92,65 +113,84 @@
                     $systemCash = $systemTotals[$key]->total ?? 0;
                     $diff       = $h->total_cash - $systemCash;
                 @endphp
-                <tr>
-                    <td><strong>#{{ $h->id }}</strong></td>
-                    <td>{{ $h->cashier?->name ?? '—' }}</td>
-                    <td>{{ $h->handover_date->format('d M Y') }}</td>
-                    <td><strong>₹{{ number_format($h->total_cash, 2) }}</strong></td>
-                    <td>₹{{ number_format($systemCash, 2) }}</td>
-                    <td>
+                <tr style="border-bottom:1px solid var(--gray-100);" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background=''">
+                    <td style="padding:14px 16px;font-size:13px;color:var(--gray-800);font-weight:700;">#{{ $h->id }}</td>
+                    <td style="padding:14px 16px;font-size:13px;color:var(--gray-700);">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <div style="width:30px;height:30px;border-radius:50%;background:var(--blue-100);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--blue-600);flex-shrink:0;">
+                                {{ strtoupper(substr($h->cashier?->name ?? '?', 0, 1)) }}
+                            </div>
+                            <span>{{ $h->cashier?->name ?? '—' }}</span>
+                        </div>
+                    </td>
+                    <td style="padding:14px 16px;font-size:13px;color:var(--gray-600);white-space:nowrap;">{{ $h->handover_date->format('d M Y') }}</td>
+                    <td style="padding:14px 16px;font-size:13px;font-weight:700;color:var(--gray-800);">₹{{ number_format($h->total_cash, 2) }}</td>
+                    <td style="padding:14px 16px;font-size:13px;color:var(--gray-600);">₹{{ number_format($systemCash, 2) }}</td>
+                    <td style="padding:14px 16px;">
                         @if($diff == 0)
-                            <span class="badge bg-success">✔ Exact</span>
+                            <span style="display:inline-flex;align-items:center;gap:4px;background:#dcfce7;color:#15803d;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;">✔ Exact</span>
                         @elseif($diff > 0)
-                            <span class="badge bg-primary">▲ Excess ₹{{ number_format($diff, 2) }}</span>
+                            <span style="display:inline-flex;align-items:center;gap:4px;background:#dbeafe;color:#1d4ed8;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;">▲ +₹{{ number_format($diff, 2) }}</span>
                         @else
-                            <span class="badge bg-danger">▼ Short ₹{{ number_format(abs($diff), 2) }}</span>
+                            <span style="display:inline-flex;align-items:center;gap:4px;background:#fee2e2;color:#dc2626;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;">▼ -₹{{ number_format(abs($diff), 2) }}</span>
                         @endif
                     </td>
-                    <td>
+                    <td style="padding:14px 16px;">
                         @if($h->status === 'approved')
-                            <span class="badge bg-success">Approved</span>
+                            <span style="display:inline-flex;align-items:center;gap:4px;background:#dcfce7;color:#15803d;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;"><i class="fas fa-check-circle"></i> Approved</span>
                         @else
-                            <span class="badge bg-warning text-dark">Pending</span>
+                            <span style="display:inline-flex;align-items:center;gap:4px;background:#fef9c3;color:#a16207;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;"><i class="fas fa-clock"></i> Pending</span>
                         @endif
                     </td>
-                    <td class="text-muted small">
+                    <td style="padding:14px 16px;font-size:12px;color:var(--gray-500);">
                         @if($h->approved_by)
-                            {{ $h->approvedBy?->name }}<br>{{ $h->approved_at?->format('d M, h:i A') }}
-                        @else —
+                            <div style="font-weight:600;color:var(--gray-700);">{{ $h->approvedBy?->name }}</div>
+                            <div style="font-size:11px;margin-top:2px;">{{ $h->approved_at?->format('d M, h:i A') }}</div>
+                        @else
+                            <span style="color:var(--gray-400);">—</span>
                         @endif
                     </td>
-                    <td>
-                        <div class="d-flex gap-2">
+                    <td style="padding:14px 16px;">
+                        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
                             <button type="button"
-                                    class="btn btn-sm btn-outline-secondary btn-view-handover"
+                                    class="btn-view-handover"
                                     data-h="{!! htmlspecialchars(json_encode($h->only(['id','denom_1','denom_2','denom_5','denom_10','denom_20','denom_50','denom_100','denom_200','denom_500','total_cash','notes'])), ENT_QUOTES) !!}"
                                     data-sys="{{ $systemCash }}"
-                                    data-diff="{{ $diff }}">
-                                🔍 View
+                                    data-diff="{{ $diff }}"
+                                    style="display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border:1px solid var(--gray-300);background:#fff;color:var(--gray-700);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">
+                                <i class="fas fa-eye"></i> View
                             </button>
                             @if($h->status === 'pending')
-                                <a href="{{ route('admin.handover.edit', $h) }}" class="btn btn-sm btn-outline-primary">✏️ Edit</a>
+                                <a href="{{ route('admin.handover.edit', $h) }}"
+                                   style="display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border:1px solid var(--blue-300);background:var(--blue-50);color:var(--blue-700);border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;">
+                                    <i class="fas fa-pen"></i> Edit
+                                </a>
                                 <button type="button"
-                                        class="btn btn-sm btn-success btn-approve-handover"
+                                        class="btn-approve-handover"
                                         data-id="{{ $h->id }}"
                                         data-cashier="{{ $h->cashier?->name }}"
                                         data-total="{{ number_format($h->total_cash, 2) }}"
                                         data-sys="{{ $systemCash }}"
-                                        data-diff="{{ $diff }}">
-                                    ✅ Approve
+                                        data-diff="{{ $diff }}"
+                                        style="display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border:none;background:#059669;color:#fff;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">
+                                    <i class="fas fa-check"></i> Approve
                                 </button>
                             @endif
                         </div>
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="9" class="text-center text-muted py-4">No handover reports found.</td></tr>
+                <tr>
+                    <td colspan="9" style="padding:48px;text-align:center;">
+                        <div style="font-size:40px;color:var(--gray-300);margin-bottom:12px;"><i class="fas fa-inbox"></i></div>
+                        <div style="font-size:14px;color:var(--gray-500);">No handover reports found.</div>
+                    </td>
+                </tr>
                 @endforelse
             </tbody>
         </table>
     </div>
-    <div class="p-3">{{ $handovers->links() }}</div>
+    <div style="padding:16px 20px;border-top:1px solid var(--gray-200);">{{ $handovers->links() }}</div>
 </div>
 @endsection
 
@@ -235,16 +275,29 @@
         return overlay;
     }
 
-    // Filter UI toggle
-    var filterType = document.getElementById('filterType');
-    function toggleFilterFields() {
-        var v = filterType.value;
-        document.getElementById('monthField').style.display    = v === 'month'  ? '' : 'none';
-        document.getElementById('dateFromField').style.display = v === 'custom' ? '' : 'none';
-        document.getElementById('dateToField').style.display   = v === 'custom' ? '' : 'none';
-    }
-    filterType.addEventListener('change', toggleFilterFields);
-    toggleFilterFields();
+    // Filter pill-tab toggle
+    window.setHFilterType = function(type) {
+        document.getElementById('hFilterType').value = type;
+        ['today','month','custom'].forEach(function(t) {
+            var active = t === type;
+            var btn = document.getElementById('hftab-' + t);
+            if (btn) {
+                btn.style.borderColor = active ? '#2563eb' : '#d1d5db';
+                btn.style.background  = active ? '#eff6ff' : '#fff';
+                btn.style.color       = active ? '#2563eb' : '#6b7280';
+            }
+        });
+        document.getElementById('hpanel-month').style.display       = type === 'month'  ? 'flex' : 'none';
+        document.getElementById('hpanel-custom-from').style.display  = type === 'custom' ? 'flex' : 'none';
+        document.getElementById('hpanel-custom-to').style.display    = type === 'custom' ? 'flex' : 'none';
+    };
+
+    document.getElementById('handoverFilterForm').addEventListener('submit', function(e) {
+        var type = document.getElementById('hFilterType').value;
+        if (type === 'month'  && !document.querySelector('[name="month"]').value)     { e.preventDefault(); alert('Please select a month.'); return; }
+        if (type === 'custom' && !document.querySelector('[name="date_from"]').value) { e.preventDefault(); alert('Please select a From date.'); return; }
+        if (type === 'custom' && !document.querySelector('[name="date_to"]').value)   { e.preventDefault(); alert('Please select a To date.'); return; }
+    });
 
     // View button
     document.querySelectorAll('.btn-view-handover').forEach(function (btn) {

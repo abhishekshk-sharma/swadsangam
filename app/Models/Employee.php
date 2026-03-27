@@ -38,6 +38,7 @@ class Employee extends Authenticatable
         'role', 
         'telegram_chat_id', 
         'telegram_username', 
+        'fcm_token',
         'is_active'
     ];
     

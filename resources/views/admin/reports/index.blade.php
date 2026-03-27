@@ -95,40 +95,48 @@
     }
 </style>
 
+@php $gstStats = $gstStats ?? ['enabled' => false]; @endphp
+
 {{-- Always-visible summary stats --}}
-<div class="row g-3 mb-4">
-    <div class="col-md-4">
-        <div class="stat-card-report" style="border-left: 4px solid #4facfe;">
-            <h5>Orders Today</h5>
-            <h2>{{ $stats['orders_today'] }}</h2>
-        </div>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;">
+    <div class="stat-card-report" style="border-left:4px solid #4facfe;">
+        <h5>Orders Today</h5>
+        <h2>{{ $stats['orders_today'] }}</h2>
     </div>
-    <div class="col-md-4">
-        <div class="stat-card-report" style="border-left: 4px solid #43e97b;">
-            <h5>Revenue Today</h5>
-            <h2>₹{{ number_format($stats['revenue_today'], 2) }}</h2>
-        </div>
+    <div class="stat-card-report" style="border-left:4px solid #43e97b;">
+        <h5>Revenue Today</h5>
+        <h2>₹{{ number_format($stats['revenue_today'], 2) }}</h2>
     </div>
-    <div class="col-md-4">
-        <div class="stat-card-report" style="border-left: 4px solid #f7971e;">
-            <h5>{{ now()->format('F Y') }} Revenue</h5>
-            <h2>₹{{ number_format($stats['revenue_this_month'], 2) }}</h2>
-        </div>
+    <div class="stat-card-report" style="border-left:4px solid #f7971e;">
+        <h5>{{ now()->format('F Y') }} Revenue</h5>
+        <h2>₹{{ number_format($stats['revenue_this_month'], 2) }}</h2>
     </div>
 </div>
 
 <div class="filter-card">
     <div class="filter-header">
-        <h5 class="mb-0" style="font-weight: 600; color: #232f3e;">
-            <i class="fas fa-filter me-2"></i>Filter Orders
-        </h5>
+        <h5 style="margin:0;font-weight:600;color:#232f3e;"><i class="fas fa-filter" style="margin-right:8px;"></i>Filter Orders</h5>
     </div>
     <div class="filter-body">
         <form method="GET" action="{{ route('admin.reports.index') }}" id="filterForm">
-            <div class="row g-3">
+
+            {{-- Period tabs --}}
+            <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+                @foreach(['month'=>'Monthly','year'=>'Yearly','custom'=>'Custom Range'] as $val=>$label)
+                <button type="button" onclick="setFilterType('{{ $val }}')" id="ftab-{{ $val }}"
+                    style="padding:8px 20px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;border:2px solid {{ request('filter_type')===$val ? '#2563eb' : '#d1d5db' }};background:{{ request('filter_type')===$val ? '#eff6ff' : '#fff' }};color:{{ request('filter_type')===$val ? '#2563eb' : '#6b7280' }};transition:all 0.15s;">
+                    {{ $label }}
+                </button>
+                @endforeach
+            </div>
+
+            <input type="hidden" name="filter_type" id="filterType" value="{{ request('filter_type') }}">
+
+            <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;">
+                {{-- Branch --}}
                 @if(isset($branches) && $branches->count() > 0)
-                <div class="col-md-3">
-                    <label class="form-label"><i class="fas fa-store me-1"></i>Branch</label>
+                <div style="display:flex;flex-direction:column;gap:6px;min-width:180px;">
+                    <label class="form-label"><i class="fas fa-store" style="margin-right:4px;"></i>Branch</label>
                     <select name="branch_id" class="form-select">
                         <option value="">All Branches</option>
                         @foreach($branches as $branch)
@@ -137,29 +145,36 @@
                     </select>
                 </div>
                 @endif
-                <div class="col-md-3">
-                    <label class="form-label">Filter Type</label>
-                    <select name="filter_type" class="form-select" id="filterType" required>
-                        <option value="">Select Filter</option>
-                        <option value="date" {{ request('filter_type') === 'date' ? 'selected' : '' }}>By Date</option>
-                        <option value="month" {{ request('filter_type') === 'month' ? 'selected' : '' }}>By Month</option>
-                        <option value="year" {{ request('filter_type') === 'year' ? 'selected' : '' }}>By Year</option>
+
+                {{-- Monthly --}}
+                <div style="display:{{ request('filter_type')==='month' ? 'flex' : 'none' }};flex-direction:column;gap:6px;min-width:160px;" id="panel-month">
+                    <label class="form-label">Select Month</label>
+                    <input type="month" name="month" class="form-control" value="{{ request('month', now()->format('Y-m')) }}">
+                </div>
+
+                {{-- Yearly --}}
+                <div style="display:{{ request('filter_type')==='year' ? 'flex' : 'none' }};flex-direction:column;gap:6px;min-width:140px;" id="panel-year">
+                    <label class="form-label">Select Year</label>
+                    <select name="year" class="form-select">
+                        @for($y = now()->year; $y >= 2020; $y--)
+                            <option value="{{ $y }}" {{ request('year') == $y ? 'selected' : '' }}>{{ $y }}</option>
+                        @endfor
                     </select>
                 </div>
-                <div class="col-md-3" id="dateFilter" style="display: none;">
-                    <label class="form-label">Select Date</label>
-                    <input type="date" name="date" class="form-control" value="{{ request('date') }}">
+
+                {{-- Custom Range --}}
+                <div style="display:{{ request('filter_type')==='custom' ? 'flex' : 'none' }};flex-direction:column;gap:6px;min-width:140px;" id="panel-custom-from">
+                    <label class="form-label">From</label>
+                    <input type="date" name="date_from" class="form-control" value="{{ request('date_from') }}">
                 </div>
-                <div class="col-md-3" id="monthFilter" style="display: none;">
-                    <label class="form-label">Select Month</label>
-                    <input type="month" name="month" class="form-control" value="{{ request('month') }}">
+                <div style="display:{{ request('filter_type')==='custom' ? 'flex' : 'none' }};flex-direction:column;gap:6px;min-width:140px;" id="panel-custom-to">
+                    <label class="form-label">To</label>
+                    <input type="date" name="date_to" class="form-control" value="{{ request('date_to') }}">
                 </div>
-                <div class="col-md-3" id="yearFilter" style="display: none;">
-                    <label class="form-label">Select Year</label>
-                    <input type="number" name="year" class="form-control" min="2020" max="2099" value="{{ request('year') }}">
-                </div>
-                <div class="col-md-3 d-flex align-items-end gap-2">
-                    <button type="submit" class="btn-primary">Apply Filter</button>
+
+                {{-- Actions --}}
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <button type="submit" class="btn-primary">Apply</button>
                     <a href="{{ route('admin.reports.index') }}" class="btn-secondary">Clear</a>
                 </div>
             </div>
@@ -167,112 +182,180 @@
     </div>
 </div>
 
-@if(request()->has('filter_type'))
-<div class="row g-4 mb-4">
-    <div class="col-md-6">
-        <div class="stat-card-report" style="border-left: 4px solid #4facfe;">
-            <h5>Total Orders (Filtered)</h5>
-            <h2>{{ $totalOrders }}</h2>
-        </div>
+@php
+    $filterLabel = match(request('filter_type')) {
+        'month'  => 'Month: ' . (request('month') ? \Carbon\Carbon::parse(request('month').'-01')->format('F Y') : ''),
+        'year'   => 'Year: ' . request('year'),
+        'custom' => request('date_from') . ' to ' . request('date_to'),
+        default  => ''
+    };
+@endphp
+@if(request()->filled('filter_type'))
+
+{{-- Filtered stat cards --}}
+<div style="display:grid;grid-template-columns:repeat({{ ($gstStats['enabled'] ?? false) ? '3' : '2' }},1fr);gap:16px;margin-bottom:24px;">
+    <div class="stat-card-report" style="border-left:4px solid #4facfe;">
+        <h5>Total Orders (Filtered)</h5>
+        <h2>{{ $totalOrders }}</h2>
     </div>
-    <div class="col-md-6">
-        <div class="stat-card-report" style="border-left: 4px solid #43e97b;">
-            <h5>Total Revenue (Filtered, Paid)</h5>
-            <h2>₹{{ number_format($totalRevenue, 2) }}</h2>
-        </div>
+    <div class="stat-card-report" style="border-left:4px solid #43e97b;">
+        <h5>Total Revenue (Filtered, Paid)</h5>
+        <h2>₹{{ number_format($totalRevenue, 2) }}</h2>
     </div>
+    @if($gstStats['enabled'] ?? false)
+    <div class="stat-card-report" style="border-left:4px solid #f59e0b;">
+        <h5>GST Collected</h5>
+        <h2>₹{{ number_format($gstStats['total'], 2) }}</h2>
+        <div style="font-size:12px;color:#6b7280;margin-top:6px;">CGST ₹{{ number_format($gstStats['cgst'], 2) }} &nbsp;|&nbsp; SGST ₹{{ number_format($gstStats['sgst'], 2) }}</div>
+    </div>
+    @endif
 </div>
 
 <div class="content-card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="card-title mb-0">
-            <i class="fas fa-table me-2"></i>Orders Report
-        </h5>
-        <form method="GET" action="{{ route('admin.reports.export') }}" class="d-inline">
+    <div style="padding:14px 20px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-size:15px;font-weight:600;color:#1f2937;display:flex;align-items:center;gap:8px;">
+            <i class="fas fa-table" style="color:#3b82f6;"></i> Orders Report
+            @if($filterLabel)<span style="font-size:12px;font-weight:400;color:#6b7280;">— {{ $filterLabel }}</span>@endif
+        </div>
+        <form method="GET" action="{{ route('admin.reports.export') }}">
             <input type="hidden" name="filter_type" value="{{ request('filter_type') }}">
-            <input type="hidden" name="date" value="{{ request('date') }}">
-            <input type="hidden" name="month" value="{{ request('month') }}">
-            <input type="hidden" name="year" value="{{ request('year') }}">
-            <input type="hidden" name="branch_id" value="{{ request('branch_id') }}">
-            <button type="submit" class="btn-success">
-                <i class="fas fa-download me-1"></i> Download Excel
+            <input type="hidden" name="month"       value="{{ request('month') }}">
+            <input type="hidden" name="year"        value="{{ request('year') }}">
+            <input type="hidden" name="date_from"   value="{{ request('date_from') }}">
+            <input type="hidden" name="date_to"     value="{{ request('date_to') }}">
+            <input type="hidden" name="branch_id"   value="{{ request('branch_id') }}">
+            <button type="submit" style="display:inline-flex;align-items:center;gap:6px;background:#059669;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">
+                <i class="fas fa-download"></i> Download Excel
             </button>
         </form>
     </div>
-    <div>
-        <div class="table-responsive">
-            <table class="table-custom">
-                <thead>
-                    <tr>
-                        <th style="min-width:80px;">Order ID</th>
-                        <th style="min-width:90px;">Table</th>
-                        <th style="min-width:220px;">Items</th>
-                        <th style="min-width:110px;">Total Amount</th>
-                        <th style="min-width:90px;">Status</th>
-                        <th style="min-width:110px;">Payment Mode</th>
-                        <th style="min-width:110px;">Created By</th>
-                        <th style="min-width:140px;">Date & Time</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($orders as $order)
-                    <tr>
-                        <td><strong>#{{ $order->id }}</strong></td>
-                        <td>{{ $order->is_parcel ? '📦 Parcel' : 'Table ' . ($order->table?->table_number ?? '?') }}</td>
-                        <td>
-                            <div style="display:flex;flex-wrap:wrap;gap:4px;">
-                            @foreach($order->orderItems as $item)
-                                <span style="display:inline-flex;align-items:center;gap:4px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:5px;padding:2px 8px;font-size:12.5px;white-space:nowrap;">
-                                    {{ $item->menuItem?->name ?? '[Deleted Item]' }}
-                                    <span style="background:#3b82f6;color:#fff;border-radius:3px;padding:0 5px;font-size:11px;font-weight:700;">×{{ $item->quantity }}</span>
-                                </span>
-                            @endforeach
-                            </div>
-                        </td>
-                        <td><strong>₹{{ number_format($order->total_amount, 2) }}</strong></td>
-                        <td>
-                            <span class="badge-custom badge-{{ $order->status }}">
-                                {{ ucfirst($order->status) }}
+
+    <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;">
+            <thead>
+                <tr style="background:#f9fafb;">
+                    @php $thStyle = 'padding:10px 14px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;border-bottom:1px solid #e5e7eb;text-align:left;white-space:nowrap;'; @endphp
+                    <th style="{{ $thStyle }}">Order ID</th>
+                    <th style="{{ $thStyle }}">Table</th>
+                    <th style="{{ $thStyle }}">Items</th>
+                    <th style="{{ $thStyle }}">Subtotal</th>
+                    @if($gstStats['enabled'] ?? false)
+                    <th style="{{ $thStyle }}">CGST</th>
+                    <th style="{{ $thStyle }}">SGST</th>
+                    <th style="{{ $thStyle }}">Grand Total</th>
+                    @else
+                    <th style="{{ $thStyle }}">Total</th>
+                    @endif
+                    <th style="{{ $thStyle }}">Status</th>
+                    <th style="{{ $thStyle }}">Payment</th>
+                    <th style="{{ $thStyle }}">Created By</th>
+                    <th style="{{ $thStyle }}">Date & Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($orders as $order)
+                @php
+                    $branch  = $order->branch;
+                    $slab    = $branch?->gstSlab;
+                    $mode    = $branch?->gst_mode;
+                    $base    = (float) $order->total_amount;
+                    $cgst = $sgst = 0; $grand = $base;
+                    if ($slab && $mode && $order->status === 'paid') {
+                        $cgstPct = (float) $slab->cgst_rate;
+                        $sgstPct = (float) $slab->sgst_rate;
+                        if ($mode === 'excluded') {
+                            $cgst  = round($base * $cgstPct / 100, 2);
+                            $sgst  = round($base * $sgstPct / 100, 2);
+                            $grand = $base + $cgst + $sgst;
+                        } else {
+                            $totalPct = $cgstPct + $sgstPct;
+                            $base     = round($base * 100 / (100 + $totalPct), 2);
+                            $cgst     = round($base * $cgstPct / 100, 2);
+                            $sgst     = round($base * $sgstPct / 100, 2);
+                            $grand    = (float) $order->total_amount;
+                        }
+                    }
+                    $tdStyle = 'padding:12px 14px;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;vertical-align:top;';
+                    $statusStyles = [
+                        'paid'      => 'background:#dcfce7;color:#15803d;',
+                        'pending'   => 'background:#fef9c3;color:#a16207;',
+                        'preparing' => 'background:#dbeafe;color:#1d4ed8;',
+                        'ready'     => 'background:#d1fae5;color:#065f46;',
+                        'served'    => 'background:#ede9fe;color:#6d28d9;',
+                        'cancelled' => 'background:#fee2e2;color:#dc2626;',
+                    ];
+                    $statusStyle = $statusStyles[$order->status] ?? 'background:#f3f4f6;color:#6b7280;';
+                @endphp
+                <tr onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background=''">
+                    <td style="{{ $tdStyle }}font-weight:700;color:#111827;">#{{ $order->id }}</td>
+                    <td style="{{ $tdStyle }}white-space:nowrap;">{{ $order->is_parcel ? '📦 Parcel' : 'T' . ($order->table?->table_number ?? '?') }}</td>
+                    <td style="{{ $tdStyle }}">
+                        <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                        @foreach($order->orderItems as $item)
+                            <span style="display:inline-flex;align-items:center;gap:4px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:5px;padding:2px 8px;font-size:12px;white-space:nowrap;">
+                                {{ $item->menuItem?->name ?? '[Deleted]' }}
+                                <span style="background:#3b82f6;color:#fff;border-radius:3px;padding:0 5px;font-size:11px;font-weight:700;">×{{ $item->quantity }}</span>
                             </span>
-                        </td>
-                        <td>{{ $order->payment_mode ? ucfirst($order->payment_mode) : '-' }}</td>
-                        <td>{{ $order->user->name ?? '-' }}</td>
-                        <td style="font-size: 13px; color: #666;">{{ $order->created_at->format('d-m-Y h:i A') }}</td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="8" class="text-center py-5" style="color: #666;">
-                            <i class="fas fa-inbox" style="font-size: 48px; color: #ddd; margin-bottom: 16px; display: block;"></i>
-                            No orders found
-                        </td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+                        @endforeach
+                        </div>
+                    </td>
+                    <td style="{{ $tdStyle }}font-weight:600;">₹{{ number_format($base, 2) }}</td>
+                    @if($gstStats['enabled'] ?? false)
+                    <td style="{{ $tdStyle }}color:#6b7280;">{{ $cgst ? '₹'.number_format($cgst,2) : '—' }}</td>
+                    <td style="{{ $tdStyle }}color:#6b7280;">{{ $sgst ? '₹'.number_format($sgst,2) : '—' }}</td>
+                    <td style="{{ $tdStyle }}font-weight:700;">₹{{ number_format($grand, 2) }}</td>
+                    @else
+                    <td style="{{ $tdStyle }}font-weight:700;">₹{{ number_format($grand, 2) }}</td>
+                    @endif
+                    <td style="{{ $tdStyle }}">
+                        <span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;{{ $statusStyle }}">{{ ucfirst($order->status) }}</span>
+                    </td>
+                    <td style="{{ $tdStyle }}">{{ $order->payment_mode ? ucfirst($order->payment_mode) : '—' }}</td>
+                    <td style="{{ $tdStyle }}">{{ $order->user?->name ?? '—' }}</td>
+                    <td style="{{ $tdStyle }}color:#6b7280;white-space:nowrap;">{{ $order->created_at->format('d M Y, h:i A') }}</td>
+                </tr>
+                @empty
+                <tr>
+                    <td colspan="{{ ($gstStats['enabled'] ?? false) ? '11' : '9' }}" style="padding:48px;text-align:center;">
+                        <div style="font-size:40px;color:#d1d5db;margin-bottom:12px;"><i class="fas fa-inbox"></i></div>
+                        <div style="font-size:14px;color:#6b7280;">No orders found for this period.</div>
+                    </td>
+                </tr>
+                @endforelse
+            </tbody>
+        </table>
     </div>
 </div>
+
 @else
-<div class="alert-info">
-    <i class="fas fa-info-circle me-2"></i> Please select a filter type to view detailed reports
+<div style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;padding:16px 20px;border-radius:8px;font-size:14px;">
+    <i class="fas fa-info-circle" style="margin-right:8px;"></i> Please select a filter type above to view detailed reports.
 </div>
 @endif
 
 <script>
-document.getElementById('filterType').addEventListener('change', function() {
-    document.getElementById('dateFilter').style.display = 'none';
-    document.getElementById('monthFilter').style.display = 'none';
-    document.getElementById('yearFilter').style.display = 'none';
-    if (this.value === 'date') document.getElementById('dateFilter').style.display = 'block';
-    else if (this.value === 'month') document.getElementById('monthFilter').style.display = 'block';
-    else if (this.value === 'year') document.getElementById('yearFilter').style.display = 'block';
-});
+function setFilterType(type) {
+    document.getElementById('filterType').value = type;
+    ['month','year'].forEach(function(t) {
+        var active = t === type;
+        var btn = document.getElementById('ftab-' + t);
+        if (btn) { btn.style.borderColor = active ? '#2563eb' : '#d1d5db'; btn.style.background = active ? '#eff6ff' : '#fff'; btn.style.color = active ? '#2563eb' : '#6b7280'; }
+        var panel = document.getElementById('panel-' + t);
+        if (panel) panel.style.display = active ? 'flex' : 'none';
+    });
+    var customBtn = document.getElementById('ftab-custom');
+    if (customBtn) { customBtn.style.borderColor = type==='custom' ? '#2563eb' : '#d1d5db'; customBtn.style.background = type==='custom' ? '#eff6ff' : '#fff'; customBtn.style.color = type==='custom' ? '#2563eb' : '#6b7280'; }
+    document.getElementById('panel-custom-from').style.display = type === 'custom' ? 'flex' : 'none';
+    document.getElementById('panel-custom-to').style.display   = type === 'custom' ? 'flex' : 'none';
+}
 
-document.addEventListener('DOMContentLoaded', function() {
-    const filterType = document.getElementById('filterType').value;
-    if (filterType === 'date') document.getElementById('dateFilter').style.display = 'block';
-    else if (filterType === 'month') document.getElementById('monthFilter').style.display = 'block';
-    else if (filterType === 'year') document.getElementById('yearFilter').style.display = 'block';
+document.getElementById('filterForm').addEventListener('submit', function(e) {
+    var type = document.getElementById('filterType').value;
+    if (!type) { e.preventDefault(); alert('Please select a filter type.'); return; }
+    if (type === 'month'  && !document.querySelector('[name="month"]').value)     { e.preventDefault(); alert('Please select a month.'); return; }
+    if (type === 'year'   && !document.querySelector('[name="year"]').value)      { e.preventDefault(); alert('Please select a year.'); return; }
+    if (type === 'custom' && !document.querySelector('[name="date_from"]').value) { e.preventDefault(); alert('Please select a From date.'); return; }
+    if (type === 'custom' && !document.querySelector('[name="date_to"]').value)   { e.preventDefault(); alert('Please select a To date.'); return; }
 });
 </script>
 @endsection

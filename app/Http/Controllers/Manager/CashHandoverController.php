@@ -43,31 +43,42 @@ class CashHandoverController extends BaseManagerController
     public function edit(CashHandover $handover)
     {
         abort_if($handover->status === 'approved', 403, 'Approved handovers cannot be edited.');
+        abort_if($handover->tenant_id !== $this->tenantId(), 403);
         return view('manager.handover.edit', compact('handover'));
     }
 
     public function update(Request $request, CashHandover $handover)
     {
         abort_if($handover->status === 'approved', 403);
+        abort_if($handover->tenant_id !== $this->tenantId(), 403);
 
-        $data = $request->validate([
-            'denom_1'   => 'required|integer|min:0',
-            'denom_2'   => 'required|integer|min:0',
-            'denom_5'   => 'required|integer|min:0',
-            'denom_10'  => 'required|integer|min:0',
-            'denom_20'  => 'required|integer|min:0',
-            'denom_50'  => 'required|integer|min:0',
-            'denom_100' => 'required|integer|min:0',
-            'denom_200' => 'required|integer|min:0',
-            'denom_500' => 'required|integer|min:0',
+        $request->validate([
+            'denom_1'   => 'nullable|integer|min:0',
+            'denom_2'   => 'nullable|integer|min:0',
+            'denom_5'   => 'nullable|integer|min:0',
+            'denom_10'  => 'nullable|integer|min:0',
+            'denom_20'  => 'nullable|integer|min:0',
+            'denom_50'  => 'nullable|integer|min:0',
+            'denom_100' => 'nullable|integer|min:0',
+            'denom_200' => 'nullable|integer|min:0',
+            'denom_500' => 'nullable|integer|min:0',
             'notes'     => 'nullable|string|max:500',
         ]);
 
-        $handover->fill($data);
+        $handover->denom_1   = (int) ($request->denom_1   ?? 0);
+        $handover->denom_2   = (int) ($request->denom_2   ?? 0);
+        $handover->denom_5   = (int) ($request->denom_5   ?? 0);
+        $handover->denom_10  = (int) ($request->denom_10  ?? 0);
+        $handover->denom_20  = (int) ($request->denom_20  ?? 0);
+        $handover->denom_50  = (int) ($request->denom_50  ?? 0);
+        $handover->denom_100 = (int) ($request->denom_100 ?? 0);
+        $handover->denom_200 = (int) ($request->denom_200 ?? 0);
+        $handover->denom_500 = (int) ($request->denom_500 ?? 0);
+        $handover->notes     = $request->notes;
         $handover->recalcTotal();
         $handover->save();
 
-        return redirect()->route('manager.handover.index')->with('success', 'Handover updated.');
+        return redirect()->route('manager.handover.index')->with('success', 'Handover #' . $handover->id . ' updated.');
     }
 
     public function approve(Request $request, CashHandover $handover)

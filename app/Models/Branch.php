@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Branch extends Model
 {
-    protected $fillable = ['tenant_id', 'name', 'address', 'phone', 'is_active'];
+    protected $fillable = ['tenant_id', 'name', 'address', 'phone', 'upi_id', 'is_active', 'gst_slab_id', 'gst_mode', 'gst_number'];
 
     protected $casts = ['is_active' => 'boolean'];
 
@@ -28,5 +28,10 @@ class Branch extends Model
     public function orders()
     {
         return $this->hasMany(Order::class);
+    }
+
+    public function gstSlab()
+    {
+        return $this->belongsTo(\App\Models\GstSlab::class);
     }
 }

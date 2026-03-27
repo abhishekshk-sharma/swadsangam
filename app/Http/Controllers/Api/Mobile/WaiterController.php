@@ -77,6 +77,17 @@ class WaiterController extends Controller
             ->where('tenant_id', $this->tenantId())
             ->where(fn($q) => $this->branchScope($q))
             ->get()
+            ->sort(function($a, $b) {
+                preg_match('/^(\D*)(\d*)(.*)$/', $a->table_number, $am);
+                preg_match('/^(\D*)(\d*)(.*)$/', $b->table_number, $bm);
+                $prefixCmp = strcmp($am[1], $bm[1]);
+                if ($prefixCmp !== 0) return $prefixCmp;
+                $numA = (int)($am[2] ?? 0);
+                $numB = (int)($bm[2] ?? 0);
+                if ($numA !== $numB) return $numA - $numB;
+                return strcmp($am[3] ?? '', $bm[3] ?? '');
+            })
+            ->values()
             ->map(fn($t) => $this->formatTable($t));
 
         return response()->json($tables);

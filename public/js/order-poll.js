@@ -1,48 +1,51 @@
 /**
- * order-poll.js — Universal 7-second HTTP polling for all panels.
- *
- * Each layout must set before including this script:
- *   window.ORDER_POLL = { panel: 'waiter'|'cook'|'cashier'|'cashier_parcels'|'admin'|'manager' };
+ * order-poll.js — 7-second HTTP polling for all panels.
+ * Set before including: window.ORDER_POLL = { panel: 'waiter'|'cook'|'cashier'|'cashier_parcels'|'admin'|'manager' };
  */
 (function () {
     'use strict';
 
     var panel = (window.ORDER_POLL || {}).panel || 'unknown';
-    // manager uses same logic as admin
     if (panel === 'manager') panel = 'admin';
+    if (panel === 'disabled') return; // page has its own polling
 
-    // ── Snapshot of what is currently rendered ────────────────────────────────
-    // Keyed by order id string → { status, items: { itemId: status } }
-    var snap = {};
-    // Track order IDs that have already triggered a reload request
+    var snap            = {};   // { orderId: { status, items: { itemId: { status, qty } } } }
     var reloadTriggered = {};
-    // Timestamp when the page finished loading — used to ignore pre-existing orders
-    var pageLoadTime = Date.now();
+    var pageLoadTime    = Date.now();
 
+    // ── Snapshot ──────────────────────────────────────────────────────────────
     function buildSnapshot() {
         document.querySelectorAll('[data-order-id]').forEach(function (card) {
             var oid = card.dataset.orderId;
             snap[oid] = { status: card.dataset.orderStatus || '', items: {} };
             card.querySelectorAll('[data-item-id]').forEach(function (row) {
-                var qtyEl = row.querySelector('.text-sm.text-gray-500, .text-xs.text-gray-500');
-                var qty = qtyEl ? parseInt(qtyEl.textContent.replace('Qty:', '').trim()) || 0 : 0;
-                snap[oid].items[row.dataset.itemId] = { status: row.dataset.itemStatus || '', qty: qty };
+                snap[oid].items[row.dataset.itemId] = {
+                    status: row.dataset.itemStatus || '',
+                    qty: 0
+                };
             });
         });
     }
 
     // ── Toast ─────────────────────────────────────────────────────────────────
     function toast(msg, type) {
-        var colors = { info: '#3b82f6', success: '#16a34a', warning: '#d97706', danger: '#dc2626' };
+        var colors = { info:'#3b82f6', success:'#16a34a', warning:'#d97706', danger:'#dc2626' };
         var el = document.createElement('div');
         el.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);' +
             'background:' + (colors[type] || colors.info) + ';color:#fff;' +
             'padding:10px 20px;border-radius:8px;font-size:14px;font-weight:600;' +
-            'box-shadow:0 4px 12px rgba(0,0,0,.25);z-index:9999;' +
-            'animation:pollToastIn .3s ease;white-space:nowrap;pointer-events:none;';
+            'box-shadow:0 4px 12px rgba(0,0,0,.25);z-index:9999;white-space:nowrap;pointer-events:none;';
         el.textContent = msg;
         document.body.appendChild(el);
         setTimeout(function () { el.remove(); }, 4000);
+    }
+
+    function toastOnce(msg, type, key) {
+        var k = 'toast_shown_' + key;
+        if (sessionStorage.getItem(k)) return;
+        sessionStorage.setItem(k, '1');
+        setTimeout(function () { sessionStorage.removeItem(k); }, 10000);
+        toast(msg, type);
     }
 
     // ── Busy guard ────────────────────────────────────────────────────────────
@@ -68,16 +71,7 @@
         }, ms || 1500);
     }
 
-    // ── Dedup toasts across reloads (cook panel) ──────────────────────────────
-    function toastOnce(msg, type, key) {
-        var ssKey = 'toast_shown_' + key;
-        if (sessionStorage.getItem(ssKey)) return;
-        sessionStorage.setItem(ssKey, '1');
-        setTimeout(function () { sessionStorage.removeItem(ssKey); }, 10000);
-        toast(msg, type);
-    }
-
-    // ── Status badge ──────────────────────────────────────────────────────────
+    // ── Status badge (Tailwind) ───────────────────────────────────────────────
     var STATUS_CLS = {
         pending:   'bg-yellow-100 text-yellow-800',
         preparing: 'bg-blue-100 text-blue-800',
@@ -85,7 +79,7 @@
         served:    'bg-purple-100 text-purple-800',
         paid:      'bg-gray-100 text-gray-700',
         cancelled: 'bg-red-100 text-red-800',
-        checkout:  'bg-indigo-100 text-indigo-800',
+        checkout:  'bg-indigo-100 text-indigo-800'
     };
     function applyBadge(el, status) {
         Object.values(STATUS_CLS).forEach(function (c) {
@@ -95,69 +89,34 @@
         el.textContent = status.charAt(0).toUpperCase() + status.slice(1);
     }
 
-    // ── Labels & messages ─────────────────────────────────────────────────────
+    // ── Labels ────────────────────────────────────────────────────────────────
     function orderLabel(order) {
-        return order.is_parcel ? '📦 Parcel' : 'Table ' + order.table_number;
+        return order.is_parcel ? 'Parcel' : 'Table ' + order.table_number;
     }
+
     function toastType(status) {
         if (['ready', 'served', 'paid', 'prepared'].includes(status)) return 'success';
         if (status === 'cancelled') return 'danger';
-        if (['pending', 'warning'].includes(status)) return 'warning';
+        if (status === 'pending') return 'warning';
         return 'info';
     }
-    function orderMsg(order, newStatus) {
-        var label = orderLabel(order), id = order.id;
-        var msgs = {
-            waiter: {
-                pending:   '🆕 New order #' + id + ' — ' + label + ' created.',
-                preparing: '🍳 Order #' + id + ' (' + label + ') is being prepared.',
-                ready:     '🔔 Order #' + id + ' (' + label + ') is READY to serve!',
-                served:    '✅ Order #' + id + ' (' + label + ') marked as served.',
-                checkout:  '🏁 Order #' + id + ' (' + label + ') checked out.',
-                paid:      '💰 Order #' + id + ' (' + label + ') has been paid.',
-                cancelled: '❌ Order #' + id + ' (' + label + ') was cancelled.',
-            },
-            cook: {
-                pending:   '🆕 New order #' + id + ' — ' + label + '!',
-                preparing: '🍳 Order #' + id + ' (' + label + ') is now preparing.',
-                ready:     '✅ Order #' + id + ' (' + label + ') marked ready.',
-                served:    '🍽️ Order #' + id + ' (' + label + ') has been served.',
-                cancelled: '❌ Order #' + id + ' (' + label + ') was cancelled.',
-            },
-            cashier: {
-                preparing: '🍳 Order #' + id + ' (' + label + ') is being prepared.',
-                served:    '💳 Order #' + id + ' (' + label + ') ready for payment!',
-                checkout:  '💳 Order #' + id + ' (' + label + ') ready for payment!',
-                cancelled: '❌ Order #' + id + ' (' + label + ') was cancelled.',
-                paid:      '✅ Order #' + id + ' payment done.',
-            },
-            cashier_parcels: {
-                preparing: '🍳 Parcel #' + id + ' is now being prepared.',
-                ready:     '✅ Parcel #' + id + ' is READY — go to billing!',
-                paid:      '💰 Parcel #' + id + ' payment done.',
-                cancelled: '❌ Parcel #' + id + ' was cancelled.',
-            },
-            admin: {
-                pending:   '🆕 New order #' + id + ' — ' + label + '.',
-                preparing: '🍳 Order #' + id + ' (' + label + ') is being prepared.',
-                ready:     '✅ Order #' + id + ' (' + label + ') is ready.',
-                served:    '🍽️ Order #' + id + ' (' + label + ') served.',
-                checkout:  '🏁 Order #' + id + ' (' + label + ') checked out.',
-                paid:      '💰 Order #' + id + ' (' + label + ') paid.',
-                cancelled: '❌ Order #' + id + ' (' + label + ') cancelled.',
-            },
+
+    function orderMsg(order, status) {
+        var lbl = orderLabel(order), id = order.id;
+        var map = {
+            pending:   'New order #' + id + ' - ' + lbl,
+            preparing: 'Order #' + id + ' (' + lbl + ') is being prepared',
+            ready:     'Order #' + id + ' (' + lbl + ') is READY',
+            served:    'Order #' + id + ' (' + lbl + ') served',
+            checkout:  'Order #' + id + ' (' + lbl + ') checked out',
+            paid:      'Order #' + id + ' (' + lbl + ') paid',
+            cancelled: 'Order #' + id + ' (' + lbl + ') cancelled'
         };
-        return ((msgs[panel] || {})[newStatus]) || ('Order #' + id + ' → ' + newStatus);
+        return map[status] || ('Order #' + id + ' -> ' + status);
     }
+
     function itemAddedMsg(item, orderId) {
-        var msgs = {
-            cook:           '🆕 New item "' + item.name + '" (×' + item.quantity + ') added to Order #' + orderId + '!',
-            admin:          '🆕 New item "' + item.name + '" (×' + item.quantity + ') added to Order #' + orderId + '.',
-            waiter:         '➕ "' + item.name + '" (×' + item.quantity + ') added to Order #' + orderId + '.',
-            cashier:        '➕ "' + item.name + '" (×' + item.quantity + ') added to Order #' + orderId + '.',
-            cashier_parcels:'➕ "' + item.name + '" (×' + item.quantity + ') added to Parcel #' + orderId + '.',
-        };
-        return msgs[panel] || ('➕ "' + item.name + '" added to Order #' + orderId);
+        return 'New item "' + item.name + '" x' + item.quantity + ' added to Order #' + orderId;
     }
 
     // ── Update existing card DOM ──────────────────────────────────────────────
@@ -166,11 +125,14 @@
         if (!card) return;
 
         card.dataset.orderStatus = order.status;
+
         var badge = card.querySelector('[data-order-status-badge]');
         if (badge) applyBadge(badge, order.status);
+
         var totalEl = card.querySelector('[data-order-total]');
         if (totalEl) {
-            var fmt = '\u20b9' + parseFloat(order.total_amount).toFixed(2);
+            var displayAmt = totalEl.dataset.grandTotal || parseFloat(order.grand_total || order.total_amount).toFixed(2);
+            var fmt = '\u20b9' + parseFloat(displayAmt).toFixed(2);
             totalEl.textContent = totalEl.textContent.indexOf('Total:') !== -1 ? 'Total: ' + fmt : fmt;
         }
 
@@ -178,7 +140,7 @@
             var actionsEl = card.querySelector('.waiter-order-actions');
             if (actionsEl) {
                 var addBtn = actionsEl.querySelector('[data-add-items-btn]');
-                if (addBtn) addBtn.style.display = ['paid', 'cancelled', 'checkout'].includes(order.status) ? 'none' : '';
+                if (addBtn) addBtn.style.display = ['paid','cancelled','checkout'].includes(order.status) ? 'none' : '';
                 var serveBtn = actionsEl.querySelector('[data-serve-btn]');
                 if (order.status === 'ready') {
                     if (!serveBtn) {
@@ -200,10 +162,12 @@
                 if (!checkoutEl) {
                     checkoutEl = document.createElement('div');
                     checkoutEl.className = 'checkout-section';
-                    checkoutEl.innerHTML = '<button type="button" onclick="checkoutOrder(' + order.id + ')" class="checkout-btn">' +
+                    checkoutEl.innerHTML =
+                        '<button type="button" onclick="checkoutOrder(' + order.id + ')" class="checkout-btn">' +
                         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;display:inline-block;vertical-align:middle;margin-right:6px;">' +
                         '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>' +
-                        'Checkout Table</button><p class="checkout-hint">Customer is done. Free the table now — cashier will collect payment separately.</p>';
+                        'Checkout Table</button>' +
+                        '<p class="checkout-hint">Customer is done. Free the table now.</p>';
                     var borderDiv = card.querySelector('.border-t');
                     if (borderDiv) borderDiv.appendChild(checkoutEl);
                 }
@@ -212,67 +176,76 @@
             }
         }
 
-        if (panel === 'cashier') {
-            // Keep calculateChange OK button in sync with updated total
-            var cashOkBtn = card.querySelector('[onclick^="calculateChange"]');
-            if (cashOkBtn) cashOkBtn.setAttribute('onclick', 'calculateChange(' + order.id + ',' + order.total_amount + ')');
-        }
-
-        if (panel === 'cashier_parcels') {
-            card.classList.remove('border-yellow-500', 'border-orange-500', 'border-green-500');
-            if (order.status === 'ready')          card.classList.add('border-green-500');
-            else if (order.status === 'preparing') card.classList.add('border-orange-500');
-            else                                   card.classList.add('border-yellow-500');
-            if (order.status === 'ready' && !card.querySelector('.go-billing-btn')) {
-                var btn = document.createElement('div');
-                btn.className = 'mt-3 go-billing-btn';
-                btn.innerHTML = '<a href="/cashier/payments" class="block w-full text-center bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-semibold text-sm">💳 Go to Billing</a>';
-                var p4 = card.querySelector('.p-4');
-                if (p4) p4.appendChild(btn);
-            }
-        }
-
         order.items.forEach(function (item) {
             var row = card.querySelector('[data-item-id="' + item.id + '"]');
             if (!row || row.dataset.itemStatus === item.status) return;
             row.dataset.itemStatus = item.status;
-            var editForm = document.getElementById('cedit-' + item.id) || document.getElementById('edit-' + item.id);
-            if (editForm) editForm.classList.add('hidden');
+            var nameEl = row.querySelector('[data-item-name]');
+            if (nameEl && item.status === 'cancelled') nameEl.style.textDecoration = 'line-through';
             var actions = row.querySelector('[data-item-actions]');
             if (!actions) return;
             if (item.status === 'cancelled') {
                 actions.innerHTML = '<span style="font-size:12px;color:#ef4444;padding:0 4px;">Cancelled</span>';
-                var n = row.querySelector('[data-item-name]'); if (n) n.style.textDecoration = 'line-through';
             } else if (item.status === 'prepared') {
-                actions.innerHTML = '<span style="background:#dcfce7;color:#15803d;padding:4px 10px;border-radius:6px;font-size:13px;font-weight:600;">✓ Done</span>';
-                var n2 = row.querySelector('[data-item-name]'); if (n2) n2.style.textDecoration = 'line-through';
+                actions.innerHTML = '<span style="background:#dcfce7;color:#15803d;padding:4px 10px;border-radius:6px;font-size:13px;font-weight:600;">Done</span>';
             }
         });
     }
 
-    // ── Cashier payments: build and inject a new order card ──────────────────
+    // ── Cashier: build new payment card ───────────────────────────────────────
     function buildCashierCard(order) {
         var itemsHtml = order.items.map(function (item) {
             var cancelled = item.status === 'cancelled';
             var priceHtml = cancelled
-                ? '<div class="text-gray-400 line-through text-sm">₹' + (item.price * item.quantity).toFixed(2) + '</div>'
-                : '<div class="font-bold">₹' + (item.price * item.quantity).toFixed(2) + '</div>';
-            var notesHtml = item.notes ? '<div class="text-xs text-orange-600 italic mt-1 bg-orange-50 px-2 py-1 rounded">→ ' + item.notes + '</div>' : '';
+                ? '<div class="text-gray-400 line-through text-sm">\u20b9' + (item.price * item.quantity).toFixed(2) + '</div>'
+                : '<div class="font-bold">\u20b9' + (item.price * item.quantity).toFixed(2) + '</div>';
+            var notesHtml = item.notes
+                ? '<div class="text-xs text-orange-600 italic mt-1 bg-orange-50 px-2 py-1 rounded">' + item.notes + '</div>'
+                : '';
             return '<div class="py-2 border-b" data-item-id="' + item.id + '" data-item-status="' + item.status + '">' +
-                '<div class="flex justify-between items-center"><div class="flex-1"><div class="flex items-center gap-2">' +
-                '<span class="font-semibold ' + (cancelled ? 'line-through text-gray-400' : '') + '">' + item.name + '</span>' +
+                '<div class="flex justify-between items-center"><div class="flex-1">' +
+                '<div class="flex items-center gap-2"><span class="font-semibold' + (cancelled ? ' line-through text-gray-400' : '') + '">' + item.name + '</span>' +
                 (cancelled ? '<span class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded">Cancelled</span>' : '') +
-                '</div><div class="text-sm text-gray-' + (cancelled ? '400' : '600') + '">Qty: ' + item.quantity + '</div>' +
+                '</div><div class="text-sm text-gray-600">Qty: ' + item.quantity + '</div>' +
                 notesHtml + '</div><div class="text-right">' + priceHtml + '</div></div></div>';
         }).join('');
+
         var typeBadge = order.is_parcel
-            ? '<span style="background:#ea580c;color:#fff;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;letter-spacing:0.03em;">📦 Parcel</span>'
-            : '<span style="background:#1e3a5f;color:#fff;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;letter-spacing:0.03em;">T' + order.table_number + '</span>';
+            ? '<span style="background:#ea580c;color:#fff;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;">Parcel</span>'
+            : '<span style="background:#1e3a5f;color:#fff;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;">T' + order.table_number + '</span>';
+
         var notesHtml = order.customer_notes
             ? '<div class="mb-4 bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded"><h4 class="font-semibold mb-1 text-sm text-yellow-800">Customer Request:</h4><p class="text-sm text-gray-700 italic">' + order.customer_notes + '</p></div>'
             : '';
-        var csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
-        var total = parseFloat(order.total_amount).toFixed(2);
+
+        var csrf  = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+        var grand = parseFloat(order.grand_total || order.total_amount).toFixed(2);
+        var base  = parseFloat(order.total_amount).toFixed(2);
+
+        // GST breakdown box
+        var gstHtml = '';
+        if (order.gst_enabled) {
+            var subtotalLabel = order.gst_mode === 'excluded' ? 'Subtotal' : 'Subtotal (excl. GST)';
+            var subtotalVal   = order.gst_mode === 'excluded'
+                ? base
+                : (parseFloat(order.total_amount) - parseFloat(order.cgst_amount) - parseFloat(order.sgst_amount)).toFixed(2);
+            gstHtml = '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:13px;">'
+                + '<div style="display:flex;justify-content:space-between;"><span>' + subtotalLabel + '</span><span>\u20b9' + subtotalVal + '</span></div>'
+                + '<div style="display:flex;justify-content:space-between;color:#6b7280;"><span>CGST (' + order.cgst_pct + '%)</span><span>\u20b9' + parseFloat(order.cgst_amount).toFixed(2) + '</span></div>'
+                + '<div style="display:flex;justify-content:space-between;color:#6b7280;"><span>SGST (' + order.sgst_pct + '%)</span><span>\u20b9' + parseFloat(order.sgst_amount).toFixed(2) + '</span></div>'
+                + '<div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid #bbf7d0;margin-top:6px;padding-top:6px;"><span>Grand Total</span><span>\u20b9' + grand + '</span></div>'
+                + '<div style="font-size:11px;color:#6b7280;margin-top:2px;">GST ' + (order.gst_mode === 'included' ? 'included in price' : 'added on bill') + '</div>'
+                + '</div>';
+        }
+
+        // UPI button only if UPI ID available on page
+        var upiId = (window.CASHIER_UPI_ID || '');
+        var payBtns = upiId
+            ? '<button type="button" onclick="selectPaymentMode(' + order.id + ',\'cash\')" class="payment-mode-btn border-2 border-gray-300 rounded-lg py-3 font-semibold" data-order="' + order.id + '" data-mode="cash">\ud83d\udcb5 Cash</button>'
+              + '<button type="button" onclick="selectPaymentMode(' + order.id + ',\'upi\',' + grand + ',\'' + upiId + '\')" class="payment-mode-btn border-2 border-gray-300 rounded-lg py-3 font-semibold" data-order="' + order.id + '" data-mode="upi">\ud83d\udcf1 UPI</button>'
+            : '<button type="button" onclick="selectPaymentMode(' + order.id + ',\'cash\')" class="payment-mode-btn border-2 border-gray-300 rounded-lg py-3 font-semibold" data-order="' + order.id + '" data-mode="cash">\ud83d\udcb5 Cash</button>';
+        var gridCols = upiId ? 'grid-cols-2' : 'grid-cols-1';
+
         var div = document.createElement('div');
         div.className = 'bg-white rounded-lg shadow-md overflow-hidden border-l-4 border-red-500';
         div.setAttribute('data-order-id', order.id);
@@ -287,20 +260,24 @@
             '</div><span class="px-3 py-1 rounded-full text-sm font-semibold bg-yellow-100 text-yellow-800" data-order-status-badge>' +
             order.status.charAt(0).toUpperCase() + order.status.slice(1) + '</span></div>' +
             '<div class="space-y-2 mb-4">' + itemsHtml + '</div>' + notesHtml +
-            '<div class="pt-3 border-t"><div class="font-bold text-xl text-green-600 mb-4" data-order-total>Total: ₹' + total + '</div>' +
+            '<div class="pt-3 border-t">' +
+            gstHtml +
+            '<div class="font-bold text-xl text-green-600 mb-4" data-order-total data-grand-total="' + grand + '">Total: \u20b9' + grand + '</div>' +
             '<form action="/cashier/payments/' + order.id + '/process" method="POST" id="paymentForm' + order.id + '">' +
-            '<input type="hidden" name="_token" value="' + csrf + '"><input type="hidden" name="_method" value="PATCH">' +
-            '<div class="mb-4"><label class="block text-sm font-semibold mb-2">Payment Method</label><div class="grid grid-cols-3 gap-2">' +
-            '<button type="button" onclick="selectPaymentMode(' + order.id + ',\'cash\')" class="payment-mode-btn border-2 border-gray-300 rounded-lg py-3 font-semibold hover:border-blue-500" data-order="' + order.id + '" data-mode="cash">💵 Cash</button>' +
-            '<button type="button" onclick="selectPaymentMode(' + order.id + ',\'upi\')" class="payment-mode-btn border-2 border-gray-300 rounded-lg py-3 font-semibold hover:border-blue-500" data-order="' + order.id + '" data-mode="upi">📱 UPI</button>' +
-            '<button type="button" onclick="selectPaymentMode(' + order.id + ',\'card\')" class="payment-mode-btn border-2 border-gray-300 rounded-lg py-3 font-semibold hover:border-blue-500" data-order="' + order.id + '" data-mode="card">💳 Card</button>' +
+            '<input type="hidden" name="_token" value="' + csrf + '">' +
+            '<input type="hidden" name="_method" value="PATCH">' +
+            '<input type="hidden" name="grand_total" value="' + grand + '">' +
+            '<div class="mb-4"><label class="block text-sm font-semibold mb-2">Payment Method</label>' +
+            '<div class="grid ' + gridCols + ' gap-2">' + payBtns +
             '</div><input type="hidden" name="payment_mode" id="paymentMode' + order.id + '" required></div>' +
-            '<div id="cashSection' + order.id + '" class="mb-4" style="display:none"><label class="block text-sm font-semibold mb-2">Cash Received</label>' +
+            '<div id="cashSection' + order.id + '" class="mb-4" style="display:none;">' +
+            '<label class="block text-sm font-semibold mb-2">Cash Received</label>' +
             '<div class="flex gap-2"><input type="number" step="0.01" min="0" id="cashReceived' + order.id + '" class="flex-1 border-2 border-gray-300 rounded-lg px-4 py-2 text-lg" placeholder="Enter amount">' +
-            '<button type="button" onclick="calculateChange(' + order.id + ',' + total + ')" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold">OK</button></div></div>' +
-            '<div id="changeSection' + order.id + '" class="mb-4 bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4" style="display:none">' +
-            '<div class="text-center"><p class="text-sm text-gray-600 mb-1">Change to Return</p><p class="text-3xl font-bold text-green-600" id="changeAmount' + order.id + '">₹0.00</p></div></div>' +
-            '<button type="submit" id="submitBtn' + order.id + '" class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold text-lg" style="display:none" disabled>Complete Payment</button>' +
+            '<button type="button" onclick="calculateChange(' + order.id + ',' + grand + ')" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold">OK</button></div></div>' +
+            '<div id="changeSection' + order.id + '" class="mb-4 bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4" style="display:none;">' +
+            '<div class="text-center"><p class="text-sm text-gray-600 mb-1">Change to Return</p>' +
+            '<p class="text-3xl font-bold text-green-600" id="changeAmount' + order.id + '">\u20b90.00</p></div></div>' +
+            '<button type="submit" id="submitBtn' + order.id + '" class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold text-lg" style="display:none;" disabled>Complete Payment</button>' +
             '</form></div></div>';
         return div;
     }
@@ -322,20 +299,19 @@
         }, 350);
     }
 
-    // ── Bind AJAX payment submit on a cashier card ──────────────────────────
     function bindCashierForm(card) {
         var form = card.querySelector('[id^="paymentForm"]');
         if (!form) return;
         form.addEventListener('submit', function (e) {
             e.preventDefault();
-            var orderId  = form.id.replace('paymentForm', '');
+            var orderId = form.id.replace('paymentForm', '');
             var submitBtn = document.getElementById('submitBtn' + orderId);
-            submitBtn.disabled    = true;
-            submitBtn.textContent = 'Processing…';
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Processing...';
             fetch(form.action, {
                 method: 'POST',
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-                body: new FormData(form),
+                body: new FormData(form)
             })
             .then(function (r) { return r.json(); })
             .then(function (res) {
@@ -344,8 +320,8 @@
                     var c = document.querySelector('[data-order-id="' + orderId + '"]');
                     if (c) {
                         c.style.transition = 'opacity .35s,transform .35s';
-                        c.style.opacity    = '0';
-                        c.style.transform  = 'scale(0.97)';
+                        c.style.opacity = '0';
+                        c.style.transform = 'scale(0.97)';
                         setTimeout(function () {
                             c.remove();
                             updatePendingCount();
@@ -353,36 +329,46 @@
                             if (cont && !cont.querySelector('[data-order-id]')) {
                                 var empty = document.createElement('div');
                                 empty.className = 'bg-white rounded-lg shadow p-8 text-center';
-                                empty.innerHTML = '<div class="text-4xl mb-2">✓</div><p class="text-gray-600">All payments cleared!</p>';
+                                empty.innerHTML = '<div class="text-4xl mb-2">&#10003;</div><p class="text-gray-600">All payments cleared!</p>';
                                 cont.appendChild(empty);
                             }
                         }, 350);
                     }
                     if (typeof showQrModal === 'function') showQrModal(res.order_id, res.bill_url);
                 } else {
-                    submitBtn.disabled    = false;
+                    submitBtn.disabled = false;
                     submitBtn.textContent = 'Complete Payment';
+                    alert(res.message || 'Payment failed. Please try again.');
                 }
             })
             .catch(function () {
-                submitBtn.disabled    = false;
+                submitBtn.disabled = false;
                 submitBtn.textContent = 'Complete Payment';
+                alert('Network error. Please try again.');
             });
         });
     }
 
-    // ── Cook item action (mark prepared / cancel) via fetch ────────────────────
-    function cookItemAction(url, extraData, row, orderId) {
-        var csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
-        var body = new URLSearchParams(Object.assign({ _method: 'PATCH', _token: csrf }, extraData));
-        fetch(url, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: body })
-        .then(function(r) {
-            if (r.ok || r.redirected) {
-                // Let next poll update the row status; reload to sync fully
-                safeReload(500);
-            }
-        })
-        .catch(function() { safeReload(500); });
+    // ── Cook: inject new item row ─────────────────────────────────────────────
+    function injectCookItem(card, item, orderId) {
+        var itemsContainer = card.querySelector('.space-y-2');
+        if (!itemsContainer || card.querySelector('[data-item-id="' + item.id + '"]')) return;
+        var row = document.createElement('div');
+        row.className = 'py-2 border-b last:border-0';
+        row.setAttribute('data-item-id', item.id);
+        row.setAttribute('data-item-status', item.status);
+        var notesHtml = item.notes
+            ? '<div class="text-xs text-orange-600 italic mt-1 bg-orange-50 px-2 py-1 rounded">' + item.notes + '</div>'
+            : '';
+        row.innerHTML =
+            '<div class="flex justify-between items-center">' +
+            '<div class="flex-1"><div class="flex items-center gap-2">' +
+            '<span class="font-semibold" data-item-name>' + item.name + '</span>' +
+            '<span class="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-semibold">NEW</span>' +
+            '</div><div class="text-sm text-gray-500">Qty: ' + item.quantity + '</div>' +
+            notesHtml + '</div>' +
+            '<div class="ml-3 action-btn-wrap" data-item-actions></div></div>';
+        itemsContainer.appendChild(row);
     }
 
     // ── Poll ──────────────────────────────────────────────────────────────────
@@ -398,14 +384,14 @@
                 var oid = String(order.id);
                 var s   = snap[oid];
 
-                // ── Order not yet in snapshot ─────────────────────────────────
+                // ── New order not in snapshot ─────────────────────────────────
                 if (!s) {
-                    // Register in snap immediately to prevent repeat triggers
                     snap[oid] = { status: order.status, items: {} };
-                    order.items.forEach(function (i) { snap[oid].items[String(i.id)] = { status: i.status, qty: i.quantity }; });
+                    order.items.forEach(function (i) {
+                        snap[oid].items[String(i.id)] = { status: i.status, qty: i.quantity };
+                    });
 
                     if (panel === 'cashier') {
-                        // Inject new card into cashier payments page
                         var container = document.querySelector('.space-y-3');
                         if (container && !document.querySelector('[data-order-id="' + order.id + '"]')) {
                             var empty = container.querySelector('.bg-white.rounded-lg.shadow.p-8');
@@ -417,46 +403,42 @@
                             updatePendingCount();
                             toast(orderMsg(order, order.status), 'success');
                         }
-                    } else if (panel === 'cook') {
-                        // Only reload once per new order (use sessionStorage to survive the reload)
-                        var ssNewKey = 'new_order_' + oid;
-                        if (!sessionStorage.getItem(ssNewKey)) {
-                            sessionStorage.setItem(ssNewKey, '1');
-                            setTimeout(function() { sessionStorage.removeItem(ssNewKey); }, 15000);
+                    } else if (panel === 'cook' || panel === 'admin') {
+                        var ssKey = 'new_order_' + oid;
+                        if (!sessionStorage.getItem(ssKey)) {
+                            sessionStorage.setItem(ssKey, '1');
+                            setTimeout(function () { sessionStorage.removeItem(ssKey); }, 15000);
                             toastOnce(orderMsg(order, order.status), 'warning', 'new_' + oid);
                             safeReload(1500);
                         } else {
                             reloadTriggered[oid] = true;
                         }
-                    } else if (panel === 'admin') {
-                        // Admin sees all orders — never reload or toast for new orders
-                        reloadTriggered[oid] = true;
-                    }
-                    // waiter: only reload for orders that arrived AFTER page load
-                    // (i.e. created_at > pageLoadTime). Pre-existing orders missing
-                    // from the DOM just mean the index hasn't rendered them yet —
-                    // reloading for those causes an infinite loop.
-                    else if (panel === 'waiter') {
+                    } else if (panel === 'waiter') {
                         var orderTs = order.created_at_ts ? order.created_at_ts * 1000 : 0;
                         if (!reloadTriggered[oid] && orderTs > pageLoadTime) {
                             reloadTriggered[oid] = true;
                             toast(orderMsg(order, order.status), 'info');
                             safeReload(1500);
                         } else {
-                            // Pre-existing order not in DOM — just register it, no reload
                             reloadTriggered[oid] = true;
+                        }
+                    } else if (panel === 'cashier_parcels') {
+                        if (!reloadTriggered[oid]) {
+                            reloadTriggered[oid] = true;
+                            toast(orderMsg(order, order.status), 'info');
+                            safeReload(1500);
                         }
                     }
                     return;
                 }
 
-                // ── Order status changed ──────────────────────────────────────
+                // ── Status changed ────────────────────────────────────────────
                 if (s.status !== order.status) {
                     toast(orderMsg(order, order.status), toastType(order.status));
                     s.status = order.status;
                     updateCard(order);
 
-                    if (['paid', 'cancelled'].includes(order.status) && (panel === 'cashier' || panel === 'waiter')) {
+                    if (['paid','cancelled'].includes(order.status) && (panel === 'cashier' || panel === 'waiter')) {
                         removeCard(order.id, function () {
                             updatePendingCount();
                             var cont = document.querySelector('.space-y-3');
@@ -464,10 +446,10 @@
                                 var empty2 = document.createElement('div');
                                 if (panel === 'cashier') {
                                     empty2.className = 'bg-white rounded-lg shadow p-8 text-center';
-                                    empty2.innerHTML = '<div class="text-4xl mb-2">✓</div><p class="text-gray-600">All payments cleared!</p>';
+                                    empty2.innerHTML = '<div class="text-4xl mb-2">&#10003;</div><p class="text-gray-600">All payments cleared!</p>';
                                 } else {
                                     empty2.className = 'text-center py-12 text-gray-500';
-                                    empty2.innerHTML = '<p class="text-lg">No orders today</p><a href="/waiter/orders/create" class="text-blue-500 hover:underline mt-2 inline-block text-sm">Create your first order</a>';
+                                    empty2.innerHTML = '<p class="text-lg">No orders today</p>';
                                 }
                                 cont.appendChild(empty2);
                             }
@@ -475,254 +457,50 @@
                         return;
                     }
 
-                    if (['paid', 'cancelled'].includes(order.status) && panel === 'cashier_parcels') {
+                    if (['paid','cancelled'].includes(order.status) && panel === 'cashier_parcels') {
                         removeCard(order.id);
                         return;
                     }
-
-                    // cook: no reload on status change — DOM is already updated by updateCard above
+                } else {
+                    updateCard(order);
                 }
 
-                // ── Item status changes ───────────────────────────────────────
+                // ── Item changes ──────────────────────────────────────────────
                 order.items.forEach(function (item) {
-                    var iid  = String(item.id);
-                    var prev = s.items[iid];
-                    var prevStatus = prev ? prev.status : undefined;
-                    var prevQty    = prev ? prev.qty    : undefined;
+                    var iid      = String(item.id);
+                    var prev     = s.items[iid];
+                    var prevStat = prev ? prev.status : undefined;
 
                     if (prev === undefined) {
                         s.items[iid] = { status: item.status, qty: item.quantity };
-                        if (panel === 'cook') {
+                        if (panel === 'cook' || panel === 'admin') {
                             var ssItemKey = 'new_item_' + iid;
                             if (!sessionStorage.getItem(ssItemKey)) {
                                 sessionStorage.setItem(ssItemKey, '1');
-                                setTimeout(function() { sessionStorage.removeItem(ssItemKey); }, 15000);
+                                setTimeout(function () { sessionStorage.removeItem(ssItemKey); }, 15000);
                                 toastOnce(itemAddedMsg(item, order.id), 'warning', 'item_' + iid);
                                 var card = document.querySelector('[data-order-id="' + order.id + '"]');
-                                if (!card) {
-                                    safeReload(1500);
-                                } else if (!card.querySelector('[data-item-id="' + iid + '"]')) {
-                                    var itemsContainer = card.querySelector('.space-y-2');
-                                    if (itemsContainer) {
-                                        var row = document.createElement('div');
-                                        row.className = 'py-2 border-b last:border-0';
-                                        row.setAttribute('data-item-id', iid);
-                                        row.setAttribute('data-item-status', item.status);
-                                        var notesHtml = item.notes
-                                            ? '<div class="text-xs text-orange-600 italic mt-1 bg-orange-50 px-2 py-1 rounded">→ ' + item.notes + '</div>'
-                                            : '';
-                                        row.innerHTML =
-                                            '<div class="flex justify-between items-center">' +
-                                            '<div class="flex-1">' +
-                                            '<div class="flex items-center gap-2">' +
-                                            '<span class="font-semibold" data-item-name>' + item.name + '</span>' +
-                                            '<span class="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-semibold">NEW</span>' +
-                                            '</div>' +
-                                            '<div class="text-sm text-gray-500">Qty: ' + item.quantity + '</div>' +
-                                            notesHtml +
-                                            '</div>' +
-                                            '<div class="ml-3 action-btn-wrap" data-item-actions></div>' +
-                                            '</div>';
-                                        var actionsEl = row.querySelector('[data-item-actions]');
-                                        var doneBtn = document.createElement('button');
-                                        doneBtn.type = 'button';
-                                        doneBtn.title = 'Mark as Prepared';
-                                        doneBtn.className = 'action-btn action-btn-done';
-                                        doneBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
-                                        doneBtn.onclick = (function(id){ return function(){ cookItemAction('/cook/order-items/' + id + '/status', {status:'prepared'}, row, order.id); }; })(iid);
-                                        actionsEl.appendChild(doneBtn);
-                                        var cancelBtn = document.createElement('button');
-                                        cancelBtn.type = 'button';
-                                        cancelBtn.title = 'Cancel Item';
-                                        cancelBtn.className = 'action-btn action-btn-cancel';
-                                        cancelBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
-                                        cancelBtn.onclick = (function(id){ return function(){ cookItemAction('/cook/order-items/' + id + '/cancel', {}, row, order.id); }; })(iid);
-                                        actionsEl.appendChild(cancelBtn);
-                                        itemsContainer.appendChild(row);
-                                        var counter = card.querySelector('.border-t span.text-sm');
-                                        if (counter) {
-                                            var allRows = card.querySelectorAll('[data-item-id]');
-                                            var preparedCount = Array.from(allRows).filter(function(r){ return r.dataset.itemStatus === 'prepared'; }).length;
-                                            counter.textContent = preparedCount + ' / ' + allRows.length + ' items prepared';
-                                        }
-                                        card.classList.remove('border-yellow-500','border-orange-500','border-green-500');
-                                        card.classList.add('border-red-500');
-                                    }
-                                }
-                            } else {
-                                reloadTriggered['item_' + iid] = true;
+                                if (!card) { safeReload(1500); }
+                                else { injectCookItem(card, item, order.id); }
                             }
                         } else {
-                            // waiter / cashier / cashier_parcels: inject item into card if visible, toast always
                             if (!reloadTriggered['item_' + iid]) {
                                 reloadTriggered['item_' + iid] = true;
                                 toast(itemAddedMsg(item, order.id), 'info');
-                                // Inject new item row into cashier/waiter card
-                                var card = document.querySelector('[data-order-id="' + order.id + '"]');
-                                if (card) {
-                                    var itemsContainer = card.querySelector('.space-y-2');
-                                    if (itemsContainer && !card.querySelector('[data-item-id="' + iid + '"]')) {
-                                        var notesHtml = item.notes
-                                            ? '<div class="text-xs text-orange-600 italic mt-1 bg-orange-50 px-2 py-1 rounded">→ ' + item.notes + '</div>'
-                                            : '';
-                                        var lineTotal = (item.price * item.quantity).toFixed(2);
-                                        var row = document.createElement('div');
-                                        row.className = 'py-2 border-b';
-                                        row.setAttribute('data-item-id', iid);
-                                        row.setAttribute('data-item-status', item.status);
-                                        row.innerHTML =
-                                            '<div class="flex justify-between items-center">' +
-                                            '<div class="flex-1">' +
-                                            '<div class="flex items-center gap-2">' +
-                                            '<span class="font-semibold">' + item.name + '</span>' +
-                                            '<span class="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-semibold">NEW</span>' +
-                                            '</div>' +
-                                            '<div class="text-sm text-gray-600">Qty: ' + item.quantity + '</div>' +
-                                            notesHtml +
-                                            '</div>' +
-                                            '<div class="text-right"><div class="font-bold">₹' + lineTotal + '</div></div>' +
-                                            '</div>';
-                                        itemsContainer.appendChild(row);
-                                        // Update total display
-                                        var totalEl = card.querySelector('[data-order-total]');
-                                        if (totalEl) totalEl.textContent = 'Total: ₹' + parseFloat(order.total_amount).toFixed(2);
-                                        // Update calculateChange binding with new total
-                                        var cashOkBtn = card.querySelector('[onclick^="calculateChange"]');
-                                        if (cashOkBtn) cashOkBtn.setAttribute('onclick', 'calculateChange(' + order.id + ',' + order.total_amount + ')');
-                                    }
-                                }
                             }
                         }
                         return;
                     }
 
-                    if (prevStatus !== item.status) {
-                        s.items[iid] = { status: item.status, qty: item.quantity };
+                    if (prevStat !== item.status) {
+                        s.items[iid].status = item.status;
                         if (item.status === 'prepared') {
-                            if (panel === 'cook')
-                                toast('✅ "' + item.name + '" ×' + item.quantity + ' in Order #' + order.id + ' is prepared.', 'success');
-                            else if (panel === 'waiter')
-                                toast('✅ "' + item.name + '" in Order #' + order.id + ' is ready.', 'success');
-                            else if (panel === 'cashier_parcels') {
-                                toast('✅ "' + item.name + '" in Parcel #' + order.id + ' is prepared by chef.', 'success');
-                                var preparedRow = document.querySelector('[data-item-id="' + iid + '"]');
-                                if (preparedRow) {
-                                    preparedRow.dataset.itemStatus = 'prepared';
-                                    var nameSpan = preparedRow.querySelector('.font-semibold');
-                                    if (nameSpan) { nameSpan.classList.add('line-through', 'text-gray-400'); nameSpan.classList.remove('text-red-300'); }
-                                    // Replace edit/cancel buttons with Ready badge
-                                    var btnWrap = preparedRow.querySelector('.flex.items-center.gap-2.ml-2');
-                                    if (btnWrap) btnWrap.innerHTML = '<span class="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">Ready</span>';
-                                    // Hide edit form if open
-                                    var editForm = document.getElementById('edit-' + iid);
-                                    if (editForm) editForm.classList.add('hidden');
-                                }
-                            }
+                            toast('"' + item.name + '" in Order #' + order.id + ' is prepared', 'success');
                         }
                         if (item.status === 'cancelled') {
-                            toast('❌ "' + item.name + '" in Order #' + order.id + ' was cancelled.', 'danger');
-                            // For cashier_parcels: update row DOM directly
-                            if (panel === 'cashier_parcels') {
-                                var cancelledRow = document.querySelector('[data-item-id="' + iid + '"]');
-                                if (cancelledRow) {
-                                    cancelledRow.dataset.itemStatus = 'cancelled';
-                                    var nameEl = cancelledRow.querySelector('[data-item-name], .font-semibold');
-                                    if (nameEl) { nameEl.style.textDecoration = 'line-through'; nameEl.classList.add('text-red-300'); }
-                                    var actEl = cancelledRow.querySelector('[data-item-actions]');
-                                    if (actEl) actEl.innerHTML = '<span class="text-xs text-red-400 px-2">Cancelled</span>';
-                                    // Hide edit form if open
-                                    var editForm = document.getElementById('edit-' + iid);
-                                    if (editForm) editForm.classList.add('hidden');
-                                    // Hide edit/cancel buttons
-                                    var btnWrap = cancelledRow.querySelector('.flex.items-center.gap-2.ml-2');
-                                    if (btnWrap) btnWrap.innerHTML = '<span class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded">Cancelled</span>';
-                                    return;
-                                }
-                            }
-                            // For cook panel: update row DOM directly instead of reloading
-                            if (panel === 'cook') {
-                                var cancelledRow = document.querySelector('[data-item-id="' + iid + '"]');
-                                if (cancelledRow) {
-                                    cancelledRow.dataset.itemStatus = 'cancelled';
-                                    var nameEl = cancelledRow.querySelector('[data-item-name]');
-                                    if (nameEl) { nameEl.style.textDecoration = 'line-through'; nameEl.classList.add('text-red-300'); }
-                                    var actEl = cancelledRow.querySelector('[data-item-actions]');
-                                    if (actEl) actEl.innerHTML = '<span class="text-xs text-red-400 px-2">Cancelled</span>';
-                                    // Update progress counter
-                                    var card = document.querySelector('[data-order-id="' + order.id + '"]');
-                                    if (card) {
-                                        var counter = card.querySelector('.border-t span.text-sm');
-                                        if (counter) {
-                                            var allRows = card.querySelectorAll('[data-item-id]');
-                                            var preparedCount = Array.from(allRows).filter(function(r){ return r.dataset.itemStatus === 'prepared'; }).length;
-                                            var nonCancelledCount = Array.from(allRows).filter(function(r){ return r.dataset.itemStatus !== 'cancelled'; }).length;
-                                            counter.textContent = preparedCount + ' / ' + nonCancelledCount + ' items prepared';
-                                        }
-                                    }
-                                    return;
-                                }
-                            }
+                            toast('"' + item.name + '" in Order #' + order.id + ' was cancelled', 'danger');
                         }
                         updateCard(order);
-                    }
-
-                    // ── Item edited by cashier on parcel (qty or notes changed, status same) ──
-                    if (prevStatus === item.status && panel === 'cashier_parcels') {
-                        var editedRow = document.querySelector('[data-item-id="' + iid + '"]');
-                        if (editedRow && prevQty !== undefined && prevQty !== item.quantity) {
-                            s.items[iid].qty = item.quantity;
-                            var qtyEl = editedRow.querySelector('.text-xs.text-gray-500');
-                            if (qtyEl && qtyEl.textContent.trim().startsWith('Qty:')) {
-                                qtyEl.textContent = 'Qty: ' + item.quantity;
-                                toast('✏️ "' + item.name + '" qty updated to ×' + item.quantity + ' in Parcel #' + order.id, 'info');
-                            }
-                            // Update line total if present
-                            var totalEl = card.querySelector('[data-order-total]');
-                            if (totalEl) totalEl.textContent = '₹' + parseFloat(order.total_amount).toFixed(2);
-                        }
-                        if (editedRow) {
-                            var notesEl = editedRow.querySelector('.text-xs.text-orange-600');
-                            if (item.notes) {
-                                if (notesEl) { notesEl.textContent = '→ ' + item.notes; }
-                                else {
-                                    var notesDiv = document.createElement('div');
-                                    notesDiv.className = 'text-xs text-orange-600 italic mt-0.5 bg-orange-50 px-2 py-0.5 rounded';
-                                    notesDiv.textContent = '→ ' + item.notes;
-                                    var nameParent = editedRow.querySelector('.flex-1');
-                                    if (nameParent) nameParent.appendChild(notesDiv);
-                                }
-                            } else if (notesEl) {
-                                notesEl.remove();
-                            }
-                        }
-                    }
-                    // ── Item edited by waiter (qty or notes changed, status same) ──
-                    if (prevStatus === item.status && panel === 'cook') {
-                        var editedRow = document.querySelector('[data-item-id="' + iid + '"]');
-                        if (editedRow && prevQty !== undefined && prevQty !== item.quantity) {
-                            s.items[iid].qty = item.quantity;
-                            var qtyEl = editedRow.querySelector('.text-sm.text-gray-500');
-                            if (qtyEl && qtyEl.textContent.trim().startsWith('Qty:')) {
-                                qtyEl.textContent = 'Qty: ' + item.quantity;
-                                toast('✏️ "' + item.name + '" qty updated to ×' + item.quantity + ' in Order #' + order.id, 'info');
-                            }
-                        }
-                        if (editedRow) {
-                            var notesEl = editedRow.querySelector('.text-xs.text-orange-600');
-                            if (item.notes) {
-                                if (notesEl) {
-                                    notesEl.textContent = '→ ' + item.notes;
-                                } else {
-                                    var notesDiv = document.createElement('div');
-                                    notesDiv.className = 'text-xs text-orange-600 italic mt-1 bg-orange-50 px-2 py-1 rounded';
-                                    notesDiv.textContent = '→ ' + item.notes;
-                                    var nameParent = editedRow.querySelector('.flex-1');
-                                    if (nameParent) nameParent.appendChild(notesDiv);
-                                }
-                            } else if (notesEl) {
-                                notesEl.remove();
-                            }
-                        }
                     }
                 });
             });
@@ -732,13 +510,10 @@
 
     // ── Init ──────────────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', function () {
-        // Don't poll on create/form pages — reloading would reset the multi-step form.
         if (panel === 'waiter' && /\/orders\/create/.test(window.location.pathname)) return;
         buildSnapshot();
         setInterval(poll, 7000);
+        setTimeout(poll, 1500);
     });
 
-    var style = document.createElement('style');
-    style.textContent = '@keyframes pollToastIn{from{opacity:0;transform:translateX(-50%) translateY(-10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}';
-    document.head.appendChild(style);
 })();

@@ -93,6 +93,18 @@
 
     {{-- Header --}}
     <div class="center bold large">{{ strtoupper($order->tenant->name ?? 'RESTAURANT') }}</div>
+    @if($order->branch?->name)
+        <div class="center small">{{ $order->branch->name }}</div>
+    @endif
+    @if($order->branch?->address)
+        <div class="center small">{{ $order->branch->address }}</div>
+    @endif
+    @if($order->branch?->phone)
+        <div class="center small">Ph: {{ $order->branch->phone }}</div>
+    @endif
+    @if($order->branch?->gst_number)
+        <div class="center small" style="font-weight:bold;">GSTIN: {{ $order->branch->gst_number }}</div>
+    @endif
     @if($order->tenant->domain ?? false)
         <div class="center small">{{ $order->tenant->domain }}</div>
     @endif
@@ -134,10 +146,34 @@
     <div class="divider-solid"></div>
 
     {{-- Totals --}}
-    <div class="total-row grand">
-        <span>TOTAL</span>
-        <span>₹{{ number_format($order->total_amount, 2) }}</span>
-    </div>
+    @if($gst['enabled'] ?? false)
+        <div class="total-row">
+            <span>Subtotal</span>
+            <span>₹{{ number_format($gst['base'], 2) }}</span>
+        </div>
+        <div class="total-row small">
+            <span>CGST ({{ $gst['cgst_pct'] }}%)</span>
+            <span>₹{{ number_format($gst['cgst'], 2) }}</span>
+        </div>
+        <div class="total-row small">
+            <span>SGST ({{ $gst['sgst_pct'] }}%)</span>
+            <span>₹{{ number_format($gst['sgst'], 2) }}</span>
+        </div>
+        <div class="divider-solid"></div>
+        <div class="total-row grand">
+            <span>TOTAL</span>
+            <span>₹{{ number_format($gst['grand'], 2) }}</span>
+        </div>
+        <div class="total-row small" style="margin-top:2px;color:#555;">
+            <span>GST {{ $gst['mode'] === 'included' ? '(incl. in price)' : '(added on bill)' }}</span>
+            <span>₹{{ number_format($gst['cgst'] + $gst['sgst'], 2) }}</span>
+        </div>
+    @else
+        <div class="total-row grand">
+            <span>TOTAL</span>
+            <span>₹{{ number_format($order->total_amount, 2) }}</span>
+        </div>
+    @endif
     <div class="total-row small" style="margin-top:2px;">
         <span>Payment</span>
         <span>{{ strtoupper($order->payment_mode ?? 'CASH') }}</span>

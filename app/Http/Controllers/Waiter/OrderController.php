@@ -63,10 +63,26 @@ class OrderController extends Controller
         return view('waiter.orders.index', compact('orders', 'menuItems', 'freeWaiters'));
     }
 
+    private function sortTables($tables)
+    {
+        return $tables->sort(function($a, $b) {
+            preg_match('/^(\D*)(\d*)(.*)$/', $a->table_number, $am);
+            preg_match('/^(\D*)(\d*)(.*)$/', $b->table_number, $bm);
+            $prefixCmp = strcmp($am[1], $bm[1]);
+            if ($prefixCmp !== 0) return $prefixCmp;
+            $numA = (int)($am[2] ?? 0);
+            $numB = (int)($bm[2] ?? 0);
+            if ($numA !== $numB) return $numA - $numB;
+            return strcmp($am[3] ?? '', $bm[3] ?? '');
+        });
+    }
+
     public function create()
     {
-        $tables         = RestaurantTable::with('category')->where('is_occupied', false)->get()->groupBy(fn($t) => $t->category->name ?? 'Uncategorized');
-        $allTables      = RestaurantTable::with('category')->get()->groupBy(fn($t) => $t->category->name ?? 'Uncategorized');
+        $tables    = $this->sortTables(RestaurantTable::with('category')->where('is_occupied', false)->get())
+                         ->groupBy(fn($t) => $t->category->name ?? 'Uncategorized');
+        $allTables = $this->sortTables(RestaurantTable::with('category')->get())
+                         ->groupBy(fn($t) => $t->category->name ?? 'Uncategorized');
         $menuItems      = MenuItem::with('menuCategory')->where('is_available', true)->get();
         $menuCategories = MenuCategory::whereHas('menuItems', fn($q) => $q->where('is_available', true))->get();
 

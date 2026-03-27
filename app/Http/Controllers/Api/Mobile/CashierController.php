@@ -44,7 +44,15 @@ class CashierController extends Controller
             ->latest()
             ->get();
 
-        return response()->json($orders->map(fn($o) => $this->formatOrder($o)));
+        $branchUpiId = null;
+        if ($this->branchId()) {
+            $branchUpiId = \App\Models\Branch::find($this->branchId())?->upi_id;
+        }
+
+        return response()->json([
+            'upi_id' => $branchUpiId,
+            'orders' => $orders->map(fn($o) => $this->formatOrder($o)),
+        ]);
     }
 
     // PATCH /api/mobile/cashier/payments/{id}/process

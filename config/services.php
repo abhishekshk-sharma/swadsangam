@@ -43,4 +43,9 @@ return [
         'key' => env('GOOGLE_TRANSLATE_API_KEY', env('GOOGLE_CLOUD_VISION_API_KEY')),
     ],
 
+    'fcm' => [
+        'project_id'           => env('FCM_PROJECT_ID', ''),
+        'service_account_path' => env('FCM_SERVICE_ACCOUNT_PATH', storage_path('app/firebase-service-account.json')),
+    ],
+
 ];

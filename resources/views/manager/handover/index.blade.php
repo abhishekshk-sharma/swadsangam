@@ -2,46 +2,90 @@
 @section('title', 'Cash Handovers')
 @section('content')
 
-<div class="content-card mb-4">
-    <div class="card-header"><div class="card-title"><i class="fas fa-filter"></i> Filter Handovers</div></div>
-    <div class="card-body">
-        <form method="GET" action="{{ route('manager.handover.index') }}">
-            <div class="row g-3 align-items-end">
-                <div class="col-md-3">
-                    <label class="form-label">Filter Type</label>
-                    <select name="filter_type" class="form-select" id="filterType">
-                        <option value="">All</option>
-                        <option value="today"  {{ request('filter_type') === 'today'  ? 'selected' : '' }}>Today</option>
-                        <option value="month"  {{ request('filter_type') === 'month'  ? 'selected' : '' }}>By Month</option>
-                        <option value="custom" {{ request('filter_type') === 'custom' ? 'selected' : '' }}>Custom Range</option>
-                    </select>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+    <div>
+        <h1 style="font-size:1.2rem;font-weight:700;color:var(--gray-900);margin:0;"><i class="fas fa-cash-register" style="margin-right:8px;color:#3b82f6;"></i>Cash Handover Reports</h1>
+        <p style="font-size:13px;color:var(--gray-500);margin:4px 0 0;">{{ now()->format('l, F j, Y') }}</p>
+    </div>
+</div>
+
+@if(session('success'))
+    <div style="background:#dcfce7;border:1px solid #16a34a;color:#15803d;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:14px;">
+        <i class="fas fa-check-circle" style="margin-right:8px;"></i>{{ session('success') }}
+    </div>
+@endif
+@if(session('error'))
+    <div style="background:#fee2e2;border:1px solid #dc2626;color:#dc2626;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:14px;">
+        <i class="fas fa-exclamation-circle" style="margin-right:8px;"></i>{{ session('error') }}
+    </div>
+@endif
+
+{{-- Filter Card --}}
+<div class="content-card" style="margin-bottom:20px;">
+    <div style="padding:14px 20px;border-bottom:1px solid #e5e7eb;background:#f9fafb;border-radius:12px 12px 0 0;">
+        <strong style="font-size:14px;color:#374151;"><i class="fas fa-filter" style="margin-right:8px;color:#3b82f6;"></i>Filter Handovers</strong>
+    </div>
+    <div style="padding:20px;">
+        <form method="GET" action="{{ route('manager.handover.index') }}" id="handoverFilterForm">
+
+            {{-- Period tabs --}}
+            <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+                @foreach(['today'=>'Today','month'=>'Monthly','custom'=>'Custom Range'] as $val=>$label)
+                <button type="button" onclick="setHFilterType('{{ $val }}')" id="hftab-{{ $val }}"
+                    style="padding:8px 20px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;border:2px solid {{ request('filter_type')===$val ? '#2563eb' : '#d1d5db' }};background:{{ request('filter_type')===$val ? '#eff6ff' : '#fff' }};color:{{ request('filter_type')===$val ? '#2563eb' : '#6b7280' }};transition:all 0.15s;">
+                    {{ $label }}
+                </button>
+                @endforeach
+            </div>
+
+            <input type="hidden" name="filter_type" id="hFilterType" value="{{ request('filter_type') }}">
+
+            <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;">
+                <div style="display:{{ request('filter_type')==='month' ? 'flex' : 'none' }};flex-direction:column;gap:6px;min-width:160px;" id="hpanel-month">
+                    <label style="font-size:12px;font-weight:600;color:#374151;">Month</label>
+                    <input type="month" name="month" value="{{ request('month', now()->format('Y-m')) }}"
+                           style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;background:#fff;color:#374151;">
                 </div>
-                <div class="col-md-3" id="monthField" style="display:none;">
-                    <label class="form-label">Month</label>
-                    <input type="month" name="month" class="form-control" value="{{ request('month') }}">
+                <div style="display:{{ request('filter_type')==='custom' ? 'flex' : 'none' }};flex-direction:column;gap:6px;min-width:140px;" id="hpanel-custom-from">
+                    <label style="font-size:12px;font-weight:600;color:#374151;">From</label>
+                    <input type="date" name="date_from" value="{{ request('date_from') }}"
+                           style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;background:#fff;color:#374151;">
                 </div>
-                <div class="col-md-2" id="dateFromField" style="display:none;">
-                    <label class="form-label">From</label>
-                    <input type="date" name="date_from" class="form-control" value="{{ request('date_from') }}">
+                <div style="display:{{ request('filter_type')==='custom' ? 'flex' : 'none' }};flex-direction:column;gap:6px;min-width:140px;" id="hpanel-custom-to">
+                    <label style="font-size:12px;font-weight:600;color:#374151;">To</label>
+                    <input type="date" name="date_to" value="{{ request('date_to') }}"
+                           style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;background:#fff;color:#374151;">
                 </div>
-                <div class="col-md-2" id="dateToField" style="display:none;">
-                    <label class="form-label">To</label>
-                    <input type="date" name="date_to" class="form-control" value="{{ request('date_to') }}">
-                </div>
-                <div class="col-md-2 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary">Apply</button>
-                    <a href="{{ route('manager.handover.index') }}" class="btn btn-secondary">Clear</a>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <button type="submit" style="padding:9px 22px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Apply</button>
+                    <a href="{{ route('manager.handover.index') }}" style="padding:9px 22px;background:#fff;color:#374151;border:1px solid #d1d5db;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;">Clear</a>
                 </div>
             </div>
         </form>
     </div>
 </div>
 
+{{-- Table --}}
 <div class="content-card">
-    <div class="table-responsive">
-        <table class="table">
+    <div style="padding:16px 20px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-size:15px;font-weight:600;color:#1f2937;"><i class="fas fa-cash-register" style="color:#3b82f6;margin-right:8px;"></i>Handover Records</div>
+    </div>
+
+    <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;">
             <thead>
-                <tr><th>#</th><th>Cashier</th><th>Date</th><th>Submitted</th><th>System Cash</th><th>Difference</th><th>Status</th><th>Approved By</th><th>Actions</th></tr>
+                <tr style="background:#f9fafb;">
+                    @php $th = 'padding:10px 16px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;border-bottom:1px solid #e5e7eb;text-align:left;white-space:nowrap;'; @endphp
+                    <th style="{{ $th }}">#</th>
+                    <th style="{{ $th }}">Cashier</th>
+                    <th style="{{ $th }}">Date</th>
+                    <th style="{{ $th }}">Submitted</th>
+                    <th style="{{ $th }}">System Cash</th>
+                    <th style="{{ $th }}">Difference</th>
+                    <th style="{{ $th }}">Status</th>
+                    <th style="{{ $th }}">Approved By</th>
+                    <th style="{{ $th }}">Actions</th>
+                </tr>
             </thead>
             <tbody>
                 @forelse($handovers as $h)
@@ -49,62 +93,92 @@
                     $key        = $h->cashier_id . '_' . $h->handover_date->toDateString();
                     $systemCash = $systemTotals[$key]->total ?? 0;
                     $diff       = $h->total_cash - $systemCash;
+                    $td = 'padding:14px 16px;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;';
                 @endphp
-                <tr>
-                    <td><strong>#{{ $h->id }}</strong></td>
-                    <td>{{ $h->cashier?->name ?? '—' }}</td>
-                    <td>{{ $h->handover_date->format('d M Y') }}</td>
-                    <td><strong>₹{{ number_format($h->total_cash, 2) }}</strong></td>
-                    <td>₹{{ number_format($systemCash, 2) }}</td>
-                    <td>
-                        @if($diff == 0) <span class="badge badge-success">✔ Exact</span>
-                        @elseif($diff > 0) <span class="badge badge-info">▲ Excess ₹{{ number_format($diff, 2) }}</span>
-                        @else <span class="badge badge-error">▼ Short ₹{{ number_format(abs($diff), 2) }}</span>
+                <tr onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background=''">
+                    <td style="{{ $td }}font-weight:700;color:#111827;">#{{ $h->id }}</td>
+                    <td style="{{ $td }}">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <div style="width:30px;height:30px;border-radius:50%;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#2563eb;flex-shrink:0;">
+                                {{ strtoupper(substr($h->cashier?->name ?? '?', 0, 1)) }}
+                            </div>
+                            <span>{{ $h->cashier?->name ?? '—' }}</span>
+                        </div>
+                    </td>
+                    <td style="{{ $td }}white-space:nowrap;">{{ $h->handover_date->format('d M Y') }}</td>
+                    <td style="{{ $td }}font-weight:700;">₹{{ number_format($h->total_cash, 2) }}</td>
+                    <td style="{{ $td }}color:#6b7280;">₹{{ number_format($systemCash, 2) }}</td>
+                    <td style="{{ $td }}">
+                        @if($diff == 0)
+                            <span style="display:inline-flex;align-items:center;gap:4px;background:#dcfce7;color:#15803d;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;">✔ Exact</span>
+                        @elseif($diff > 0)
+                            <span style="display:inline-flex;align-items:center;gap:4px;background:#dbeafe;color:#1d4ed8;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;">▲ +₹{{ number_format($diff, 2) }}</span>
+                        @else
+                            <span style="display:inline-flex;align-items:center;gap:4px;background:#fee2e2;color:#dc2626;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;">▼ -₹{{ number_format(abs($diff), 2) }}</span>
                         @endif
                     </td>
-                    <td>
-                        @if($h->status === 'approved') <span class="badge badge-success">Approved</span>
-                        @else <span class="badge badge-warning">Pending</span>
+                    <td style="{{ $td }}">
+                        @if($h->status === 'approved')
+                            <span style="display:inline-flex;align-items:center;gap:4px;background:#dcfce7;color:#15803d;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;"><i class="fas fa-check-circle"></i> Approved</span>
+                        @else
+                            <span style="display:inline-flex;align-items:center;gap:4px;background:#fef9c3;color:#a16207;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;"><i class="fas fa-clock"></i> Pending</span>
                         @endif
                     </td>
-                    <td style="font-size:13px;color:#666;">
-                        @if($h->approved_by) {{ $h->approvedBy?->name }}<br>{{ $h->approved_at?->format('d M, h:i A') }}
-                        @else —
+                    <td style="{{ $td }}font-size:12px;color:#6b7280;">
+                        @if($h->approved_by)
+                            <div style="font-weight:600;color:#374151;">{{ $h->approvedBy?->name }}</div>
+                            <div style="font-size:11px;margin-top:2px;">{{ $h->approved_at?->format('d M, h:i A') }}</div>
+                        @else
+                            <span style="color:#9ca3af;">—</span>
                         @endif
                     </td>
-                    <td>
-                        <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-secondary btn-sm btn-view"
-                                data-h="{!! htmlspecialchars(json_encode($h->only(['id','denom_1','denom_2','denom_5','denom_10','denom_20','denom_50','denom_100','denom_200','denom_500','total_cash','notes'])), ENT_QUOTES) !!}"
-                                data-sys="{{ $systemCash }}" data-diff="{{ $diff }}">🔍 View</button>
+                    <td style="{{ $td }}">
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                            <button type="button" class="btn-view-handover"
+                                    data-h="{!! htmlspecialchars(json_encode($h->only(['id','denom_1','denom_2','denom_5','denom_10','denom_20','denom_50','denom_100','denom_200','denom_500','total_cash','notes'])), ENT_QUOTES) !!}"
+                                    data-sys="{{ $systemCash }}" data-diff="{{ $diff }}"
+                                    style="display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border:1px solid #d1d5db;background:#fff;color:#374151;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">
+                                <i class="fas fa-eye"></i> View
+                            </button>
                             @if($h->status === 'pending')
-                                <a href="{{ route('manager.handover.edit', $h) }}" class="btn btn-sm btn-secondary">✏️ Edit</a>
-                                <button type="button" class="btn btn-sm btn-approve"
-                                    style="background:#059669;color:#fff;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;"
-                                    data-id="{{ $h->id }}" data-cashier="{{ $h->cashier?->name }}"
-                                    data-total="{{ number_format($h->total_cash, 2) }}"
-                                    data-sys="{{ $systemCash }}" data-diff="{{ $diff }}">✅ Approve</button>
+                                <a href="{{ route('manager.handover.edit', $h) }}"
+                                   style="display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border:1px solid #bfdbfe;background:#eff6ff;color:#2563eb;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;">
+                                    <i class="fas fa-pen"></i> Edit
+                                </a>
+                                <button type="button" class="btn-approve-handover"
+                                        data-id="{{ $h->id }}" data-cashier="{{ $h->cashier?->name }}"
+                                        data-total="{{ number_format($h->total_cash, 2) }}"
+                                        data-sys="{{ $systemCash }}" data-diff="{{ $diff }}"
+                                        style="display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border:none;background:#059669;color:#fff;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">
+                                    <i class="fas fa-check"></i> Approve
+                                </button>
                             @endif
                         </div>
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="9" class="text-center text-muted py-4">No handover reports found.</td></tr>
+                <tr>
+                    <td colspan="9" style="padding:48px;text-align:center;">
+                        <div style="font-size:40px;color:#d1d5db;margin-bottom:12px;"><i class="fas fa-inbox"></i></div>
+                        <div style="font-size:14px;color:#6b7280;">No handover reports found.</div>
+                    </td>
+                </tr>
                 @endforelse
             </tbody>
         </table>
     </div>
-    <div style="padding:1rem;">{{ $handovers->links() }}</div>
+    <div style="padding:16px 20px;border-top:1px solid #e5e7eb;">{{ $handovers->links() }}</div>
 </div>
 
-<!-- Modals (same logic as admin, adapted for manager routes) -->
+{{-- Modals --}}
 <style>
 .ho-overlay { position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99998;display:flex;align-items:center;justify-content:center; }
-.ho-modal { background:#fff;border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,.22);z-index:99999;width:100%;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column; }
+.ho-modal { background:#fff;border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,.22);width:100%;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column; }
 .ho-modal-sm { max-width:480px; } .ho-modal-lg { max-width:640px; }
 .ho-modal-header { display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #e2e8f0;font-size:16px;font-weight:700;flex-shrink:0; }
 .ho-modal-header.success { background:#059669;color:#fff;border-radius:10px 10px 0 0; }
-.ho-modal-body { padding:20px;flex:1;overflow-y:auto; } .ho-modal-footer { padding:12px 20px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:8px;flex-shrink:0; }
+.ho-modal-body { padding:20px;flex:1;overflow-y:auto; }
+.ho-modal-footer { padding:12px 20px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:8px;flex-shrink:0; }
 .ho-btn { padding:8px 18px;border-radius:7px;font-size:13.5px;font-weight:600;cursor:pointer;border:none; }
 .ho-btn-secondary { background:#6c757d;color:#fff; } .ho-btn-success { background:#059669;color:#fff; }
 .ho-close { background:none;border:none;cursor:pointer;font-size:20px;line-height:1;color:inherit;opacity:.8;padding:0 4px; }
@@ -114,7 +188,7 @@
 </style>
 
 <script>
-(function() {
+(function () {
     var DENOMS = [1,2,5,10,20,50,100,200,500];
     function fmt(n) { return parseFloat(n).toLocaleString('en-IN', {minimumFractionDigits:2}); }
 
@@ -128,17 +202,28 @@
         return overlay;
     }
 
-    var filterType = document.getElementById('filterType');
-    function toggleFilterFields() {
-        var v = filterType.value;
-        document.getElementById('monthField').style.display    = v === 'month'  ? '' : 'none';
-        document.getElementById('dateFromField').style.display = v === 'custom' ? '' : 'none';
-        document.getElementById('dateToField').style.display   = v === 'custom' ? '' : 'none';
-    }
-    filterType.addEventListener('change', toggleFilterFields);
-    toggleFilterFields();
+    // Filter pill-tab toggle
+    window.setHFilterType = function(type) {
+        document.getElementById('hFilterType').value = type;
+        ['today','month','custom'].forEach(function(t) {
+            var active = t === type;
+            var btn = document.getElementById('hftab-' + t);
+            if (btn) { btn.style.borderColor = active ? '#2563eb' : '#d1d5db'; btn.style.background = active ? '#eff6ff' : '#fff'; btn.style.color = active ? '#2563eb' : '#6b7280'; }
+        });
+        document.getElementById('hpanel-month').style.display       = type === 'month'  ? 'flex' : 'none';
+        document.getElementById('hpanel-custom-from').style.display  = type === 'custom' ? 'flex' : 'none';
+        document.getElementById('hpanel-custom-to').style.display    = type === 'custom' ? 'flex' : 'none';
+    };
 
-    document.querySelectorAll('.btn-view').forEach(function(btn) {
+    document.getElementById('handoverFilterForm').addEventListener('submit', function(e) {
+        var type = document.getElementById('hFilterType').value;
+        if (type === 'month'  && !document.querySelector('[name="month"]').value)     { e.preventDefault(); alert('Please select a month.'); return; }
+        if (type === 'custom' && !document.querySelector('[name="date_from"]').value) { e.preventDefault(); alert('Please select a From date.'); return; }
+        if (type === 'custom' && !document.querySelector('[name="date_to"]').value)   { e.preventDefault(); alert('Please select a To date.'); return; }
+    });
+
+    // View button
+    document.querySelectorAll('.btn-view-handover').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var h = JSON.parse(this.dataset.h), sys = parseFloat(this.dataset.sys), diff = parseFloat(this.dataset.diff);
             var rows = '', total = 0;
@@ -150,34 +235,36 @@
             if (diff === 0) { diffBadge = '&#10004; Exact Match'; diffCls = 'ho-alert-success'; }
             else if (diff > 0) { diffBadge = '&#9650; Excess &#8377;' + fmt(diffAbs); diffCls = 'ho-alert-primary'; }
             else { diffBadge = '&#9660; Short &#8377;' + fmt(diffAbs); diffCls = 'ho-alert-danger'; }
-            var body = '<table style="width:100%;border-collapse:collapse;font-size:13.5px;"><thead><tr style="background:#f8fafc;"><th style="padding:8px 10px;border-bottom:2px solid #e2e8f0;">Denomination</th><th style="padding:8px 10px;border-bottom:2px solid #e2e8f0;text-align:center;">Count</th><th style="padding:8px 10px;border-bottom:2px solid #e2e8f0;text-align:right;">Subtotal</th></tr></thead><tbody>' + rows + '</tbody><tfoot><tr style="background:#1e293b;color:#fff;"><td colspan="2" style="padding:8px 10px;"><strong>Total</strong></td><td style="padding:8px 10px;text-align:right;"><strong>&#8377;' + fmt(total) + '</strong></td></tr></tfoot></table><div style="margin-top:16px;"><div class="ho-alert ' + diffCls + '">' + diffBadge + '</div></div>' + (h.notes ? '<p style="margin-top:12px;color:#64748b;font-size:13px;"><em>&#128221; ' + h.notes + '</em></p>' : '');
+            var body = '<table style="width:100%;border-collapse:collapse;font-size:13.5px;"><thead><tr style="background:#f8fafc;"><th style="padding:8px 10px;border-bottom:2px solid #e2e8f0;text-align:left;">Denomination</th><th style="padding:8px 10px;border-bottom:2px solid #e2e8f0;text-align:center;">Count</th><th style="padding:8px 10px;border-bottom:2px solid #e2e8f0;text-align:right;">Subtotal</th></tr></thead><tbody>' + rows + '</tbody><tfoot><tr style="background:#1e293b;color:#fff;"><td colspan="2" style="padding:8px 10px;"><strong>Total Submitted</strong></td><td style="padding:8px 10px;text-align:right;"><strong>&#8377;' + fmt(total) + '</strong></td></tr></tfoot></table><div style="margin-top:16px;"><table style="width:100%;border-collapse:collapse;font-size:13.5px;margin-bottom:10px;"><tr style="border-bottom:1px solid #e2e8f0;"><td style="padding:8px 10px;color:#64748b;">Submitted by Cashier</td><td style="padding:8px 10px;text-align:right;font-weight:700;">&#8377;' + fmt(total) + '</td></tr><tr><td style="padding:8px 10px;color:#64748b;">System Cash Orders</td><td style="padding:8px 10px;text-align:right;font-weight:700;">&#8377;' + fmt(sys) + '</td></tr></table><div class="ho-alert ' + diffCls + '">' + diffBadge + '</div></div>' + (h.notes ? '<p style="margin-top:12px;color:#64748b;font-size:13px;"><em>&#128221; Note: ' + h.notes + '</em></p>' : '');
             openOverlay('<div class="ho-modal-header"><span>&#128269; Handover Detail</span><button class="ho-close">&times;</button></div><div class="ho-modal-body">' + body + '</div>', 'lg');
         });
     });
 
-    document.querySelectorAll('.btn-approve').forEach(function(btn) {
+    // Approve button
+    document.querySelectorAll('.btn-approve-handover').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var id = this.dataset.id, cashier = this.dataset.cashier, total = this.dataset.total, sys = parseFloat(this.dataset.sys), diff = parseFloat(this.dataset.diff);
             var diffAbs = Math.abs(diff).toLocaleString('en-IN', {minimumFractionDigits:2}), diffAlert;
-            if (diff === 0) diffAlert = '<div class="ho-alert ho-alert-success" style="margin-bottom:12px;">&#10004; Exact match.</div>';
-            else if (diff > 0) diffAlert = '<div class="ho-alert ho-alert-primary" style="margin-bottom:12px;">&#9650; Excess &#8377;' + diffAbs + '</div>';
-            else diffAlert = '<div class="ho-alert ho-alert-danger" style="margin-bottom:12px;">&#9660; Short &#8377;' + diffAbs + '</div>';
+            if (diff === 0) diffAlert = '<div class="ho-alert ho-alert-success" style="margin-bottom:12px;">&#10004; Submitted amount matches system cash total exactly.</div>';
+            else if (diff > 0) diffAlert = '<div class="ho-alert ho-alert-primary" style="margin-bottom:12px;">&#9650; Cashier submitted <strong>&#8377;' + diffAbs + ' excess</strong> over system total.</div>';
+            else diffAlert = '<div class="ho-alert ho-alert-danger" style="margin-bottom:12px;">&#9660; Cashier is <strong>&#8377;' + diffAbs + ' short</strong> of system cash total.</div>';
             var overlay = openOverlay(
                 '<div class="ho-modal-header success"><span>&#9989; Approve Handover</span><button class="ho-close">&times;</button></div>'
-              + '<div class="ho-modal-body"><p style="margin-bottom:12px;">Approving for <strong>' + cashier + '</strong>.</p>'
-              + '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#64748b;">Submitted</span><strong style="color:#059669;">&#8377;' + total + '</strong></div>'
-              + '<div style="display:flex;justify-content:space-between;margin-bottom:14px;"><span style="color:#64748b;">System Cash</span><strong>&#8377;' + fmt(sys) + '</strong></div>'
+              + '<div class="ho-modal-body">'
+              + '<p style="margin-bottom:12px;">Approving handover for <strong>' + cashier + '</strong>.</p>'
+              + '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#64748b;">Submitted Amount</span><strong style="color:#059669;font-size:16px;">&#8377;' + total + '</strong></div>'
+              + '<div style="display:flex;justify-content:space-between;margin-bottom:14px;"><span style="color:#64748b;">System Cash Total</span><strong>&#8377;' + fmt(sys) + '</strong></div>'
               + diffAlert
-              + '<div class="ho-alert ho-alert-warning" style="margin-bottom:14px;">&#9888;&#65039; Irreversible. Enter your password to confirm.</div>'
-              + '<form id="approveForm" method="POST" action="/manager/handover/' + id + '/approve">'
+              + '<div class="ho-alert ho-alert-warning" style="margin-bottom:14px;">&#9888;&#65039; This action is irreversible. Enter your password to confirm.</div>'
+              + '<form id="approveFormInner" method="POST" action="/manager/handover/' + id + '/approve">'
               + '<input type="hidden" name="_token" value="{{ csrf_token() }}">'
               + '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:5px;">Manager Password</label>'
-              + '<input type="password" name="password" class="form-control" placeholder="Enter your password" required>'
+              + '<input type="password" name="password" style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;" placeholder="Enter your password" required>'
               + '</form></div>'
-              + '<div class="ho-modal-footer"><button class="ho-btn ho-btn-secondary ho-close">Cancel</button><button class="ho-btn ho-btn-success" id="confirmBtn">Confirm</button></div>',
+              + '<div class="ho-modal-footer"><button class="ho-btn ho-btn-secondary ho-close">Cancel</button><button class="ho-btn ho-btn-success" id="confirmApproveBtn">Confirm Approval</button></div>',
                 'sm'
             );
-            overlay.querySelector('#confirmBtn').addEventListener('click', function() { overlay.querySelector('#approveForm').submit(); });
+            overlay.querySelector('#confirmApproveBtn').addEventListener('click', function() { overlay.querySelector('#approveFormInner').submit(); });
         });
     });
 }());

@@ -21,12 +21,18 @@ class CashHandoverController extends Controller
 
     public function create()
     {
-        $pending = CashHandover::where('cashier_id', $this->cashier()->id)
+        $cashier = $this->cashier();
+
+        $pending = CashHandover::withoutGlobalScopes()
+            ->where('cashier_id', $cashier->id)
+            ->where('tenant_id', $this->tenantId())
             ->where('status', 'pending')
             ->latest()
             ->first();
 
-        $latest = CashHandover::where('cashier_id', $this->cashier()->id)
+        $latest = CashHandover::withoutGlobalScopes()
+            ->where('cashier_id', $cashier->id)
+            ->where('tenant_id', $this->tenantId())
             ->latest()
             ->first();
 
@@ -35,8 +41,12 @@ class CashHandoverController extends Controller
 
     public function store(Request $request)
     {
+        $cashier = $this->cashier();
+
         // Block if a pending handover already exists
-        $hasPending = CashHandover::where('cashier_id', $this->cashier()->id)
+        $hasPending = CashHandover::withoutGlobalScopes()
+            ->where('cashier_id', $cashier->id)
+            ->where('tenant_id', $this->tenantId())
             ->where('status', 'pending')
             ->exists();
 
@@ -45,23 +55,34 @@ class CashHandoverController extends Controller
         }
 
         $data = $request->validate([
-            'denom_1'   => 'required|integer|min:0',
-            'denom_2'   => 'required|integer|min:0',
-            'denom_5'   => 'required|integer|min:0',
-            'denom_10'  => 'required|integer|min:0',
-            'denom_20'  => 'required|integer|min:0',
-            'denom_50'  => 'required|integer|min:0',
-            'denom_100' => 'required|integer|min:0',
-            'denom_200' => 'required|integer|min:0',
-            'denom_500' => 'required|integer|min:0',
+            'denom_1'   => 'nullable|integer|min:0',
+            'denom_2'   => 'nullable|integer|min:0',
+            'denom_5'   => 'nullable|integer|min:0',
+            'denom_10'  => 'nullable|integer|min:0',
+            'denom_20'  => 'nullable|integer|min:0',
+            'denom_50'  => 'nullable|integer|min:0',
+            'denom_100' => 'nullable|integer|min:0',
+            'denom_200' => 'nullable|integer|min:0',
+            'denom_500' => 'nullable|integer|min:0',
             'notes'     => 'nullable|string|max:500',
         ]);
 
-        $handover = new CashHandover($data);
-        $handover->tenant_id    = $this->tenantId();
-        $handover->cashier_id   = $this->cashier()->id;
+        $handover = new CashHandover();
+        $handover->tenant_id     = $this->tenantId();
+        $handover->branch_id     = $cashier->branch_id;
+        $handover->cashier_id    = $cashier->id;
         $handover->handover_date = today();
-        $handover->status       = 'pending';
+        $handover->status        = 'pending';
+        $handover->denom_1   = (int) ($data['denom_1']   ?? 0);
+        $handover->denom_2   = (int) ($data['denom_2']   ?? 0);
+        $handover->denom_5   = (int) ($data['denom_5']   ?? 0);
+        $handover->denom_10  = (int) ($data['denom_10']  ?? 0);
+        $handover->denom_20  = (int) ($data['denom_20']  ?? 0);
+        $handover->denom_50  = (int) ($data['denom_50']  ?? 0);
+        $handover->denom_100 = (int) ($data['denom_100'] ?? 0);
+        $handover->denom_200 = (int) ($data['denom_200'] ?? 0);
+        $handover->denom_500 = (int) ($data['denom_500'] ?? 0);
+        $handover->notes     = $data['notes'] ?? null;
         $handover->recalcTotal();
         $handover->save();
 

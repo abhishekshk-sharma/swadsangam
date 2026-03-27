@@ -36,7 +36,15 @@ class PaymentController extends Controller
             ->latest()
             ->get();
 
-        return view('cashier.payments.index', compact('orders'));
+        $branchUpiId = null;
+        $branchGst   = ['enabled' => false];
+        if ($this->branchId()) {
+            $branch      = \App\Models\Branch::with('gstSlab')->find($this->branchId());
+            $branchUpiId = $branch?->upi_id;
+            $branchGst   = $this->computeGst($branch);
+        }
+
+        return view('cashier.payments.index', compact('orders', 'branchUpiId', 'branchGst'));
     }
 
 public function processPayment(Request $request, Order $order)
@@ -50,7 +58,23 @@ public function processPayment(Request $request, Order $order)
         $request->validate([
             'payment_mode'  => 'required|in:cash,upi,card',
             'cash_received' => 'nullable|numeric|min:0',
+            'grand_total'   => 'nullable|numeric|min:0',
         ]);
+
+        // Verify grand total matches expected GST calculation
+        if ($request->filled('grand_total')) {
+            $branch   = \App\Models\Branch::with('gstSlab')->find($order->branch_id);
+            $slab     = $branch?->gstSlab;
+            $mode     = $branch?->gst_mode;
+            $base     = (float) $order->total_amount;
+            $expected = $base;
+            if ($slab && $mode === 'excluded') {
+                $expected = round($base + ($base * $slab->cgst_rate / 100) + ($base * $slab->sgst_rate / 100), 2);
+            }
+            if (abs(round((float) $request->grand_total, 2) - $expected) > 0.02) {
+                return response()->json(['success' => false, 'message' => 'Bill total mismatch. Please refresh and try again.'], 422);
+            }
+        }
 
         $order->update([
             'status'       => 'paid',
@@ -322,6 +346,21 @@ public function processPayment(Request $request, Order $order)
         foreach ($chefs as $chef) {
             $telegram->sendOrderNotification($chef->telegram_chat_id, $orderData);
         }
+    }
+
+    private function computeGst(?\App\Models\Branch $branch): array
+    {
+        if (!$branch) return ['enabled' => false];
+        $slab = $branch->gstSlab;
+        $mode = $branch->gst_mode;
+        if (!$slab || !$mode) return ['enabled' => false];
+        return [
+            'enabled'   => true,
+            'mode'      => $mode,
+            'cgst_pct'  => (float) $slab->cgst_rate,
+            'sgst_pct'  => (float) $slab->sgst_rate,
+            'total_pct' => (float) ($slab->cgst_rate + $slab->sgst_rate),
+        ];
     }
 
     private function currentTenantId(): ?int

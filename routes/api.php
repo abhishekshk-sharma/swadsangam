@@ -17,6 +17,7 @@ Route::prefix('mobile')->group(function () {
         Route::post('logout',  [AuthController::class, 'logout']);
         Route::post('refresh', [AuthController::class, 'refresh']);
         Route::get('profile',  [AuthController::class, 'profile']);
+        Route::post('fcm-token', [AuthController::class, 'updateFcmToken']);
         Route::get('orders/poll', [\App\Http\Controllers\Api\Mobile\PollController::class, 'poll']);
 
         // Waiter

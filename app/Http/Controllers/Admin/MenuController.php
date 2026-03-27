@@ -34,26 +34,32 @@ class MenuController extends BaseAdminController
         return view('admin.menu.index', compact('menuItems', 'menuCategories', 'branches', 'selectedBranch'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $menuCategories = MenuCategory::get();
-        return view('admin.menu.create', compact('menuCategories'));
+        $branches       = \App\Models\Branch::where('tenant_id', $this->tenantId())->where('is_active', true)->get();
+        $branchId       = $request->branch_id ?? session('admin_branch_id');
+        return view('admin.menu.create', compact('menuCategories', 'branches', 'branchId'));
     }
 
     public function store(Request $request)
     {
+        $branchId = $request->branch_id ?: null;
+        if ($branchId) session(['admin_branch_id' => $branchId]);
+
         $request->validate([
             'name'             => 'required|string|max:255',
             'price'            => 'required|numeric|min:0.01',
             'menu_category_id' => 'required|exists:menu_categories,id',
+            'branch_id'        => 'nullable|exists:branches,id',
         ]);
 
-        // Verify the chosen category belongs to this tenant (or is global)
         $cat = MenuCategory::findOrFail($request->menu_category_id);
         abort_if($cat->tenant_id !== null && $cat->tenant_id !== $this->tenantId(), 403);
 
         MenuItem::create([
             'tenant_id'        => $this->tenantId(),
+            'branch_id'        => $branchId,
             'name'             => $request->name,
             'price'            => $request->price,
             'description'      => $request->description,
@@ -61,7 +67,8 @@ class MenuController extends BaseAdminController
             'is_available'     => $request->has('is_available') ? 1 : 0,
         ]);
 
-        return redirect()->route('admin.menu.index')->with('success', 'Menu item created successfully');
+        return redirect()->route('admin.menu.index', $branchId ? ['branch_id' => $branchId] : [])
+            ->with('success', 'Menu item created successfully');
     }
 
     public function edit($id)

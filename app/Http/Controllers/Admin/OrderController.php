@@ -34,7 +34,7 @@ class OrderController extends BaseAdminController
             ->get();
 
         // Payment section: served/checkout for dine-in, ready for parcel
-        $paymentOrders = Order::with(['table.category', 'orderItems' => fn($q) => $q->withoutGlobalScopes()->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()])])
+        $paymentOrders = Order::with(['table.category', 'branch.gstSlab', 'orderItems' => fn($q) => $q->withoutGlobalScopes()->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()])])
             ->whereDate('created_at', today())
             ->where(function ($q) {
                 $q->where(fn($q2) => $q2->where('is_parcel', false)->whereIn('status', ['served', 'checkout']))
@@ -47,6 +47,11 @@ class OrderController extends BaseAdminController
         $menuItems = MenuItem::where('is_available', true)->get();
         $branches  = Branch::where('tenant_id', $this->tenantId())->where('is_active', true)->get();
 
+        // UPI ID and GST for the selected branch
+        $selectedBranch = $branchId ? Branch::with('gstSlab')->find($branchId) : null;
+        $branchUpiId    = $selectedBranch?->upi_id;
+        $branchGst      = $this->computeBranchGst($selectedBranch);
+
         // Build a map of branch_id => waiters for the assign modal
         $branchIds = $orders->pluck('branch_id')->filter()->unique()->values();
         $waitersByBranch = Employee::where('tenant_id', $this->tenantId())
@@ -57,7 +62,7 @@ class OrderController extends BaseAdminController
             ->groupBy('branch_id')
             ->map(fn($w) => $w->map(fn($e) => ['id' => $e->id, 'name' => $e->name]));
 
-        return view('admin.orders.index', compact('orders', 'paymentOrders', 'menuItems', 'branches', 'branchId', 'waitersByBranch'));
+        return view('admin.orders.index', compact('orders', 'paymentOrders', 'menuItems', 'branches', 'branchId', 'waitersByBranch', 'branchUpiId', 'branchGst'));
     }
 
     public function create(Request $request)
@@ -65,9 +70,19 @@ class OrderController extends BaseAdminController
         $branchId   = $this->resolvedBranchId($request);
         $preTableId = $request->filled('table_id') ? (int) $request->table_id : null;
 
-        $allTables      = RestaurantTable::with(['category', 'orders' => fn($q) => $q->whereIn('status', ['pending','preparing','ready','served'])->latest()->limit(1)])
+        $allTables = RestaurantTable::with(['category', 'orders' => fn($q) => $q->whereIn('status', ['pending','preparing','ready','served'])->latest()->limit(1)])
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
             ->get()
+            ->sort(function($a, $b) {
+                preg_match('/^(\D*)(\d*)(.*)$/', $a->table_number, $am);
+                preg_match('/^(\D*)(\d*)(.*)$/', $b->table_number, $bm);
+                $prefixCmp = strcmp($am[1], $bm[1]);
+                if ($prefixCmp !== 0) return $prefixCmp;
+                $numA = (int)($am[2] ?? 0);
+                $numB = (int)($bm[2] ?? 0);
+                if ($numA !== $numB) return $numA - $numB;
+                return strcmp($am[3] ?? '', $bm[3] ?? '');
+            })
             ->groupBy(fn($t) => $t->category->name ?? 'Uncategorized');
 
         $menuItems      = MenuItem::with('menuCategory')->where('is_available', true)->get();
@@ -254,7 +269,24 @@ class OrderController extends BaseAdminController
         $request->validate([
             'payment_mode'  => 'required|in:cash,upi,card',
             'cash_received' => 'nullable|numeric|min:0',
+            'grand_total'   => 'nullable|numeric|min:0',
         ]);
+
+        // Verify grand total matches expected (GST check)
+        if ($request->filled('grand_total')) {
+            $branch      = $order->branch;
+            $slab        = $branch?->gstSlab;
+            $mode        = $branch?->gst_mode;
+            $base        = (float) $order->total_amount;
+            $expected    = $base;
+            if ($slab && $mode === 'excluded') {
+                $expected = round($base + ($base * $slab->cgst_rate / 100) + ($base * $slab->sgst_rate / 100), 2);
+            }
+            $submitted = round((float) $request->grand_total, 2);
+            if (abs($submitted - $expected) > 0.02) {
+                return response()->json(['success' => false, 'message' => 'Bill total mismatch. Please refresh and try again.'], 422);
+            }
+        }
 
         $order->update([
             'status'       => 'paid',
@@ -275,6 +307,21 @@ class OrderController extends BaseAdminController
 
         return redirect()->route('admin.orders.index', array_filter(['branch_id' => $this->resolvedBranchId($request)]))
             ->with('success', 'Payment received for Order #' . $order->id);
+    }
+
+    private function computeBranchGst(?Branch $branch): array
+    {
+        if (!$branch) return ['enabled' => false];
+        $slab = $branch->gstSlab;
+        $mode = $branch->gst_mode;
+        if (!$slab || !$mode) return ['enabled' => false];
+        return [
+            'enabled'   => true,
+            'mode'      => $mode,
+            'cgst_pct'  => (float) $slab->cgst_rate,
+            'sgst_pct'  => (float) $slab->sgst_rate,
+            'total_pct' => (float) ($slab->cgst_rate + $slab->sgst_rate),
+        ];
     }
 
     private function findTenantItem(int $id): OrderItem

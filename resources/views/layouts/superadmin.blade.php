@@ -58,6 +58,10 @@
                     <i class="fas fa-chart-bar w-5"></i>
                     <span class="ml-3">Reports</span>
                 </a>
+                <a href="/superadmin/gst-slabs" class="flex items-center px-6 py-3 hover:bg-blue-800 {{ request()->is('superadmin/gst-slabs*') ? 'bg-blue-800 border-l-4 border-white' : '' }}">
+                    <i class="fas fa-percent w-5"></i>
+                    <span class="ml-3">GST Slabs</span>
+                </a>
             </nav>
         </aside>
 

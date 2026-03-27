@@ -45,6 +45,18 @@
         <form action="{{ route('admin.tables.store') }}" method="POST">
             @csrf
 
+            @if($branches->count() > 0)
+            <div class="form-group">
+                <label class="form-label"><i class="fas fa-store me-2"></i>Branch</label>
+                <select name="branch_id" class="form-select">
+                    <option value="">-- No Branch --</option>
+                    @foreach($branches as $branch)
+                        <option value="{{ $branch->id }}" {{ $branchId == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            @endif
+
             <div class="form-group">
                 <label class="form-label">
                     <i class="fas fa-tag me-2"></i>Category (Optional)

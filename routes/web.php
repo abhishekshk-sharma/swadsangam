@@ -142,6 +142,13 @@ Route::prefix('superadmin')->name('superadmin.')->group(function () {
         // Reports
         Route::get('reports', [\App\Http\Controllers\SuperAdmin\ReportController::class, 'index'])->name('reports.index');
         Route::get('reports/export', [\App\Http\Controllers\SuperAdmin\ReportController::class, 'export'])->name('reports.export');
+
+        // GST Slabs
+        Route::get('gst-slabs', [\App\Http\Controllers\SuperAdmin\GstSlabController::class, 'index'])->name('gst-slabs.index');
+        Route::post('gst-slabs', [\App\Http\Controllers\SuperAdmin\GstSlabController::class, 'store'])->name('gst-slabs.store');
+        Route::put('gst-slabs/{gstSlab}', [\App\Http\Controllers\SuperAdmin\GstSlabController::class, 'update'])->name('gst-slabs.update');
+        Route::delete('gst-slabs/{gstSlab}', [\App\Http\Controllers\SuperAdmin\GstSlabController::class, 'destroy'])->name('gst-slabs.destroy');
+        Route::patch('gst-slabs/tenant/{tenant}', [\App\Http\Controllers\SuperAdmin\GstSlabController::class, 'assignTenant'])->name('gst-slabs.assign');
     });
 });
 
@@ -292,6 +299,21 @@ Route::prefix('manager')->name('manager.')->middleware(['multi.auth', 'role:mana
     Route::get('handover/{handover}/edit', [ManagerCashHandoverController::class, 'edit'])->name('handover.edit');
     Route::patch('handover/{handover}', [ManagerCashHandoverController::class, 'update'])->name('handover.update');
     Route::post('handover/{handover}/approve', [ManagerCashHandoverController::class, 'approve'])->name('handover.approve');
+    // Waiter Panel
+    Route::get('orders', [\App\Http\Controllers\Manager\OrderController::class, 'index'])->name('orders.index');
+    Route::get('orders/create', [\App\Http\Controllers\Manager\OrderController::class, 'create'])->name('orders.create');
+    Route::post('orders', [\App\Http\Controllers\Manager\OrderController::class, 'store'])->name('orders.store');
+    Route::post('orders/{id}/add-items', [\App\Http\Controllers\Manager\OrderController::class, 'addItems'])->name('orders.addItems');
+    Route::post('orders/{id}/assign', [\App\Http\Controllers\Manager\OrderController::class, 'assign'])->name('orders.assign');
+    Route::patch('orders/{id}/cancel', [\App\Http\Controllers\Manager\OrderController::class, 'cancelOrder'])->name('orders.cancel');
+    Route::patch('orders/{id}/payment', [\App\Http\Controllers\Manager\OrderController::class, 'processPayment'])->name('orders.payment');
+    Route::patch('order-items/{id}/cancel', [\App\Http\Controllers\Manager\OrderController::class, 'cancelItem'])->name('orders.items.cancel');
+    Route::patch('order-items/{id}/update', [\App\Http\Controllers\Manager\OrderController::class, 'updateItem'])->name('orders.items.update');
+    // Assignment Logs
+    Route::get('assignment-logs', [\App\Http\Controllers\Manager\AssignmentLogController::class, 'index'])->name('assignment-logs.index');
+    // Branch Settings
+    Route::get('branch/settings', [\App\Http\Controllers\Manager\BranchSettingsController::class, 'edit'])->name('branch.settings');
+    Route::patch('branch/settings', [\App\Http\Controllers\Manager\BranchSettingsController::class, 'update'])->name('branch.settings.update');
 });
 
 // Cashier Routes

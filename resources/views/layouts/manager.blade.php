@@ -127,21 +127,23 @@
                         ['icon' => 'fa-chart-pie',      'label' => 'Dashboard', 'route' => 'manager.dashboard'],
                     ],
                     'Operations' => [
-                        ['icon' => 'fa-clipboard-list', 'label' => 'Orders',       'route' => 'manager.cook.index',             'badge' => $pendingOrders ?? 0],
+                        ['icon' => 'fa-clipboard-list', 'label' => 'Orders',       'route' => 'manager.cook.index',   'badge' => $pendingOrders ?? 0],
+                        ['icon' => 'fa-concierge-bell', 'label' => 'Waiter Panel', 'route' => 'manager.orders.index'],
                         ['icon' => 'fa-utensils',       'label' => 'Tables',       'route' => 'manager.tables.index'],
-                        
                         ['icon' => 'fa-book-open',      'label' => 'Menu',         'route' => 'manager.menu.index'],
-                        
                         ['icon' => 'fa-users',          'label' => 'Staff',        'route' => 'manager.staff.index'],
                     ],
+
                     'Reports' => [
-                        ['icon' => 'fa-chart-bar',      'label' => 'Reports',   'route' => 'manager.reports.index'],
-                        ['icon' => 'fa-cash-register',  'label' => 'Handover',  'route' => 'manager.handover.index'],
+                        ['icon' => 'fa-chart-bar',     'label' => 'Reports',          'route' => 'manager.reports.index'],
+                        ['icon' => 'fa-exchange-alt',  'label' => 'Assignment Logs',  'route' => 'manager.assignment-logs.index'],
+                        ['icon' => 'fa-cash-register', 'label' => 'Handover',         'route' => 'manager.handover.index'],
                     ],
                     'Settings' => [
                         ['icon' => 'fa-layer-group',    'label' => 'Table Cats',   'route' => 'manager.table-categories.index'],
                         ['icon' => 'fa-tags',           'label' => 'Menu Cats',    'route' => 'manager.menu-categories.index'],
                         ['icon' => 'fa-camera',         'label' => 'Menu OCR',     'route' => 'manager.menu-ocr.index'],
+                        ['icon' => 'fa-store',           'label' => 'Branch',       'route' => 'manager.branch.settings'],
                         ['icon' => 'fa-user-circle',    'label' => 'Profile',   'route' => 'profile.show'],
                     ],
                 ];
@@ -235,8 +237,11 @@
 })();
 </script>
 <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+@unless(request()->routeIs('manager.orders.index') || request()->routeIs('manager.orders.create'))
 <script>window.ORDER_POLL = { panel: 'manager' };</script>
 <script src="/js/order-poll.js"></script>
+@endunless
+
 @stack('scripts')
 </body>
 </html>

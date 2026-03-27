@@ -34,6 +34,21 @@
         <form action="{{ route('admin.menu.store') }}" method="POST" id="menuForm">
             @csrf
 
+            @if($branches->count() > 0)
+            <div class="mb-4">
+                <h5 style="color:#232f3e;font-weight:600;font-size:15px;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #f0f0f0;">
+                    <i class="fas fa-store" style="color:#ff9900;"></i> Branch
+                </h5>
+                <select name="branch_id" class="form-select" style="max-width:320px;">
+                    <option value="">-- All Branches (Global) --</option>
+                    @foreach($branches as $branch)
+                        <option value="{{ $branch->id }}" {{ $branchId == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                    @endforeach
+                </select>
+                <div style="font-size:12px;color:#6b7280;margin-top:4px;">Leave as Global to show on all branches</div>
+            </div>
+            @endif
+
             <!-- Categorization -->
             <div class="mb-4">
                 <h5 style="color:#232f3e;font-weight:600;font-size:15px;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #f0f0f0;">
