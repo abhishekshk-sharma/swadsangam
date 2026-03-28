@@ -268,7 +268,7 @@
                 <a href="/login" class="btn-hero btn-primary-hero">
                     <i class="fas fa-sign-in-alt me-2"></i>Staff Login
                 </a>
-                <a href="/swad-sangam.apk" download="SwadSangam.apk" class="btn-hero btn-download-hero">
+                <a href="/swad_sangam.apk" download="SwadSangam.apk" class="btn-hero btn-download-hero">
                     <i class="fab fa-android me-2"></i>Download App<span class="download-badge">v1.0.0</span>
                 </a>
                 <a href="#services" class="btn-hero btn-secondary-hero">
