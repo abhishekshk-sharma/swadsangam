@@ -3,18 +3,34 @@
 @section('title', 'Order Assignment Logs')
 
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-4" style="flex-wrap:wrap;gap:12px;">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
     <div>
         <h1 style="font-size:22px;font-weight:700;color:#232f3e;"><i class="fas fa-exchange-alt me-2"></i>Order Assignment Logs</h1>
         <p style="font-size:13px;color:#6b7280;">Track all order handoffs between waiters</p>
     </div>
-    <form method="GET" action="{{ route('admin.assignment-logs.index') }}" style="display:flex;gap:8px;align-items:center;">
-        <input type="date" name="date" value="{{ request('date') }}"
-               style="border:1px solid #d5d9d9;border-radius:6px;padding:7px 12px;font-size:13px;">
-        <button type="submit" style="background:#3b82f6;color:#fff;border:none;padding:7px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Filter</button>
-        @if(request('date'))
-            <a href="{{ route('admin.assignment-logs.index') }}" style="font-size:13px;color:#6b7280;">Clear</a>
+    <form method="GET" action="{{ route('admin.assignment-logs.index') }}" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+        @if(isset($branches) && $branches->count() > 0)
+        <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;">Branch</label>
+            <select name="branch_id" style="padding:7px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;background:#fff;color:#374151;min-width:160px;">
+                <option value="">All Branches</option>
+                @foreach($branches as $branch)
+                    <option value="{{ $branch->id }}" {{ $selectedBranch == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                @endforeach
+            </select>
+        </div>
         @endif
+        <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;">Date</label>
+            <input type="date" name="date" value="{{ request('date') }}"
+                   style="padding:7px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;background:#fff;">
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-end;">
+            <button type="submit" style="background:#2563eb;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;"><i class="fas fa-filter" style="margin-right:4px;"></i>Filter</button>
+            @if(request('date') || request('branch_id'))
+                <a href="{{ route('admin.assignment-logs.index') }}" style="padding:8px 14px;background:#fff;color:#374151;border:1px solid #d1d5db;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;">Clear</a>
+            @endif
+        </div>
     </form>
 </div>
 
@@ -27,6 +43,7 @@
                     <th style="padding:12px 16px;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;text-align:left;">Time</th>
                     <th style="padding:12px 16px;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;text-align:left;">Order</th>
                     <th style="padding:12px 16px;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;text-align:left;">Table</th>
+                    <th style="padding:12px 16px;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;text-align:left;">Branch</th>
                     <th style="padding:12px 16px;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;text-align:left;">From</th>
                     <th style="padding:12px 16px;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;text-align:left;">To</th>
                     <th style="padding:12px 16px;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;text-align:left;">Note</th>
@@ -49,6 +66,9 @@
                                 T{{ $log->order?->table?->table_number ?? '?' }}
                             </span>
                         @endif
+                    </td>
+                    <td style="padding:12px 16px;font-size:13px;color:#6b7280;">
+                        {{ $log->order?->branch?->name ?? '—' }}
                     </td>
                     <td style="padding:12px 16px;">
                         <div style="display:flex;align-items:center;gap:8px;">

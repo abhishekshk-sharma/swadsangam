@@ -11,18 +11,11 @@ class UserController extends Controller
 {
     public function index()
     {
-        $superAdmins = SuperAdmin::latest()->get()->map(function ($user) {
-            $user->role   = 'super_admin';
-            $user->tenant = null;
-            return $user;
-        });
-
-        $admins = Admin::withoutGlobalScope('tenant')->with('tenant')->latest()->get()->map(function ($user) {
+        // Only show Restaurant Admins — Super Admins have their own profile page
+        $users = Admin::withoutGlobalScope('tenant')->with('tenant')->latest()->get()->map(function ($user) {
             $user->role = 'admin';
             return $user;
         });
-
-        $users = $superAdmins->concat($admins);
 
         return view('superadmin.users.index', compact('users'));
     }
@@ -88,32 +81,32 @@ class UserController extends Controller
 
     public function update(Request $request, $id)
     {
+        // Determine existing user and their role — role is NOT changeable
+        $user = Admin::withoutGlobalScope('tenant')->find($id);
+        $isAdmin = (bool) $user;
+        if (!$user) {
+            $user = SuperAdmin::find($id);
+        }
+        if (!$user) {
+            return redirect('/superadmin/users')->with('error', 'User not found');
+        }
+
         $tenantId = $request->input('tenant_id');
 
-        $emailUnique = $request->role === 'super_admin'
-            ? 'unique:super_admins,email,' . $id
-            : 'unique:admins,email,' . $id . ',id,tenant_id,' . $tenantId;
+        $emailUnique = $isAdmin
+            ? 'unique:admins,email,' . $id . ',id,tenant_id,' . $tenantId
+            : 'unique:super_admins,email,' . $id;
 
         $request->validate([
             'name'      => 'required|string|max:255',
             'email'     => ['required', 'email', $emailUnique],
             'password'  => 'nullable|min:6',
-            'role'      => 'required|in:super_admin,admin',
-            'tenant_id' => 'required_if:role,admin|nullable|exists:tenants,id',
+            'tenant_id' => $isAdmin ? 'required|exists:tenants,id' : 'nullable',
         ]);
-
-        $user = Admin::withoutGlobalScope('tenant')->find($id);
-        if (!$user) {
-            $user = SuperAdmin::find($id);
-        }
-
-        if (!$user) {
-            return redirect('/superadmin/users')->with('error', 'User not found');
-        }
 
         $data = $request->only(['name', 'email', 'is_active']);
 
-        if ($request->role === 'admin') {
+        if ($isAdmin) {
             $data['tenant_id'] = $request->tenant_id;
         }
 

@@ -12,11 +12,13 @@ class OrdersExport implements FromCollection, WithHeadings, WithMapping, WithEve
 {
     protected $orders;
     protected $gstStats;
+    protected $paymentTotals;
 
-    public function __construct($orders, array $gstStats = [])
+    public function __construct($orders, array $gstStats = [], array $paymentTotals = [])
     {
-        $this->orders   = $orders;
-        $this->gstStats = $gstStats;
+        $this->orders        = $orders;
+        $this->gstStats      = $gstStats;
+        $this->paymentTotals = $paymentTotals;
     }
 
     public function collection()
@@ -86,21 +88,38 @@ class OrdersExport implements FromCollection, WithHeadings, WithMapping, WithEve
 
     public function registerEvents(): array
     {
-        $gst = $this->gstStats;
-        if (empty($gst['enabled'])) return [];
+        $gst     = $this->gstStats;
+        $payment = $this->paymentTotals;
+        $count   = $this->orders->count();
 
         return [
-            AfterSheet::class => function (AfterSheet $event) use ($gst) {
-                $sheet     = $event->sheet->getDelegate();
-                $lastRow   = $this->orders->count() + 2; // +1 heading +1 for next row
-                $summaryRow = $lastRow + 1;
+            AfterSheet::class => function (AfterSheet $event) use ($gst, $payment, $count) {
+                $sheet      = $event->sheet->getDelegate();
+                // row 1 = headings, rows 2..(count+1) = data, blank row, then summary
+                $summaryRow = $count + 3;
 
-                $sheet->setCellValue('A' . $summaryRow, 'GST Summary');
-                $sheet->setCellValue('B' . $summaryRow, 'Total CGST: ₹' . number_format($gst['cgst'], 2));
-                $sheet->setCellValue('C' . $summaryRow, 'Total SGST: ₹' . number_format($gst['sgst'], 2));
-                $sheet->setCellValue('D' . $summaryRow, 'Total GST: ₹' . number_format($gst['total'], 2));
+                $cashTotal  = (float) ($payment['cash'] ?? 0);
+                $upiTotal   = (float) ($payment['upi']  ?? 0);
+                $cardTotal  = (float) ($payment['card'] ?? 0);
+                $grandTotal = $cashTotal + $upiTotal + $cardTotal;
 
-                $sheet->getStyle('A' . $summaryRow . ':D' . $summaryRow)->getFont()->setBold(true);
+                $sheet->setCellValue('A' . $summaryRow, 'Payment Summary');
+                $sheet->setCellValue('B' . $summaryRow, 'Cash: ₹'  . number_format($cashTotal,  2));
+                $sheet->setCellValue('C' . $summaryRow, 'UPI: ₹'   . number_format($upiTotal,   2));
+                $sheet->setCellValue('D' . $summaryRow, 'Card: ₹'  . number_format($cardTotal,  2));
+                $sheet->setCellValue('E' . $summaryRow, 'Total: ₹' . number_format($grandTotal, 2));
+                $sheet->getStyle('A' . $summaryRow . ':E' . $summaryRow)->getFont()->setBold(true);
+                $sheet->getStyle('A' . $summaryRow)->getFont()->getColor()->setARGB('FF1D4ED8');
+
+                if (!empty($gst['enabled'])) {
+                    $gstRow = $summaryRow + 1;
+                    $sheet->setCellValue('A' . $gstRow, 'GST Summary');
+                    $sheet->setCellValue('B' . $gstRow, 'CGST: ₹'      . number_format($gst['cgst'],  2));
+                    $sheet->setCellValue('C' . $gstRow, 'SGST: ₹'      . number_format($gst['sgst'],  2));
+                    $sheet->setCellValue('D' . $gstRow, 'Total GST: ₹' . number_format($gst['total'], 2));
+                    $sheet->getStyle('A' . $gstRow . ':D' . $gstRow)->getFont()->setBold(true);
+                    $sheet->getStyle('A' . $gstRow)->getFont()->getColor()->setARGB('FFB45309');
+                }
             },
         ];
     }

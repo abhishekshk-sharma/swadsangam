@@ -163,6 +163,7 @@ class OrderUpdatesController extends Controller
             'customer_notes' => $order->customer_notes,
             'user_name'      => $order->user?->name,
             'payment_mode'   => $order->payment_mode,
+            'upi_id'         => $order->branch?->upi_id,
             'items'          => $order->orderItems->map(fn($item) => [
                 'id'       => $item->id,
                 'status'   => $item->status,

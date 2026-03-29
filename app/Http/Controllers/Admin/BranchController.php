@@ -13,8 +13,44 @@ class BranchController extends BaseAdminController
     {
         $branches = Branch::where('tenant_id', $this->tenantId())
             ->withCount(['employees', 'tables', 'orders'])
+            ->with('gstSlab')
             ->get();
-        return view('admin.branches.index', compact('branches'));
+        $gstSlabs = GstSlab::where('is_active', true)->get();
+        return view('admin.branches.index', compact('branches', 'gstSlabs'));
+    }
+
+    public function bulkGst(Request $request)
+    {
+        $request->validate([
+            'branch_ids'  => 'required|array|min:1',
+            'branch_ids.*'=> 'exists:branches,id',
+            'action'      => 'required|in:apply,remove',
+            'gst_slab_id' => 'required_if:action,apply|nullable|exists:gst_slabs,id',
+            'gst_mode'    => 'required_if:action,apply|nullable|in:included,excluded',
+            'gst_number'  => 'nullable|string|max:20',
+        ]);
+
+        $branches = Branch::where('tenant_id', $this->tenantId())
+            ->whereIn('id', $request->branch_ids)
+            ->get();
+
+        if ($request->action === 'apply') {
+            foreach ($branches as $branch) {
+                $branch->update([
+                    'gst_slab_id' => $request->gst_slab_id,
+                    'gst_mode'    => $request->gst_mode,
+                    'gst_number'  => $request->gst_number ? strtoupper($request->gst_number) : $branch->gst_number,
+                ]);
+            }
+            $msg = 'GST applied to ' . $branches->count() . ' branch(es).';
+        } else {
+            foreach ($branches as $branch) {
+                $branch->update(['gst_slab_id' => null, 'gst_mode' => null, 'gst_number' => null]);
+            }
+            $msg = 'GST removed from ' . $branches->count() . ' branch(es).';
+        }
+
+        return redirect()->route('admin.branches.index')->with('success', $msg);
     }
 
     public function create()
@@ -32,7 +68,7 @@ class BranchController extends BaseAdminController
             'upi_id'      => 'nullable|string|max:100',
             'gst_slab_id' => 'nullable|exists:gst_slabs,id',
             'gst_mode'    => 'nullable|in:included,excluded',
-            'gst_number'  => 'nullable|string|max:20|unique:branches,gst_number,' . null . ',id,tenant_id,' . $this->tenantId(),
+            'gst_number'  => 'nullable|string|max:20',
         ]);
 
         Branch::create([
@@ -80,7 +116,7 @@ class BranchController extends BaseAdminController
             'upi_id'      => 'nullable|string|max:100',
             'gst_slab_id' => 'nullable|exists:gst_slabs,id',
             'gst_mode'    => 'nullable|in:included,excluded',
-            'gst_number'  => 'nullable|string|max:20|unique:branches,gst_number,' . $branch->id . ',id,tenant_id,' . $this->tenantId(),
+            'gst_number'  => 'nullable|string|max:20',
         ]);
         $branch->update([
             'name'        => $request->name,

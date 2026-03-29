@@ -3,13 +3,15 @@
 @section('content')
 
 @php
-    $gstStats   = $gstStats ?? ['enabled' => false];
-    $filterLabel = match(request('filter_type')) {
+    $gstStats      = $gstStats ?? ['enabled' => false];
+    $paymentTotals = $paymentTotals ?? ['cash' => 0, 'upi' => 0, 'card' => 0];
+    $filterLabel   = match(request('filter_type')) {
         'month'  => 'Month: ' . (request('month') ? \Carbon\Carbon::parse(request('month').'-01')->format('F Y') : ''),
         'year'   => 'Year: ' . request('year'),
         'custom' => request('date_from') . ' to ' . request('date_to'),
         default  => ''
     };
+    $activeMode = request('payment_mode', 'all');
 @endphp
 
 {{-- Filter Card --}}
@@ -63,10 +65,25 @@
                            style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;background:#fff;color:#374151;">
                 </div>
 
-                <div style="display:flex;gap:8px;align-items:center;">
+                    <div style="display:flex;gap:8px;align-items:center;">
                     <button type="submit" style="padding:9px 22px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Apply</button>
                     <a href="{{ route('manager.reports.index') }}" style="padding:9px 22px;background:#fff;color:#374151;border:1px solid #d1d5db;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;">Clear</a>
                 </div>
+            </div>
+
+            {{-- Payment Mode Filter --}}
+            <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e5e7eb;">
+                <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:10px;">Payment Mode</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    @foreach(['all' => 'All Modes', 'cash' => '💵 Cash', 'upi' => '📱 UPI', 'card' => '💳 Card'] as $modeVal => $modeLabel)
+                    <button type="button" onclick="setPaymentMode('{{ $modeVal }}')" id="pmode-{{ $modeVal }}"
+                        style="padding:7px 18px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;border:2px solid {{ $activeMode === $modeVal ? '#2563eb' : '#d1d5db' }};background:{{ $activeMode === $modeVal ? '#eff6ff' : '#fff' }};color:{{ $activeMode === $modeVal ? '#2563eb' : '#6b7280' }};transition:all 0.15s;">
+                        {{ $modeLabel }}
+                    </button>
+                    @endforeach
+                </div>
+                <input type="hidden" name="payment_mode" id="paymentMode" value="{{ $activeMode }}">
+                <div style="font-size:11px;color:#9ca3af;margin-top:8px;">Select a mode then click Apply to filter.</div>
             </div>
         </form>
     </div>
@@ -74,24 +91,61 @@
 
 @if(request()->filled('filter_type'))
 
-{{-- Filtered stat cards --}}
-<div style="display:grid;grid-template-columns:repeat({{ ($gstStats['enabled'] ?? false) ? '3' : '2' }},1fr);gap:16px;margin-bottom:24px;">
-    <div style="background:#fff;border-radius:12px;padding:20px;border:1px solid #e5e7eb;border-left:4px solid #4facfe;text-align:center;">
-        <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:8px;">Total Orders</div>
-        <div style="font-size:32px;font-weight:700;color:#111827;">{{ $totalOrders }}</div>
+{{-- Stat cards --}}
+<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:16px;">
+    <div style="background:#fff;border-radius:12px;padding:20px;border:1px solid #e5e7eb;border-left:4px solid #4facfe;">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:6px;">Total Orders</div>
+        <div style="font-size:30px;font-weight:700;color:#111827;">{{ $totalOrders }}</div>
     </div>
-    <div style="background:#fff;border-radius:12px;padding:20px;border:1px solid #e5e7eb;border-left:4px solid #43e97b;text-align:center;">
-        <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:8px;">Total Revenue (Paid)</div>
-        <div style="font-size:32px;font-weight:700;color:#111827;">₹{{ number_format($totalRevenue, 2) }}</div>
+    <div style="background:#fff;border-radius:12px;padding:20px;border:1px solid #e5e7eb;border-left:4px solid #43e97b;">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:6px;">Total Revenue (Paid)</div>
+        <div style="font-size:30px;font-weight:700;color:#111827;">₹{{ number_format($totalRevenue, 2) }}</div>
     </div>
-    @if($gstStats['enabled'] ?? false)
-    <div style="background:#fff;border-radius:12px;padding:20px;border:1px solid #e5e7eb;border-left:4px solid #f59e0b;text-align:center;">
-        <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:8px;">GST Collected</div>
-        <div style="font-size:32px;font-weight:700;color:#111827;">₹{{ number_format($gstStats['total'], 2) }}</div>
-        <div style="font-size:12px;color:#6b7280;margin-top:4px;">CGST ₹{{ number_format($gstStats['cgst'], 2) }} | SGST ₹{{ number_format($gstStats['sgst'], 2) }}</div>
-    </div>
-    @endif
 </div>
+
+{{-- Payment mode breakdown --}}
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px;">
+    <div style="background:#fff;border-radius:12px;padding:16px 20px;border:1px solid #e5e7eb;border-left:4px solid #16a34a;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span style="font-size:18px;">💵</span>
+            <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;">Cash</span>
+        </div>
+        <div style="font-size:22px;font-weight:700;color:#15803d;">₹{{ number_format($paymentTotals['cash'], 2) }}</div>
+    </div>
+    <div style="background:#fff;border-radius:12px;padding:16px 20px;border:1px solid #e5e7eb;border-left:4px solid #7c3aed;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span style="font-size:18px;">📱</span>
+            <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;">UPI</span>
+        </div>
+        <div style="font-size:22px;font-weight:700;color:#6d28d9;">₹{{ number_format($paymentTotals['upi'], 2) }}</div>
+    </div>
+    <div style="background:#fff;border-radius:12px;padding:16px 20px;border:1px solid #e5e7eb;border-left:4px solid #0284c7;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span style="font-size:18px;">💳</span>
+            <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;">Card</span>
+        </div>
+        <div style="font-size:22px;font-weight:700;color:#0369a1;">₹{{ number_format($paymentTotals['card'], 2) }}</div>
+    </div>
+</div>
+
+@if($gstStats['enabled'] ?? false)
+<div style="background:#fff;border-radius:12px;padding:16px 20px;border:1px solid #e5e7eb;border-left:4px solid #f59e0b;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div>
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:4px;">GST Collected</div>
+        <div style="font-size:22px;font-weight:700;color:#b45309;">₹{{ number_format($gstStats['total'], 2) }}</div>
+    </div>
+    <div style="display:flex;gap:24px;">
+        <div style="text-align:center;">
+            <div style="font-size:11px;color:#6b7280;font-weight:600;">CGST</div>
+            <div style="font-size:16px;font-weight:700;color:#92400e;">₹{{ number_format($gstStats['cgst'], 2) }}</div>
+        </div>
+        <div style="text-align:center;">
+            <div style="font-size:11px;color:#6b7280;font-weight:600;">SGST</div>
+            <div style="font-size:16px;font-weight:700;color:#92400e;">₹{{ number_format($gstStats['sgst'], 2) }}</div>
+        </div>
+    </div>
+</div>
+@endif
 
 {{-- Orders table --}}
 <div class="content-card">
@@ -101,11 +155,12 @@
             @if($filterLabel)<span style="font-size:12px;font-weight:400;color:#6b7280;">— {{ $filterLabel }}</span>@endif
         </div>
         <form method="GET" action="{{ route('manager.reports.export') }}">
-            <input type="hidden" name="filter_type" value="{{ request('filter_type') }}">
-            <input type="hidden" name="month"       value="{{ request('month') }}">
-            <input type="hidden" name="year"        value="{{ request('year') }}">
-            <input type="hidden" name="date_from"   value="{{ request('date_from') }}">
-            <input type="hidden" name="date_to"     value="{{ request('date_to') }}">
+            <input type="hidden" name="filter_type"  value="{{ request('filter_type') }}">
+            <input type="hidden" name="month"        value="{{ request('month') }}">
+            <input type="hidden" name="year"         value="{{ request('year') }}">
+            <input type="hidden" name="date_from"    value="{{ request('date_from') }}">
+            <input type="hidden" name="date_to"      value="{{ request('date_to') }}">
+            <input type="hidden" name="payment_mode" value="{{ $activeMode }}">
             <button type="submit" style="display:inline-flex;align-items:center;gap:6px;background:#059669;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">
                 <i class="fas fa-download"></i> Export Excel
             </button>
@@ -214,19 +269,33 @@
 <script>
 function setFilterType(type) {
     document.getElementById('filterType').value = type;
-    ['month','year'].forEach(function(t) {
+    ['month','year','custom'].forEach(function(t) {
         var active = t === type;
         var btn = document.getElementById('ftab-' + t);
         if (btn) { btn.style.borderColor = active ? '#2563eb' : '#d1d5db'; btn.style.background = active ? '#eff6ff' : '#fff'; btn.style.color = active ? '#2563eb' : '#6b7280'; }
-        var panel = document.getElementById('panel-' + t);
-        if (panel) panel.style.display = active ? 'flex' : 'none';
     });
-    var customBtn = document.getElementById('ftab-custom');
-    if (customBtn) { customBtn.style.borderColor = type==='custom' ? '#2563eb' : '#d1d5db'; customBtn.style.background = type==='custom' ? '#eff6ff' : '#fff'; customBtn.style.color = type==='custom' ? '#2563eb' : '#6b7280'; }
+    ['month','year'].forEach(function(t) {
+        var panel = document.getElementById('panel-' + t);
+        if (panel) panel.style.display = t === type ? 'flex' : 'none';
+    });
     document.getElementById('panel-custom-from').style.display = type === 'custom' ? 'flex' : 'none';
     document.getElementById('panel-custom-to').style.display   = type === 'custom' ? 'flex' : 'none';
 }
-
+function setPaymentMode(mode) {
+    document.getElementById('paymentMode').value = mode;
+    ['all','cash','upi','card'].forEach(function(m) {
+        var btn = document.getElementById('pmode-' + m);
+        if (!btn) return;
+        var active = m === mode;
+        btn.style.borderColor = active ? '#2563eb' : '#d1d5db';
+        btn.style.background  = active ? '#eff6ff' : '#fff';
+        btn.style.color       = active ? '#2563eb' : '#6b7280';
+    });
+    // auto-submit only if a date filter is already active
+    if (document.getElementById('filterType').value) {
+        document.getElementById('filterForm').submit();
+    }
+}
 document.getElementById('filterForm').addEventListener('submit', function(e) {
     var type = document.getElementById('filterType').value;
     if (!type) { e.preventDefault(); alert('Please select a filter type.'); return; }

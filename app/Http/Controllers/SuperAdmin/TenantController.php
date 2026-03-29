@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Tenant, Branch};
+use App\Models\{Tenant, Branch, Employee, Order};
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
@@ -41,12 +41,41 @@ class TenantController extends Controller
     public function index()
     {
         $tenants = Tenant::withCount([
-            'tables' => fn($q) => $q->withoutGlobalScope('tenant'),
+            'tables'    => fn($q) => $q->withoutGlobalScope('tenant'),
             'menuItems' => fn($q) => $q->withoutGlobalScope('tenant'),
-            'orders' => fn($q) => $q->withoutGlobalScope('tenant')
-        ])->get();
-        
+            'orders'    => fn($q) => $q->withoutGlobalScope('tenant'),
+        ])
+        ->withCount(['orders as revenue' => fn($q) => $q->withoutGlobalScope('tenant')->where('status','paid')])
+        ->get();
+
         return view('superadmin.tenants.index', compact('tenants'));
+    }
+
+    public function show($id)
+    {
+        $tenant   = Tenant::findOrFail($id);
+        $branches = Branch::where('tenant_id', $id)->withCount([
+            'employees',
+            'tables',
+            'orders',
+        ])->get();
+
+        // Staff not assigned to any branch
+        $unassignedStaff = Employee::withoutGlobalScopes()
+            ->where('tenant_id', $id)
+            ->whereNull('branch_id')
+            ->get();
+
+        $totalRevenue = Order::withoutGlobalScopes()
+            ->where('tenant_id', $id)
+            ->where('status', 'paid')
+            ->sum('total_amount');
+
+        $totalOrders = Order::withoutGlobalScopes()
+            ->where('tenant_id', $id)
+            ->count();
+
+        return view('superadmin.tenants.show', compact('tenant', 'branches', 'unassignedStaff', 'totalRevenue', 'totalOrders'));
     }
 
     public function create()

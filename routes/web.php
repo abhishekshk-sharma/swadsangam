@@ -46,6 +46,10 @@ Route::get('/', function () {
     }
 });
 
+Route::get('/app-download', function () {
+    return view('app-download');
+})->name('app.download');
+
 Route::get('/test', function () {
     if (!app()->environment('local')) abort(404);
     return 'Laravel is working!';
@@ -111,15 +115,28 @@ Route::prefix('superadmin')->name('superadmin.')->group(function () {
         Route::get('dashboard', [App\Http\Controllers\SuperAdmin\DashboardController::class, 'index'])->name('dashboard');
         
         Route::resource('tenants', TenantController::class)->except(['show']);
+        Route::get('tenants/{id}', [TenantController::class, 'show'])->name('tenants.show');
+
+        // Branch detail view
+        Route::get('branches/{id}/view', [\App\Http\Controllers\SuperAdmin\BranchViewController::class, 'show'])->name('branches.view');
         
+        // Super Admin Profile & Management
+        Route::get('profile', [\App\Http\Controllers\SuperAdmin\SuperAdminProfileController::class, 'index'])->name('profile.index');
+        Route::post('profile', [\App\Http\Controllers\SuperAdmin\SuperAdminProfileController::class, 'updateProfile'])->name('profile.update');
+        Route::post('super-admins', [\App\Http\Controllers\SuperAdmin\SuperAdminProfileController::class, 'store'])->name('super-admins.store');
+        Route::put('super-admins/{id}', [\App\Http\Controllers\SuperAdmin\SuperAdminProfileController::class, 'update'])->name('super-admins.update');
+        Route::delete('super-admins/{id}', [\App\Http\Controllers\SuperAdmin\SuperAdminProfileController::class, 'destroy'])->name('super-admins.destroy');
+
         Route::resource('users', App\Http\Controllers\SuperAdmin\UserController::class)->except(['show']);
         
         Route::get('table-categories', [App\Http\Controllers\SuperAdmin\TableCategoryController::class, 'index'])->name('table-categories.index');
         Route::post('table-categories', [App\Http\Controllers\SuperAdmin\TableCategoryController::class, 'store'])->name('table-categories.store');
+        Route::put('table-categories/{id}', [App\Http\Controllers\SuperAdmin\TableCategoryController::class, 'update'])->name('table-categories.update');
         Route::delete('table-categories/{id}', [App\Http\Controllers\SuperAdmin\TableCategoryController::class, 'destroy'])->name('table-categories.destroy');
         
         Route::get('menu-categories', [App\Http\Controllers\SuperAdmin\MenuCategoryController::class, 'index'])->name('menu-categories.index');
         Route::post('menu-categories', [App\Http\Controllers\SuperAdmin\MenuCategoryController::class, 'store'])->name('menu-categories.store');
+        Route::put('menu-categories/{id}', [App\Http\Controllers\SuperAdmin\MenuCategoryController::class, 'update'])->name('menu-categories.update');
         Route::delete('menu-categories/{id}', [App\Http\Controllers\SuperAdmin\MenuCategoryController::class, 'destroy'])->name('menu-categories.destroy');
 
         // Branches
@@ -149,6 +166,7 @@ Route::prefix('superadmin')->name('superadmin.')->group(function () {
         Route::put('gst-slabs/{gstSlab}', [\App\Http\Controllers\SuperAdmin\GstSlabController::class, 'update'])->name('gst-slabs.update');
         Route::delete('gst-slabs/{gstSlab}', [\App\Http\Controllers\SuperAdmin\GstSlabController::class, 'destroy'])->name('gst-slabs.destroy');
         Route::patch('gst-slabs/tenant/{tenant}', [\App\Http\Controllers\SuperAdmin\GstSlabController::class, 'assignTenant'])->name('gst-slabs.assign');
+        Route::patch('gst-slabs/branch/{branch}', [\App\Http\Controllers\SuperAdmin\GstSlabController::class, 'assignBranch'])->name('gst-slabs.assign-branch');
     });
 });
 
@@ -169,6 +187,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('staff/ajax', [StaffController::class, 'ajaxIndex'])->name('staff.ajax');
         Route::resource('staff', StaffController::class);
         Route::resource('branches', \App\Http\Controllers\Admin\BranchController::class);
+        Route::post('branches/bulk-gst', [\App\Http\Controllers\Admin\BranchController::class, 'bulkGst'])->name('branches.bulkGst');
         Route::resource('tables', TableController::class);
         Route::get('categories', [TableCategoryController::class, 'index'])->name('categories.index');
         Route::post('categories', [TableCategoryController::class, 'store'])->name('categories.store');

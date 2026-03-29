@@ -246,6 +246,24 @@
                 <div style="border-top:1px solid #e5e7eb;padding-top:14px;">
     @php
         $gst = $branchGst;
+        $orderBranchUpiId = $order->branch?->upi_id ?? $branchUpiId;
+        // If no branch filter, compute GST from the order's own branch
+        if (!$branchId && $order->branch) {
+            $orderBranch = $order->branch;
+            $orderSlab   = $orderBranch->gstSlab;
+            $orderMode   = $orderBranch->gst_mode;
+            if ($orderSlab && $orderMode) {
+                $gst = [
+                    'enabled'   => true,
+                    'mode'      => $orderMode,
+                    'cgst_pct'  => (float) $orderSlab->cgst_rate,
+                    'sgst_pct'  => (float) $orderSlab->sgst_rate,
+                    'total_pct' => (float) ($orderSlab->cgst_rate + $orderSlab->sgst_rate),
+                ];
+            } else {
+                $gst = ['enabled' => false];
+            }
+        }
         $grandTotal = $order->total_amount;
         if ($gst['enabled'] && $gst['mode'] === 'excluded') {
             $cgstAmt    = round($order->total_amount * $gst['cgst_pct'] / 100, 2);
@@ -276,11 +294,11 @@
         <input type="hidden" name="grand_total" value="{{ $grandTotal }}">
         <div style="margin-bottom:12px;">
             <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Payment Method</div>
-            <div style="display:grid;grid-template-columns:{{ $branchUpiId ? 'repeat(2,1fr)' : '1fr' }};gap:8px;">
+            <div style="display:grid;grid-template-columns:{{ $orderBranchUpiId ? 'repeat(2,1fr)' : '1fr' }};gap:8px;">
                 <button type="button" onclick="oSelectMode({{ $order->id }},'cash')" class="o-pay-mode-btn" data-order="{{ $order->id }}" data-mode="cash"
                     style="padding:13px 6px;border:2px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;font-weight:600;transition:all 0.2s;">&#128181; Cash</button>
-                @if($branchUpiId)
-                <button type="button" onclick="oSelectMode({{ $order->id }},'upi',{{ $grandTotal }},'{{ $branchUpiId }}')" class="o-pay-mode-btn" data-order="{{ $order->id }}" data-mode="upi"
+                @if($orderBranchUpiId)
+                <button type="button" onclick="oSelectMode({{ $order->id }},'upi',{{ $grandTotal }},'{{ $orderBranchUpiId }}')" class="o-pay-mode-btn" data-order="{{ $order->id }}" data-mode="upi"
                     style="padding:13px 6px;border:2px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;font-weight:600;transition:all 0.2s;"><i class="fas fa-mobile-alt"></i> UPI</button>
                 @endif
             </div>
@@ -820,6 +838,9 @@ document.addEventListener('DOMContentLoaded', function () {
         var csrf  = (document.querySelector('meta[name="csrf-token"]') || {}).content
                  || (document.querySelector('[name="_token"]') || {}).value || '';
 
+        // Use per-order UPI ID from the order's own branch
+        var orderUpiId = order.upi_id || PAGE_UPI_ID;
+
         var gstHtml = '';
         if (order.gst_enabled) {
             var subtotalLabel = order.gst_mode === 'excluded' ? 'Subtotal' : 'Subtotal (excl. GST)';
@@ -855,10 +876,10 @@ document.addEventListener('DOMContentLoaded', function () {
               + '<div style="font-size:13px;color:#78350f;font-style:italic;">' + order.customer_notes + '</div></div>'
             : '';
 
-        var upiBtn = PAGE_UPI_ID
-            ? '<button type="button" onclick="oSelectMode(' + oid + ',\'upi\',' + total + ',\'' + PAGE_UPI_ID + '\')" class="o-pay-mode-btn" data-order="' + oid + '" data-mode="upi" style="padding:13px 6px;border:2px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;font-weight:600;">UPI</button>'
+        var upiBtn = orderUpiId
+            ? '<button type="button" onclick="oSelectMode(' + oid + ',\'upi\',' + total + ',\'' + orderUpiId + '\')" class="o-pay-mode-btn" data-order="' + oid + '" data-mode="upi" style="padding:13px 6px;border:2px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;font-weight:600;">UPI</button>'
             : '';
-        var gridCols = PAGE_UPI_ID ? 'repeat(2,1fr)' : '1fr';
+        var gridCols = orderUpiId ? 'repeat(2,1fr)' : '1fr';
 
         var div = document.createElement('div');
         div.className = 'content-card';

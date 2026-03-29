@@ -97,6 +97,7 @@
                 <tr style="background:var(--gray-50);">
                     <th style="padding:10px 16px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500);border-bottom:1px solid var(--gray-200);text-align:left;white-space:nowrap;">#</th>
                     <th style="padding:10px 16px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500);border-bottom:1px solid var(--gray-200);text-align:left;white-space:nowrap;">Cashier</th>
+                    <th style="padding:10px 16px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500);border-bottom:1px solid var(--gray-200);text-align:left;white-space:nowrap;">Branch</th>
                     <th style="padding:10px 16px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500);border-bottom:1px solid var(--gray-200);text-align:left;white-space:nowrap;">Date</th>
                     <th style="padding:10px 16px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500);border-bottom:1px solid var(--gray-200);text-align:left;white-space:nowrap;">Submitted</th>
                     <th style="padding:10px 16px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500);border-bottom:1px solid var(--gray-200);text-align:left;white-space:nowrap;">System Cash</th>
@@ -122,6 +123,9 @@
                             </div>
                             <span>{{ $h->cashier?->name ?? '—' }}</span>
                         </div>
+                    </td>
+                    <td style="padding:14px 16px;font-size:13px;color:var(--gray-500);">
+                        {{ $h->cashier?->branch?->name ?? '—' }}
                     </td>
                     <td style="padding:14px 16px;font-size:13px;color:var(--gray-600);white-space:nowrap;">{{ $h->handover_date->format('d M Y') }}</td>
                     <td style="padding:14px 16px;font-size:13px;font-weight:700;color:var(--gray-800);">₹{{ number_format($h->total_cash, 2) }}</td>
@@ -181,7 +185,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="9" style="padding:48px;text-align:center;">
+                    <td colspan="10" style="padding:48px;text-align:center;">
                         <div style="font-size:40px;color:var(--gray-300);margin-bottom:12px;"><i class="fas fa-inbox"></i></div>
                         <div style="font-size:14px;color:var(--gray-500);">No handover reports found.</div>
                     </td>

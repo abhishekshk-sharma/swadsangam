@@ -24,7 +24,9 @@ class CashHandoverController extends Controller
     public function index(Request $request)
     {
         $tenantId = app()->bound('current_tenant_id') ? app('current_tenant_id') : null;
-        $query = CashHandover::with('cashier')->latest();
+        $query = CashHandover::with(['cashier.branch', 'approvedBy'])
+            ->when($tenantId, fn($q) => $q->where('tenant_id', $tenantId))
+            ->latest();
 
         if ($request->filled('branch_id')) {
             $query->whereHas('cashier', fn($q) => $q->where('branch_id', $request->branch_id));

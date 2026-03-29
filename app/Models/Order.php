@@ -9,7 +9,7 @@ use App\Models\Concerns\BelongsToBranch;
 class Order extends Model
 {
     use BelongsToTenant, BelongsToBranch;
-    protected $fillable = ['tenant_id', 'branch_id', 'table_id', 'user_id', 'assigned_to', 'cashier_id', 'status', 'preparation_time', 'ready_at', 'total_amount', 'payment_mode', 'paid_at', 'customer_notes', 'is_parcel'];
+    protected $fillable = ['tenant_id', 'branch_id', 'table_id', 'user_id', 'assigned_to', 'cashier_id', 'status', 'preparation_time', 'ready_at', 'total_amount', 'grand_total', 'payment_mode', 'paid_at', 'customer_notes', 'is_parcel'];
     protected $casts = ['ready_at' => 'datetime', 'paid_at' => 'datetime'];
 
     public function tenant()

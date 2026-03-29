@@ -277,9 +277,14 @@ class OrderController extends BaseManagerController
 
         $request->validate(['payment_mode' => 'required|in:cash,upi,card']);
 
+        $grandTotal = $request->filled('grand_total')
+            ? (float) $request->grand_total
+            : (float) $order->total_amount;
+
         $order->update([
             'status'       => 'paid',
             'payment_mode' => $request->payment_mode,
+            'grand_total'  => $grandTotal,
             'paid_at'      => now(),
             'cashier_id'   => auth()->guard('employee')->id(),
         ]);
