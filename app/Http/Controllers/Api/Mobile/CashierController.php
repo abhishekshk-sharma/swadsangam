@@ -33,7 +33,9 @@ class CashierController extends Controller
     // GET /api/mobile/cashier/payments
     public function payments()
     {
-        $orders = Order::with('table.category', 'orderItems.menuItem')
+        $branch = $this->branchId() ? \App\Models\Branch::with('gstSlab')->find($this->branchId()) : null;
+
+        $orders = Order::with(['table.category', 'orderItems.menuItem', 'branch.gstSlab'])
             ->where('tenant_id', $this->tenantId())
             ->where(function ($q) {
                 $q->where(fn($q2) => $q2->where('is_parcel', false)->whereIn('status', ['served', 'checkout']))
@@ -44,21 +46,19 @@ class CashierController extends Controller
             ->latest()
             ->get();
 
-        $branchUpiId = null;
-        if ($this->branchId()) {
-            $branchUpiId = \App\Models\Branch::find($this->branchId())?->upi_id;
-        }
-
         return response()->json([
-            'upi_id' => $branchUpiId,
-            'orders' => $orders->map(fn($o) => $this->formatOrder($o)),
+            'upi_id'  => $branch?->upi_id,
+            'orders'  => $orders->map(fn($o) => $this->formatOrder($o)),
         ]);
     }
 
     // PATCH /api/mobile/cashier/payments/{id}/process
     public function processPayment(Request $request, int $id)
     {
-        $order = Order::where('id', $id)->where('tenant_id', $this->tenantId())->firstOrFail();
+        $order = Order::with('branch.gstSlab')
+            ->where('id', $id)
+            ->where('tenant_id', $this->tenantId())
+            ->firstOrFail();
 
         if ($order->is_parcel) {
             abort_if(!in_array($order->status, ['ready', 'served', 'checkout']), 422);
@@ -67,9 +67,19 @@ class CashierController extends Controller
         }
 
         $request->validate([
-            'payment_mode'  => 'required|in:cash,upi,card',
+            'payment_mode'  => 'required|in:cash,upi',
             'cash_received' => 'nullable|numeric|min:0',
+            'grand_total'   => 'nullable|numeric|min:0',
         ]);
+
+        // Verify grand_total matches expected (GST check)
+        if ($request->filled('grand_total')) {
+            $gst      = $this->computeGst($order);
+            $expected = $gst['enabled'] ? $gst['grand'] : (float) $order->total_amount;
+            if (abs(round((float) $request->grand_total, 2) - round($expected, 2)) > 0.02) {
+                return response()->json(['message' => 'Bill total mismatch. Please refresh and try again.'], 422);
+            }
+        }
 
         $order->update([
             'status'       => 'paid',
@@ -84,15 +94,20 @@ class CashierController extends Controller
 
         event(new OrderStatusUpdated($order, 'served'));
 
+        $gst    = $this->computeGst($order->fresh('branch.gstSlab'));
         $change = null;
-        if ($request->payment_mode === 'cash' && $request->cash_received) {
-            $change = $request->cash_received - $order->total_amount;
+        if ($request->payment_mode === 'cash' && $request->filled('cash_received')) {
+            $grand  = $gst['enabled'] ? $gst['grand'] : (float) $order->total_amount;
+            $change = round((float) $request->cash_received - $grand, 2);
         }
 
+        $billUrl = \Illuminate\Support\Facades\URL::signedRoute('bill.show', ['orderId' => $order->id]);
+
         return response()->json([
-            'message' => 'Payment processed.',
-            'change'  => $change,
-            'order'   => $this->formatOrder($order->fresh()),
+            'message'  => 'Payment processed.',
+            'change'   => $change,
+            'bill_url' => $billUrl,
+            'order'    => $this->formatOrder($order->fresh()),
         ]);
     }
 
@@ -268,29 +283,102 @@ class CashierController extends Controller
         return response()->json($items);
     }
 
+    // GET /api/mobile/cashier/bill/{orderId}
+    public function bill(int $orderId)
+    {
+        $order = Order::withoutGlobalScope('tenant')
+            ->with(['table', 'orderItems' => fn($q) => $q->withoutGlobalScopes()->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()]), 'branch.gstSlab'])
+            ->where('tenant_id', $this->tenantId())
+            ->where('status', 'paid')
+            ->findOrFail($orderId);
+
+        $gst     = $this->computeGst($order);
+        $billUrl = \Illuminate\Support\Facades\URL::signedRoute('bill.show', ['orderId' => $order->id]);
+
+        return response()->json([
+            'order'    => $this->formatOrder($order),
+            'bill_url' => $billUrl,
+            'gst'      => $gst,
+        ]);
+    }
+
     private function formatOrder(Order $order): array
     {
+        $gst    = $this->computeGst($order);
+        $branch = $order->branch ?? ($this->branchId() ? \App\Models\Branch::find($this->branchId()) : null);
+
+        // Build UPI QR URI if UPI is configured
+        $upiId  = $branch?->upi_id;
+        $grand  = $gst['enabled'] ? $gst['grand'] : (float) $order->total_amount;
+        $upiUri = $upiId
+            ? 'upi://pay?pa=' . urlencode($upiId) . '&am=' . number_format($grand, 2, '.', '') . '&cu=INR'
+            : null;
+
         return [
             'id'             => $order->id,
             'status'         => $order->status,
-            'is_parcel'      => $order->is_parcel,
-            'total_amount'   => $order->total_amount,
+            'is_parcel'      => (bool) $order->is_parcel,
+            'subtotal'       => (float) $order->total_amount,
+            'grand_total'    => $grand,
             'payment_mode'   => $order->payment_mode,
             'paid_at'        => $order->paid_at,
             'customer_notes' => $order->customer_notes,
             'created_at'     => $order->created_at,
+            'upi_id'         => $upiId,
+            'upi_uri'        => $upiUri,
+            'gst'            => $gst,
             'table'          => $order->table ? [
                 'id'           => $order->table->id,
                 'table_number' => $order->table->table_number,
             ] : null,
             'items' => ($order->items ?? $order->orderItems)->map(fn($i) => [
-                'id'       => $i->id,
-                'name'     => $i->menuItem?->name,
-                'quantity' => $i->quantity,
-                'price'    => $i->price,
-                'status'   => $i->status,
-                'notes'    => $i->notes,
-            ]),
+                'id'        => $i->id,
+                'name'      => $i->menuItem?->name,
+                'quantity'  => $i->quantity,
+                'price'     => (float) $i->price,
+                'subtotal'  => (float) ($i->price * $i->quantity),
+                'status'    => $i->status,
+                'notes'     => $i->notes,
+            ])->values(),
+        ];
+    }
+
+    private function computeGst(Order $order): array
+    {
+        $branch  = $order->relationLoaded('branch') ? $order->branch : \App\Models\Branch::with('gstSlab')->find($order->branch_id);
+        $slab    = $branch?->gstSlab;
+        $mode    = $branch?->gst_mode;
+
+        if (!$slab || !$mode) {
+            return ['enabled' => false];
+        }
+
+        $base    = (float) $order->total_amount;
+        $cgstPct = (float) $slab->cgst_rate;
+        $sgstPct = (float) $slab->sgst_rate;
+
+        if ($mode === 'excluded') {
+            $cgst  = round($base * $cgstPct / 100, 2);
+            $sgst  = round($base * $sgstPct / 100, 2);
+            $grand = $base + $cgst + $sgst;
+        } else {
+            $totalPct = $cgstPct + $sgstPct;
+            $base     = round($base * 100 / (100 + $totalPct), 2);
+            $cgst     = round($base * $cgstPct / 100, 2);
+            $sgst     = round($base * $sgstPct / 100, 2);
+            $grand    = (float) $order->total_amount;
+        }
+
+        return [
+            'enabled'   => true,
+            'mode'      => $mode,
+            'cgst_pct'  => $cgstPct,
+            'sgst_pct'  => $sgstPct,
+            'total_pct' => $cgstPct + $sgstPct,
+            'base'      => $base,
+            'cgst'      => $cgst,
+            'sgst'      => $sgst,
+            'grand'     => $grand,
         ];
     }
 }

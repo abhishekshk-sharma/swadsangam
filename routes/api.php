@@ -50,6 +50,7 @@ Route::prefix('mobile')->group(function () {
             Route::get('payments',                      [CashierController::class, 'payments']);
             Route::patch('payments/{id}/process',       [CashierController::class, 'processPayment']);
             Route::get('payments/history',              [CashierController::class, 'history']);
+            Route::get('bill/{orderId}',                [CashierController::class, 'bill']);
             Route::get('parcels',                       [CashierController::class, 'parcels']);
             Route::post('parcels',                      [CashierController::class, 'storeParcel']);
             Route::post('parcels/{id}/add-items',       [CashierController::class, 'addParcelItems']);
