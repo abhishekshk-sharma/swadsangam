@@ -51,6 +51,11 @@ $isAdmin = $user->role === 'admin';
                 @error('email')<div style="{{ $err }}">{{ $message }}</div>@enderror
             </div>
             <div style="margin-bottom:16px;">
+                <label style="{{ $lbl }}">Phone *</label>
+                <input type="text" name="phone" value="{{ old('phone', $user->phone) }}" required inputmode="tel" style="{{ $inp }}" placeholder="e.g. 9876543210">
+                @error('phone')<div style="{{ $err }}">{{ $message }}</div>@enderror
+            </div>
+            <div style="margin-bottom:16px;">
                 <label style="{{ $lbl }}">Password <span style="font-weight:400;color:#9ca3af;">(leave blank to keep)</span></label>
                 <input type="password" name="password" style="{{ $inp }}">
                 @error('password')<div style="{{ $err }}">{{ $message }}</div>@enderror

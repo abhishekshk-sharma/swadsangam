@@ -48,6 +48,11 @@ $err='font-size:12px;color:#dc2626;margin-top:4px;';
                 <input type="email" name="email" value="{{ old('email') }}" required style="{{ $inp }}">
                 @error('email')<div style="{{ $err }}">{{ $message }}</div>@enderror
             </div>
+            <div style="margin-bottom:16px;">
+                <label style="{{ $lbl }}">Phone *</label>
+                <input type="text" name="phone" value="{{ old('phone') }}" required inputmode="tel" style="{{ $inp }}" placeholder="e.g. 9876543210">
+                @error('phone')<div style="{{ $err }}">{{ $message }}</div>@enderror
+            </div>
             <div style="margin-bottom:24px;">
                 <label style="{{ $lbl }}">Password *</label>
                 <input type="password" name="password" required style="{{ $inp }}">

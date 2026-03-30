@@ -33,7 +33,7 @@ class UserController extends Controller
 
         $emailUnique = $request->role === 'super_admin'
             ? 'unique:super_admins,email'
-            : 'unique:admins,email,NULL,id,tenant_id,' . $tenantId;
+            : 'unique:admins,email';
 
         $phoneUnique = $request->role === 'super_admin'
             ? 'unique:super_admins,phone'
