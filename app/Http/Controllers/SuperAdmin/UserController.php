@@ -35,9 +35,14 @@ class UserController extends Controller
             ? 'unique:super_admins,email'
             : 'unique:admins,email,NULL,id,tenant_id,' . $tenantId;
 
+        $phoneUnique = $request->role === 'super_admin'
+            ? 'unique:super_admins,phone'
+            : 'unique:admins,phone';
+
         $request->validate([
             'name'      => 'required|string|max:255',
             'email'     => ['required', 'email', $emailUnique],
+            'phone'     => ['required', 'string', 'max:20', $phoneUnique],
             'password'  => 'required|min:6',
             'role'      => 'required|in:super_admin,admin',
             'tenant_id' => 'required_if:role,admin|nullable|exists:tenants,id',
@@ -47,6 +52,7 @@ class UserController extends Controller
             SuperAdmin::create([
                 'name'      => $request->name,
                 'email'     => $request->email,
+                'phone'     => $request->phone,
                 'password'  => Hash::make($request->password),
                 'is_active' => true,
             ]);
@@ -56,6 +62,7 @@ class UserController extends Controller
                 'tenant_id' => $request->tenant_id,
                 'name'      => $request->name,
                 'email'     => $request->email,
+                'phone'     => $request->phone,
                 'password'  => Hash::make($request->password),
                 'is_active' => true,
             ]);
@@ -97,14 +104,19 @@ class UserController extends Controller
             ? 'unique:admins,email,' . $id . ',id,tenant_id,' . $tenantId
             : 'unique:super_admins,email,' . $id;
 
+        $phoneUnique = $isAdmin
+            ? 'unique:admins,phone,' . $id
+            : 'unique:super_admins,phone,' . $id;
+
         $request->validate([
             'name'      => 'required|string|max:255',
             'email'     => ['required', 'email', $emailUnique],
+            'phone'     => ['required', 'string', 'max:20', $phoneUnique],
             'password'  => 'nullable|min:6',
             'tenant_id' => $isAdmin ? 'required|exists:tenants,id' : 'nullable',
         ]);
 
-        $data = $request->only(['name', 'email', 'is_active']);
+        $data = $request->only(['name', 'email', 'phone', 'is_active']);
 
         if ($isAdmin) {
             $data['tenant_id'] = $request->tenant_id;

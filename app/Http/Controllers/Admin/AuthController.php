@@ -10,77 +10,79 @@ use App\Models\Employee;
 
 class AuthController extends Controller
 {
-    public function showLogin()
+    public function showLogin(Request $request)
     {
+        $request->session()->forget('errors');
         return view('admin.auth.login');
     }
 
     public function login(Request $request)
     {
-        $credentials = $request->validate([
-            'email'    => 'required|email',
+        $request->validate([
+            'login'    => 'required|string',
             'password' => 'required',
         ]);
 
-        // withoutGlobalScope — no user is authenticated yet at this point
-        $admin = Admin::withoutGlobalScope('tenant')
-            ->where('email', $credentials['email'])
-            ->where('is_active', true)
-            ->first();
+        $loginVal = $request->login;
+        $isEmail  = filter_var($loginVal, FILTER_VALIDATE_EMAIL);
+
+        // Try Admin — by phone first, then email fallback
+        if ($isEmail) {
+            $admin = Admin::withoutGlobalScope('tenant')
+                ->where('email', $loginVal)
+                ->where('is_active', true)
+                ->first();
+        } else {
+            $admin = Admin::withoutGlobalScope('tenant')
+                ->where('phone', $loginVal)
+                ->where('is_active', true)
+                ->first();
+        }
 
         if ($admin) {
-            // Temporarily bind this admin's tenant so the global scope
-            // doesn't filter out the admin during Auth::attempt()
             app()->instance('current_tenant_id', $admin->tenant_id);
 
-            if (Auth::guard('admin')->attempt([
-                'email'     => $credentials['email'],
-                'password'  => $credentials['password'],
-                'is_active' => true,
-            ])) {
+            if (\Illuminate\Support\Facades\Hash::check($request->password, $admin->password)) {
+                Auth::guard('admin')->login($admin);
                 $request->session()->regenerate();
-                $tenantId = $admin->tenant_id;
-                session(['tenant_id' => $tenantId]);
-                app()->instance('current_tenant_id', $tenantId);
+                session(['tenant_id' => $admin->tenant_id]);
+                app()->instance('current_tenant_id', $admin->tenant_id);
                 return redirect('/admin/dashboard');
             }
 
-            // Reset if attempt failed
             app()->forgetInstance('current_tenant_id');
         }
 
+        // Try Employee — by phone first, then email fallback
         $employee = Employee::withoutGlobalScope('tenant')
-            ->where('email', $credentials['email'])
             ->where('is_active', true)
+            ->where(function ($q) use ($loginVal, $isEmail) {
+                $q->where('phone', $loginVal);
+                if ($isEmail) $q->orWhere('email', $loginVal);
+            })
             ->first();
 
         if ($employee) {
-            // Temporarily bind this employee's tenant so the global scope
-            // doesn't filter out the employee during Auth::attempt()
             app()->instance('current_tenant_id', $employee->tenant_id);
 
-            if (Auth::guard('employee')->attempt([
-                'email'     => $credentials['email'],
-                'password'  => $credentials['password'],
-                'is_active' => true,
-            ])) {
+            // Auth::attempt only works with the model's username field (email by default)
+            // So we manually verify password and log in
+            if (\Illuminate\Support\Facades\Hash::check($request->password, $employee->password)) {
+                Auth::guard('employee')->login($employee);
                 $request->session()->regenerate();
-                $employee  = Auth::guard('employee')->user();
-                $tenantId  = $employee->tenant_id;
-                session(['tenant_id' => $tenantId]);
-                app()->instance('current_tenant_id', $tenantId);
-        
+                session(['tenant_id' => $employee->tenant_id]);
+                app()->instance('current_tenant_id', $employee->tenant_id);
+
                 if ($employee->isManager()) return redirect('/manager/dashboard');
                 if ($employee->isWaiter())  return redirect('/waiter/dashboard');
                 if ($employee->isChef())    return redirect('/cook/dashboard');
                 if ($employee->isCashier()) return redirect('/cashier/dashboard');
             }
 
-            // Reset if attempt failed
             app()->forgetInstance('current_tenant_id');
         }
 
-        return back()->withErrors(['email' => 'Invalid credentials'])->withInput();
+        return back()->withErrors(['login' => 'Invalid phone/email or password.'])->withInput();
     }
 
     public function logout(Request $request)

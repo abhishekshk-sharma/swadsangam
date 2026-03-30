@@ -188,31 +188,49 @@
             </div>
             
             <div class="login-body">
+                @if($errors->has('login') || $errors->has('password'))
+                @else
                 @if($errors->any())
                     <div class="alert alert-danger">
                         <i class="fas fa-exclamation-circle me-2"></i>{{ $errors->first() }}
                     </div>
                 @endif
+                @endif
                 
-                <form action="/login" method="POST">
+                <form action="/login" method="POST" novalidate autocomplete="on">
                     @csrf
                     <div class="mb-3">
-                        <label class="form-label">Email Address</label>
+                        <label class="form-label">Phone Number or Email</label>
                         <div class="input-group">
-                            <i class="fas fa-envelope input-icon"></i>
-                            <input type="email" name="email" value="{{ old('email') }}" class="form-control with-icon" placeholder="Enter your email" required autofocus>
+                            <i class="fas fa-user input-icon"></i>
+                            <input type="text" name="login" value="{{ old('login') }}"
+                                class="form-control with-icon"
+                                placeholder="Enter phone or email"
+                                inputmode="text"
+                                autocomplete="off"
+                                autofocus>
                         </div>
+                        @error('login')
+                            <div style="color:#c33;font-size:13px;margin-top:6px;"><i class="fas fa-exclamation-circle me-1"></i>{{ $message }}</div>
+                        @enderror
                     </div>
-                    
+
                     <div class="mb-4">
                         <label class="form-label">Password</label>
                         <div class="input-group" style="position:relative;">
                             <i class="fas fa-lock input-icon"></i>
-                            <input type="password" name="password" id="loginpassword" class="form-control with-icon" style="padding-right:44px;" placeholder="Enter your password" required>
+                            <input type="password" name="password" id="loginpassword"
+                                class="form-control with-icon"
+                                style="padding-right:44px;"
+                                placeholder="Enter your password"
+                                autocomplete="current-password">
                             <button type="button" onclick="togglePassword()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#999;z-index:5;padding:0;">
                                 <i class="fas fa-eye" id="eyeIcon"></i>
                             </button>
                         </div>
+                        @error('password')
+                            <div style="color:#c33;font-size:13px;margin-top:6px;"><i class="fas fa-exclamation-circle me-1"></i>{{ $message }}</div>
+                        @enderror
                     </div>
                     
                     <button type="submit" class="btn-login">

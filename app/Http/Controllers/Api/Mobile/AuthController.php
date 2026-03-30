@@ -12,13 +12,19 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'email'    => 'required|email',
+            'login'    => 'required|string',
             'password' => 'required|string',
         ]);
 
+        $loginVal = $request->login;
+        $isEmail  = filter_var($loginVal, FILTER_VALIDATE_EMAIL);
+
         $employee = Employee::withoutGlobalScopes()
-            ->where('email', $request->email)
             ->where('is_active', true)
+            ->where(function ($q) use ($loginVal, $isEmail) {
+                $q->where('phone', $loginVal);
+                if ($isEmail) $q->orWhere('email', $loginVal);
+            })
             ->first();
 
         if (!$employee || !Hash::check($request->password, $employee->password)) {
