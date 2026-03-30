@@ -17,14 +17,10 @@ class AuthController extends Controller
         ]);
 
         $loginVal = $request->login;
-        $isEmail  = filter_var($loginVal, FILTER_VALIDATE_EMAIL);
 
         $employee = Employee::withoutGlobalScopes()
             ->where('is_active', true)
-            ->where(function ($q) use ($loginVal, $isEmail) {
-                $q->where('phone', $loginVal);
-                if ($isEmail) $q->orWhere('email', $loginVal);
-            })
+            ->where(fn($q) => $q->where('phone', $loginVal)->orWhere('email', $loginVal))
             ->first();
 
         if (!$employee || !Hash::check($request->password, $employee->password)) {
