@@ -28,16 +28,16 @@ class OrderController extends BaseAdminController
 
         $orders = Order::with(['table.category', 'user', 'assignedTo', 'items' => fn($q) => $q->withoutGlobalScopes()->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()])])
             ->whereDate('created_at', today())
-            ->whereNotIn('status', ['paid', 'checkout'])
+            ->whereNotIn('status', ['paid', 'checkout', 'cancelled'])
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId), fn($q) => $q)
             ->latest()
             ->get();
 
-        // Payment section: served/checkout for dine-in, ready for parcel
+        // Payment section: checkout for dine-in, ready for parcel
         $paymentOrders = Order::with(['table.category', 'branch.gstSlab', 'orderItems' => fn($q) => $q->withoutGlobalScopes()->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()])])
             ->whereDate('created_at', today())
             ->where(function ($q) {
-                $q->where(fn($q2) => $q2->where('is_parcel', false)->whereIn('status', ['served', 'checkout']))
+                $q->where(fn($q2) => $q2->where('is_parcel', false)->where('status', 'checkout'))
                   ->orWhere(fn($q2) => $q2->where('is_parcel', true)->where('status', 'ready'));
             })
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId), fn($q) => $q)
@@ -70,7 +70,7 @@ class OrderController extends BaseAdminController
         $branchId   = $this->resolvedBranchId($request);
         $preTableId = $request->filled('table_id') ? (int) $request->table_id : null;
 
-        $allTables = RestaurantTable::with(['category', 'orders' => fn($q) => $q->whereIn('status', ['pending','preparing','ready','served'])->latest()->limit(1)])
+        $allTables = RestaurantTable::with(['category', 'orders' => fn($q) => $q->whereIn('status', ['pending','preparing','ready'])->latest()->limit(1)])
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
             ->get()
             ->sort(function($a, $b) {
@@ -211,7 +211,7 @@ class OrderController extends BaseAdminController
 
         $order->update([
             'total_amount' => $order->total_amount + $additionalTotal,
-            'status'       => in_array($order->status, ['ready', 'served']) ? 'preparing' : $order->status,
+            'status'       => $order->status === 'ready' ? 'preparing' : $order->status,
         ]);
 
         return back()->with('success', 'Items added to Order #' . $order->id . '.');
@@ -261,9 +261,9 @@ class OrderController extends BaseAdminController
         $order = $this->findForTenant(Order::class, $id);
 
         if ($order->is_parcel) {
-            abort_if(!in_array($order->status, ['ready', 'served', 'checkout']), 422);
+            abort_if(!in_array($order->status, ['ready', 'checkout']), 422);
         } else {
-            abort_if(!in_array($order->status, ['served', 'checkout']), 422);
+            abort_if($order->status !== 'checkout', 422);
         }
 
         $request->validate([

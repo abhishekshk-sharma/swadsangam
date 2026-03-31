@@ -42,6 +42,15 @@ class MenuCategoryController extends BaseAdminController
         return redirect()->route('admin.menu-categories.index')->with('success', 'Category updated successfully');
     }
 
+    public function reorder(Request $request)
+    {
+        $request->validate(['ids' => 'required|array', 'ids.*' => 'integer']);
+        foreach ($request->ids as $order => $id) {
+            MenuCategory::where('id', $id)->where('tenant_id', $this->tenantId())->update(['sort_order' => $order + 1]);
+        }
+        return response()->json(['success' => true]);
+    }
+
     public function quickCreate(Request $request)
     {
         $request->validate(['name' => 'required|string|max:255']);

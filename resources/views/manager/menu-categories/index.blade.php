@@ -37,13 +37,17 @@
 
         {{-- List --}}
         <div class="content-card">
-            <div class="card-header">
+            <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
                 <div class="card-title"><i class="fas fa-list"></i> All Categories</div>
+                <button onclick="saveOrder()" id="saveOrderBtn" style="display:none;background:#16a34a;color:#fff;border:none;padding:7px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">
+                    <i class="fas fa-save me-1"></i>Save Order
+                </button>
             </div>
             <div class="card-body p-0" style="overflow-x:auto;">
-                <table class="table" style="min-width:560px;">
+                <table class="table" style="min-width:580px;">
                     <thead>
                         <tr>
+                            <th style="width:80px;">Order</th>
                             <th>Name</th>
                             <th>Description</th>
                             <th>Type</th>
@@ -51,9 +55,18 @@
                             <th style="text-align:center;">Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="sortableBody">
                         @forelse($categories as $cat)
-                        <tr>
+                        <tr data-id="{{ $cat->id }}">
+                            <td>
+                                <div style="display:flex;gap:4px;align-items:center;">
+                                    <span style="font-size:12px;color:#9ca3af;font-weight:600;min-width:24px;">{{ $loop->iteration }}</span>
+                                    <div style="display:flex;flex-direction:column;gap:2px;">
+                                        <button type="button" onclick="moveRow(this,-1)" style="background:#f3f4f6;border:1px solid #d1d5db;border-radius:4px;padding:1px 6px;cursor:pointer;font-size:11px;line-height:1.4;">▲</button>
+                                        <button type="button" onclick="moveRow(this,1)" style="background:#f3f4f6;border:1px solid #d1d5db;border-radius:4px;padding:1px 6px;cursor:pointer;font-size:11px;line-height:1.4;">▼</button>
+                                    </div>
+                                </div>
+                            </td>
                             <td><strong><i class="fas fa-utensils me-2" style="color:var(--blue-500);"></i>{{ $cat->name }}</strong></td>
                             <td style="color:var(--gray-500);">{{ $cat->description ?? '-' }}</td>
                             <td>
@@ -80,7 +93,7 @@
                         </tr>
                         @if($cat->branch_id === $authUser->branch_id)
                         <tr id="editRow{{ $cat->id }}" style="display:none;background:var(--blue-50);">
-                            <td colspan="5" style="padding:12px 16px;">
+                            <td colspan="6" style="padding:12px 16px;">
                                 <form action="{{ route('manager.menu-categories.update', $cat->id) }}" method="POST" class="d-flex gap-2 align-items-end flex-wrap">
                                     @csrf @method('PUT')
                                     <div>
@@ -99,7 +112,7 @@
                         @endif
                         @empty
                         <tr>
-                            <td colspan="5" style="text-align:center;padding:48px;color:var(--gray-400);">
+                            <td colspan="6" style="text-align:center;padding:48px;color:var(--gray-400);">
                                 <i class="fas fa-inbox" style="font-size:3rem;display:block;margin-bottom:12px;opacity:.5;"></i>
                                 No categories yet. Create one above.
                             </td>
@@ -118,6 +131,39 @@
 function toggleEdit(id) {
     const row = document.getElementById('editRow' + id);
     row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+}
+function moveRow(btn, dir) {
+    const row   = btn.closest('tr[data-id]');
+    const tbody = document.getElementById('sortableBody');
+    const rows  = Array.from(tbody.querySelectorAll('tr[data-id]'));
+    const idx   = rows.indexOf(row);
+    const target = rows[idx + dir];
+    if (!target) return;
+    if (dir === -1) tbody.insertBefore(row, target);
+    else tbody.insertBefore(target, row);
+    updateNumbers();
+    document.getElementById('saveOrderBtn').style.display = 'inline-block';
+}
+function updateNumbers() {
+    document.querySelectorAll('#sortableBody tr[data-id]').forEach(function(row, i) {
+        const num = row.querySelector('span');
+        if (num) num.textContent = i + 1;
+    });
+}
+function saveOrder() {
+    const ids = Array.from(document.querySelectorAll('#sortableBody tr[data-id]')).map(r => r.dataset.id);
+    const btn = document.getElementById('saveOrderBtn');
+    btn.disabled = true;
+    fetch('{{ route('manager.menu-categories.reorder') }}', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}'},
+        body: JSON.stringify({ids})
+    }).then(r => r.json()).then(res => {
+        if (res.success) {
+            btn.textContent = '✓ Saved!';
+            setTimeout(() => { btn.innerHTML = '<i class="fas fa-save me-1"></i>Save Order'; btn.style.display = 'none'; btn.disabled = false; }, 1500);
+        }
+    });
 }
 </script>
 @endpush

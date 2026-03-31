@@ -38,10 +38,8 @@ class PollController extends Controller
             'chef' => $query->whereIn('status', ['pending', 'preparing']),
 
             'cashier' => $query->where(function ($q) {
-                $q->where(fn($q2) => $q2->where('is_parcel', false)
-                                        ->whereIn('status', ['served', 'checkout']))
-                  ->orWhere(fn($q2) => $q2->where('is_parcel', true)
-                                          ->where('status', 'ready'));
+                $q->where(fn($q2) => $q2->where('is_parcel', false)->where('status', 'checkout'))
+                  ->orWhere(fn($q2) => $q2->where('is_parcel', true)->where('status', 'ready'));
             }),
 
             'cashier_parcels' => $query->where('is_parcel', true)

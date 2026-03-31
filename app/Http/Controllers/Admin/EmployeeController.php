@@ -72,6 +72,7 @@ class EmployeeController extends BaseAdminController
         $request->validate([
             'name'      => 'required|string|max:255',
             'email'     => ['required', 'email', 'unique:employees,email,NULL,id,tenant_id,' . $tenantId],
+            'phone'     => ['required', 'string', 'max:20', 'unique:employees,phone'],
             'password'  => 'required|min:6|confirmed',
             'role'      => 'required|in:waiter,chef,cashier,manager',
             'branch_id' => 'nullable|exists:branches,id',
@@ -119,6 +120,7 @@ class EmployeeController extends BaseAdminController
         $request->validate([
             'name'      => 'required|string|max:255',
             'email'     => ['required', 'email', 'unique:employees,email,' . $id . ',id,tenant_id,' . $tenantId],
+            'phone'     => ['required', 'string', 'max:20', 'unique:employees,phone,' . $id],
             'role'      => 'required|in:waiter,chef,cashier,manager',
             'password'  => 'nullable|min:6|confirmed',
             'branch_id' => 'nullable|exists:branches,id',

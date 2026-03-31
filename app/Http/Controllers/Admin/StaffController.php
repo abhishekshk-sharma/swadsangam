@@ -67,7 +67,7 @@ class StaffController extends BaseAdminController
         $request->validate([
             'name'      => 'required|string|max:255',
             'email'     => ['required', 'email', 'unique:employees,email,NULL,id,tenant_id,' . $tenantId],
-            'phone'     => ['required', 'string', 'max:20', 'unique:employees,phone,NULL,id,tenant_id,' . $tenantId],
+            'phone'     => ['required', 'string', 'max:20', 'unique:employees,phone'],
             'password'  => 'required|min:6|confirmed',
             'role'      => 'required|in:waiter,chef,cashier',
             'branch_id' => 'nullable|exists:branches,id',
@@ -102,7 +102,7 @@ class StaffController extends BaseAdminController
         $request->validate([
             'name'      => 'required|string|max:255',
             'email'     => ['required', 'email', 'unique:employees,email,' . $id . ',id,tenant_id,' . $tenantId],
-            'phone'     => ['required', 'string', 'max:20', 'unique:employees,phone,' . $id . ',id,tenant_id,' . $tenantId],
+            'phone'     => ['required', 'string', 'max:20', 'unique:employees,phone,' . $id],
             'role'      => 'required|in:waiter,chef,cashier',
             'password'  => 'nullable|min:6|confirmed',
             'branch_id' => 'nullable|exists:branches,id',

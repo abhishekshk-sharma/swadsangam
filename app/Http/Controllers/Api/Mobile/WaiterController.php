@@ -37,14 +37,63 @@ class WaiterController extends Controller
             ->firstOrFail();
     }
 
+    // GET /api/mobile/waiter/waiters — list other active waiters in same branch
+    public function waiters()
+    {
+        $myId = $this->employee()->id;
+        $waiters = \App\Models\Employee::where('role', 'waiter')
+            ->where('tenant_id', $this->tenantId())
+            ->where('id', '!=', $myId)
+            ->where('is_active', true)
+            ->when($this->branchId(), fn($q) => $q->where('branch_id', $this->branchId()))
+            ->get()
+            ->map(fn($w) => ['id' => $w->id, 'name' => $w->name]);
+
+        return response()->json($waiters);
+    }
+
+    // POST /api/mobile/waiter/orders/{id}/assign
+    public function assign(Request $request, int $id)
+    {
+        $order = $this->findOrder($id);
+        $myId  = $this->employee()->id;
+
+        abort_if($order->user_id !== $myId, 403);
+
+        $request->validate([
+            'to_user_id' => 'required|exists:employees,id',
+            'note'       => 'nullable|string|max:255',
+        ]);
+
+        $toUser = \App\Models\Employee::where('id', $request->to_user_id)
+            ->where('tenant_id', $this->tenantId())
+            ->where('role', 'waiter')
+            ->firstOrFail();
+
+        $order->update(['user_id' => $toUser->id, 'assigned_to' => null]);
+
+        \App\Models\OrderAssignmentLog::create([
+            'tenant_id'    => $this->tenantId(),
+            'order_id'     => $order->id,
+            'from_user_id' => $myId,
+            'to_user_id'   => $toUser->id,
+            'note'         => $request->note,
+        ]);
+
+        return response()->json(['message' => 'Order assigned to ' . $toUser->name . '.']);
+    }
+
     // GET /api/mobile/waiter/orders
     public function orders()
     {
+        $myId = $this->employee()->id;
+
         $orders = Order::with('table.category', 'items.menuItem')
             ->where('tenant_id', $this->tenantId())
             ->whereDate('created_at', today())
-            ->whereNotIn('status', ['paid', 'checkout'])
+            ->whereNotIn('status', ['paid', 'checkout', 'cancelled'])
             ->where(fn($q) => $this->branchScope($q))
+            ->where(fn($q) => $q->where('user_id', $myId)->orWhere('assigned_to', $myId))
             ->latest()
             ->get();
 
@@ -204,7 +253,7 @@ class WaiterController extends Controller
         $oldStatus = $order->status;
         $order->update([
             'total_amount' => $order->total_amount + $extra,
-            'status'       => in_array($order->status, ['ready', 'served']) ? 'preparing' : $order->status,
+            'status'       => $order->status === 'ready' ? 'preparing' : $order->status,
         ]);
 
         $order->refresh()->load('table.category', 'items.menuItem');
@@ -213,29 +262,14 @@ class WaiterController extends Controller
     }
 
     // PATCH /api/mobile/waiter/orders/{id}/serve
+    // Goes straight to checkout (served status removed)
     public function markServed(int $id)
     {
         $order = $this->findOrder($id);
         $oldStatus = $order->status;
-        $order->update(['status' => 'served']);
-        event(new OrderStatusUpdated($order, $oldStatus));
-        return response()->json(['message' => 'Order marked as served.']);
-    }
-
-    // PATCH /api/mobile/waiter/orders/{id}/checkout
-    public function checkout(int $id)
-    {
-        $order = $this->findOrder($id);
-        if ($order->status !== 'served') {
-            return response()->json(['message' => 'Only served orders can be checked out.'], 422);
-        }
-        $oldStatus = $order->status;
         $order->update(['status' => 'checkout']);
-        if (!$order->is_parcel && $order->table) {
-            $order->table->update(['is_occupied' => false]);
-        }
         event(new OrderStatusUpdated($order, $oldStatus));
-        return response()->json(['message' => 'Order checked out.']);
+        return response()->json(['message' => 'Order sent to cashier for payment.']);
     }
 
     // PATCH /api/mobile/waiter/orders/{id}/cancel
@@ -291,8 +325,8 @@ class WaiterController extends Controller
         return [
             'id'             => $order->id,
             'status'         => $order->status,
-            'is_parcel'      => $order->is_parcel,
-            'total_amount'   => $order->total_amount,
+            'is_parcel'      => (bool) $order->is_parcel,
+            'total_amount'   => (float) $order->total_amount,
             'customer_notes' => $order->customer_notes,
             'created_at'     => $order->created_at,
             'table'          => $order->table ? [
@@ -301,13 +335,14 @@ class WaiterController extends Controller
                 'category'     => $order->table->category?->name,
             ] : null,
             'items' => $order->items->map(fn($i) => [
-                'id'        => $i->id,
-                'name'      => $i->menuItem?->name,
-                'quantity'  => $i->quantity,
-                'price'     => $i->price,
-                'status'    => $i->status,
-                'notes'     => $i->notes,
-            ]),
+                'id'       => $i->id,
+                'name'     => $i->menuItem?->name,
+                'quantity' => $i->quantity,
+                'price'    => (float) $i->price,
+                'subtotal' => (float) ($i->price * $i->quantity),
+                'status'   => $i->status,
+                'notes'    => $i->notes,
+            ])->values(),
         ];
     }
 }

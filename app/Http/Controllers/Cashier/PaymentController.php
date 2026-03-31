@@ -25,7 +25,7 @@ class PaymentController extends Controller
         $orders = Order::with(['table.category', 'orderItems' => fn($q) => $q->withoutGlobalScopes()->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()])])
             ->where(function ($q) {
                 $q->where(function ($q2) {
-                      $q2->where('is_parcel', false)->whereIn('status', ['served', 'checkout']);
+                      $q2->where('is_parcel', false)->whereIn('status', ['checkout']);
                   })
                   ->orWhere(function ($q2) {
                       $q2->where('is_parcel', true)->where('status', 'ready');
@@ -52,7 +52,9 @@ public function processPayment(Request $request, Order $order)
         abort_if($order->tenant_id !== (int) $this->currentTenantId(), 403);
 
         if ($order->is_parcel) {
-            abort_if(!in_array($order->status, ['ready', 'served', 'checkout']), 422);
+            abort_if(!in_array($order->status, ['ready', 'checkout']), 422);
+        } else {
+            abort_if($order->status !== 'checkout', 422);
         }
 
         $request->validate([

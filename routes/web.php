@@ -199,6 +199,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::put('menu-categories/{id}', [MenuCategoryController::class, 'update'])->name('menu-categories.update');
         Route::delete('menu-categories/{id}', [MenuCategoryController::class, 'destroy'])->name('menu-categories.destroy');
         Route::post('menu-categories/quick-create', [MenuCategoryController::class, 'quickCreate'])->name('menu-categories.quickCreate');
+        Route::post('menu-categories/reorder', [MenuCategoryController::class, 'reorder'])->name('menu-categories.reorder');
         Route::post('menu/{id}/update', [MenuController::class, 'update'])->name('menu.update.post');
         Route::resource('menu', MenuController::class);
         Route::get('cook', [CookController::class, 'index'])->name('cook.index');
@@ -255,8 +256,6 @@ Route::prefix('waiter')->name('waiter.')->middleware(['multi.auth', 'role:waiter
     Route::get('orders', [WaiterOrderController::class, 'index'])->name('orders.index');
     Route::get('orders/create', [WaiterOrderController::class, 'create'])->name('orders.create');
     Route::post('orders', [WaiterOrderController::class, 'store'])->name('orders.store');
-    Route::post('orders/{id}/serve', [WaiterOrderController::class, 'markServed'])->name('orders.serve');
-    Route::post('orders/{id}/checkout', [WaiterOrderController::class, 'checkoutOrder'])->name('orders.checkout');
     Route::post('orders/{id}/add-items', [WaiterOrderController::class, 'addItems'])->name('orders.addItems');
     Route::patch('orders/{id}/cancel', [WaiterOrderController::class, 'cancelOrder'])->name('orders.cancel');
     Route::patch('order-items/{id}/cancel', [WaiterOrderController::class, 'cancelItem'])->name('orderItems.cancel');
@@ -308,6 +307,7 @@ Route::prefix('manager')->name('manager.')->middleware(['multi.auth', 'role:mana
     Route::put('menu-categories/{id}', [ManagerMenuCategoryController::class, 'update'])->name('menu-categories.update');
     Route::delete('menu-categories/{id}', [ManagerMenuCategoryController::class, 'destroy'])->name('menu-categories.destroy');
     Route::post('menu-categories/quick-create', [ManagerMenuCategoryController::class, 'quickCreate'])->name('menu-categories.quickCreate');
+    Route::post('menu-categories/reorder', [ManagerMenuCategoryController::class, 'reorder'])->name('menu-categories.reorder');
     // Menu OCR
     Route::get('menu-ocr', [ManagerMenuOcrController::class, 'index'])->name('menu-ocr.index');
     Route::post('menu-ocr', [ManagerMenuOcrController::class, 'process'])->name('menu-ocr.process');

@@ -177,8 +177,8 @@ class ChefController extends Controller
         return [
             'id'             => $order->id,
             'status'         => $order->status,
-            'is_parcel'      => $order->is_parcel,
-            'total_amount'   => $order->total_amount,
+            'is_parcel'      => (bool) $order->is_parcel,
+            'total_amount'   => (float) $order->total_amount,
             'customer_notes' => $order->customer_notes,
             'created_at'     => $order->created_at,
             'table'          => $order->table ? [
@@ -190,10 +190,11 @@ class ChefController extends Controller
                 'id'       => $i->id,
                 'name'     => $i->menuItem?->name,
                 'quantity' => $i->quantity,
-                'price'    => $i->price,
+                'price'    => (float) $i->price,
+                'subtotal' => (float) ($i->price * $i->quantity),
                 'status'   => $i->status,
                 'notes'    => $i->notes,
-            ]),
+            ])->values(),
         ];
     }
 }

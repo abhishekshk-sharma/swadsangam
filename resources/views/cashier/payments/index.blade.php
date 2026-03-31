@@ -379,6 +379,50 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 });
+
+// ── Polling for new orders ────────────────────────────────────────────────
+(function () {
+    var known = {};
+    document.querySelectorAll('[data-order-id]').forEach(function (el) {
+        known[el.dataset.orderId] = true;
+    });
+
+    function toast(msg, color) {
+        var el = document.createElement('div');
+        el.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);background:' + (color||'#dc2626') + ';color:#fff;padding:12px 24px;border-radius:10px;font-size:15px;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,.3);z-index:99999;white-space:nowrap;pointer-events:none;';
+        el.textContent = msg;
+        document.body.appendChild(el);
+        setTimeout(function () { el.remove(); }, 5000);
+    }
+
+    function poll() {
+        fetch('/api/order-updates?panel=cashier', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+            if (!data || !data.orders) return;
+            data.orders.forEach(function (order) {
+                var oid = String(order.id);
+                if (!known[oid]) {
+                    known[oid] = true;
+                    var label = order.is_parcel ? 'Parcel' : 'T' + order.table_number;
+                    toast('\uD83D\uDD14 New Order #' + order.id + ' \u2014 ' + label, '#dc2626');
+                    var count = document.getElementById('pendingCount');
+                    if (count) count.textContent = Object.keys(known).length;
+                    var empty = document.querySelector('.space-y-3 .bg-white:not([data-order-id])');
+                    if (empty && empty.querySelector('.text-4xl')) empty.remove();
+                }
+                // no alert on status changes — only on new order
+            });
+            Object.keys(known).forEach(function (oid) {
+                if (!data.orders.find(function (o) { return String(o.id) === oid; })) delete known[oid];
+            });
+        })
+        .catch(function () {});
+    }
+
+    setInterval(poll, 6000);
+    setTimeout(poll, 2000);
+})();
 </script>
 
 @endsection

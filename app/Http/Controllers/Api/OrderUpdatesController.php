@@ -59,12 +59,12 @@ class OrderUpdatesController extends Controller
                 ->when($scopedBranchId, fn($q) => $q->where('branch_id', $scopedBranchId));
 
             $activeOrders = (clone $base)
-                ->whereNotIn('status', ['paid', 'checkout', 'cancelled'])
+                ->whereNotIn('status', ['paid', 'cancelled'])
                 ->latest()->get();
 
             $paymentOrders = (clone $base)
                 ->where(function ($q) {
-                    $q->where(fn($q2) => $q2->where('is_parcel', false)->whereIn('status', ['served', 'checkout']))
+                    $q->where(fn($q2) => $q2->where('is_parcel', false)->where('status', 'checkout'))
                     ->orWhere(fn($q2) => $q2->where('is_parcel', true)->where('status', 'ready'));
                 })
                 ->latest()->get();
@@ -85,17 +85,14 @@ class OrderUpdatesController extends Controller
             );
 
         match ($panel) {
-            'cook' => $query->whereIn('status', ['pending', 'preparing', 'ready', 'served']),
+            'cook' => $query->whereIn('status', ['pending', 'preparing', 'ready']),
 
-            'cashier' => $query->where(function ($q) {
-                $q->where(fn($q2) => $q2->where('is_parcel', false)->whereIn('status', ['served', 'checkout']))
-                  ->orWhere(fn($q2) => $q2->where('is_parcel', true)->where('status', 'ready'));
-            }),
+            'cashier' => $query->whereNotIn('status', ['paid', 'cancelled']),
 
             'cashier_parcels' => $query->where('is_parcel', true)
                                        ->whereNotIn('status', ['paid', 'cancelled']),
 
-            default => // waiter + manager
+            default =>
                 $query->whereNotIn('status', ['paid', 'checkout', 'cancelled']),
         };
 

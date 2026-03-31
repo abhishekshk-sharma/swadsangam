@@ -56,7 +56,6 @@
                 {{ $order->status === 'pending' ? 'bg-yellow-100 text-yellow-800' : '' }}
                 {{ $order->status === 'preparing' ? 'bg-blue-100 text-blue-800' : '' }}
                 {{ $order->status === 'ready' ? 'bg-green-100 text-green-800' : '' }}
-                {{ $order->status === 'served' ? 'bg-purple-100 text-purple-800' : '' }}
                 {{ $order->status === 'cancelled' ? 'bg-red-100 text-red-800' : '' }}"
                 data-order-status-badge>
                 {{ ucfirst($order->status) }}
@@ -171,16 +170,6 @@
                     </svg>
                 </button>
                 @endif
-                @if($order->status === 'ready')
-                <button type="button" onclick="markServed({{ $order->id }})" 
-                        data-serve-btn title="Mark as Served"
-                        class="waiter-action-btn waiter-btn-serve">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                        <polyline points="22 4 12 14.01 9 11.01"/>
-                    </svg>
-                </button>
-                @endif
                 @if($order->status === 'pending')
                 <form action="{{ route('waiter.orders.cancel', $order->id) }}" method="POST"
                       onsubmit="return confirm('Cancel entire order #{{ $order->id }}?')"
@@ -197,19 +186,6 @@
                 </form>
                 @endif
             </div>
-            @if($order->status === 'served')
-            <div class="checkout-section">
-                <button type="button" onclick="checkoutOrder({{ $order->id }})" class="checkout-btn">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;display:inline-block;vertical-align:middle;margin-right:6px;">
-                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                        <polyline points="16 17 21 12 16 7"/>
-                        <line x1="21" y1="12" x2="9" y2="12"/>
-                    </svg>
-                    Checkout Table
-                </button>
-                <p class="checkout-hint">Customer is done. Free the table now — cashier will collect payment separately.</p>
-            </div>
-            @endif
         </div>
     </div>
     @empty
@@ -503,37 +479,10 @@ function filterModalCategory(category) {
 }
 
 function markServed(orderId) {
-    if (!confirm('Mark this order as served?')) return;
-    
     fetch(`/waiter/orders/${orderId}/serve`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        }
-    })
-    .then(response => response.json())
-    .then(() => location.reload());
-}
-
-function checkoutOrder(orderId) {
-    if (!confirm('Checkout this table?\n\nThis will free the table immediately. The cashier will collect payment separately.')) return;
-    fetch(`/waiter/orders/${orderId}/checkout`, {
-        method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            const card = document.querySelector(`.order-card[data-order-id="${orderId}"]`);
-            if (card) {
-                card.style.transition = 'opacity 0.4s, transform 0.4s';
-                card.style.opacity = '0';
-                card.style.transform = 'scale(0.95)';
-                setTimeout(() => card.remove(), 400);
-            }
-        }
-    });
+    }).then(r => r.json());
 }
 
 function showToast(message) {
@@ -550,6 +499,57 @@ function showToast(message) {
 function updateAdditionalItemNotes(index, notes) {
     additionalItems[index].notes = notes;
 }
+</script>
+
+
+<script>
+(function() {
+    // Polling: alert waiter only when order status changes to ready
+    var snapStatus = {};
+    document.querySelectorAll('.order-card[data-order-id]').forEach(function(card) {
+        snapStatus[card.dataset.orderId] = card.dataset.orderStatus;
+    });
+
+    function waiterToast(msg) {
+        var el = document.createElement('div');
+        el.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#16a34a;color:#fff;padding:12px 24px;border-radius:10px;font-size:15px;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,.3);z-index:99999;white-space:nowrap;pointer-events:none;';
+        el.textContent = msg;
+        document.body.appendChild(el);
+        setTimeout(function() { el.remove(); }, 6000);
+    }
+
+    function pollWaiter() {
+        fetch('/api/order-updates?panel=waiter', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(data) {
+            if (!data || !data.orders) return;
+            data.orders.forEach(function(order) {
+                var oid = String(order.id);
+                var prev = snapStatus[oid];
+                if (prev && prev !== 'ready' && order.status === 'ready') {
+                    var label = order.is_parcel ? 'Parcel' : 'T' + order.table_number;
+                    waiterToast('\u2705 Order #' + order.id + ' (' + label + ') is READY!');
+                    // update badge on card
+                    var card = document.querySelector('.order-card[data-order-id="' + oid + '"]');
+                    if (card) {
+                        card.dataset.orderStatus = 'ready';
+                        var badge = card.querySelector('[data-order-status-badge]');
+                        if (badge) { badge.textContent = 'Ready'; badge.className = 'order-status-badge px-2 py-1 rounded text-xs font-semibold bg-green-100 text-green-800'; }
+                    }
+                }
+                snapStatus[oid] = order.status;
+            });
+            // clean up removed orders
+            Object.keys(snapStatus).forEach(function(oid) {
+                if (!data.orders.find(function(o) { return String(o.id) === oid; })) delete snapStatus[oid];
+            });
+        })
+        .catch(function() {});
+    }
+
+    setInterval(pollWaiter, 7000);
+    setTimeout(pollWaiter, 3000);
+})();
 </script>
 
 

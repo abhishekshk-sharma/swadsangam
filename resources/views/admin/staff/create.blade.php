@@ -23,8 +23,9 @@
                     @error('email')<div style="color:var(--error);font-size:0.8rem;margin-top:4px;">{{ $message }}</div>@enderror
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Phone</label>
-                    <input type="text" name="phone" class="form-control" value="{{ old('phone') }}" placeholder="9876543210">
+                    <label class="form-label">Phone <span style="color:var(--error)">*</span></label>
+                    <input type="text" name="phone" class="form-control" value="{{ old('phone') }}" placeholder="9876543210" required>
+                    @error('phone')<div style="color:var(--error);font-size:0.8rem;margin-top:4px;">{{ $message }}</div>@enderror
                 </div>
                 <div class="form-group">
                     <label class="form-label">Role <span style="color:var(--error)">*</span></label>

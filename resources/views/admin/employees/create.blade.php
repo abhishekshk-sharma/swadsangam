@@ -58,9 +58,9 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Phone (with country code)</label>
-                        <input type="text" name="phone" class="form-control" placeholder="9876543210" value="{{ old('phone') }}">
-                        <small class="text-muted">Enter 10 digit number!</small>
+                        <label class="form-label">Phone <span class="text-danger">*</span></label>
+                        <input type="text" name="phone" class="form-control" placeholder="9876543210" value="{{ old('phone') }}" required>
+                        <small class="text-muted">Enter 10 digit number</small>
                         @error('phone')
                             <div class="text-danger small mt-1">{{ $message }}</div>
                         @enderror

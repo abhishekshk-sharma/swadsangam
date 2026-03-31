@@ -38,7 +38,7 @@ class CashierController extends Controller
         $orders = Order::with(['table.category', 'orderItems.menuItem', 'branch.gstSlab'])
             ->where('tenant_id', $this->tenantId())
             ->where(function ($q) {
-                $q->where(fn($q2) => $q2->where('is_parcel', false)->whereIn('status', ['served', 'checkout']))
+                $q->where(fn($q2) => $q2->where('is_parcel', false)->where('status', 'checkout'))
                   ->orWhere(fn($q2) => $q2->where('is_parcel', true)->where('status', 'ready'));
             })
             ->where(fn($q) => $this->branchScope($q))
@@ -61,9 +61,9 @@ class CashierController extends Controller
             ->firstOrFail();
 
         if ($order->is_parcel) {
-            abort_if(!in_array($order->status, ['ready', 'served', 'checkout']), 422);
+            abort_if(!in_array($order->status, ['ready', 'checkout']), 422);
         } else {
-            abort_if(!in_array($order->status, ['served', 'checkout']), 422);
+            abort_if($order->status !== 'checkout', 422);
         }
 
         $request->validate([
@@ -92,7 +92,7 @@ class CashierController extends Controller
             $order->table->update(['is_occupied' => false]);
         }
 
-        event(new OrderStatusUpdated($order, 'served'));
+        event(new OrderStatusUpdated($order, 'checkout'));
 
         $gst    = $this->computeGst($order->fresh('branch.gstSlab'));
         $change = null;

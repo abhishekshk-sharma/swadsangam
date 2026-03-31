@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Auth;
 
 class MenuCategory extends Model
 {
-    protected $fillable = ['tenant_id', 'branch_id', 'name', 'description'];
+    protected $fillable = ['tenant_id', 'branch_id', 'name', 'description', 'sort_order'];
 
     protected static function booted()
     {
@@ -20,6 +20,10 @@ class MenuCategory extends Model
                       ->orWhere('menu_categories.tenant_id', $user->tenant_id);
                 });
             }
+        });
+
+        static::addGlobalScope('sorted', function (Builder $builder) {
+            $builder->orderBy('menu_categories.sort_order');
         });
 
         static::creating(function ($model) {

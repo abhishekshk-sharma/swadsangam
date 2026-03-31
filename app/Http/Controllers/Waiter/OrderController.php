@@ -178,23 +178,10 @@ class OrderController extends Controller
         return redirect('/waiter/orders')->with('success', 'Order created successfully');
     }
 
-    public function checkoutOrder($id)
-    {
-        $order = $this->findOrder($id);
-        if ($order->status !== 'served') {
-            return response()->json(['error' => 'Only served orders can be checked out.'], 422);
-        }
-        $order->update(['status' => 'checkout']);
-        if (!$order->is_parcel && $order->table) {
-            $order->table->update(['is_occupied' => false]);
-        }
-        return response()->json(['success' => true]);
-    }
-
     public function markServed($id)
     {
         $order = $this->findOrder($id);
-        $order->update(['status' => 'served']);
+        $order->update(['status' => 'checkout']);
         return response()->json(['success' => true]);
     }
 
@@ -285,7 +272,7 @@ class OrderController extends Controller
 
         $order->update([
             'total_amount' => $order->total_amount + $additionalTotal,
-            'status'       => in_array($order->status, ['ready', 'served']) ? 'preparing' : $order->status,
+            'status'       => $order->status === 'ready' ? 'preparing' : $order->status,
         ]);
 
         $order->refresh();
