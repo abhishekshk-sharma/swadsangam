@@ -22,6 +22,107 @@ class OrderController extends BaseAdminController
         return session('admin_branch_id') ? (int) session('admin_branch_id') : null;
     }
 
+    public function instant(Request $request)
+    {
+        $branchId = $this->resolvedBranchId($request);
+
+        // In instant mode, show ALL today's non-paid orders directly in payment section
+        $paymentOrders = Order::with(['table.category', 'branch.gstSlab', 'orderItems' => fn($q) => $q->withoutGlobalScopes()->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()])])
+            ->whereDate('created_at', today())
+            ->whereNotIn('status', ['paid', 'cancelled'])
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId), fn($q) => $q)
+            ->latest()
+            ->get();
+
+        $branches       = Branch::where('tenant_id', $this->tenantId())->where('is_active', true)->get();
+        $selectedBranch = $branchId ? Branch::with('gstSlab')->find($branchId) : null;
+        $branchUpiId    = $selectedBranch?->upi_id;
+        $branchGst      = $this->computeBranchGst($selectedBranch);
+
+        return view('admin.orders.instant', compact('paymentOrders', 'branches', 'branchId', 'branchUpiId', 'branchGst'));
+    }
+
+    public function instantCreate(Request $request)
+    {
+        $branchId   = $this->resolvedBranchId($request);
+        $preTableId = $request->filled('table_id') ? (int) $request->table_id : null;
+
+        $allTables = RestaurantTable::with(['category', 'orders' => fn($q) => $q->whereIn('status', ['pending','preparing','ready','served'])->latest()->limit(1)])
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->get()
+            ->sort(function($a, $b) {
+                preg_match('/^(\D*)(\d*)(.*)$/', $a->table_number, $am);
+                preg_match('/^(\D*)(\d*)(.*)$/', $b->table_number, $bm);
+                $prefixCmp = strcmp($am[1], $bm[1]);
+                if ($prefixCmp !== 0) return $prefixCmp;
+                $numA = (int)($am[2] ?? 0); $numB = (int)($bm[2] ?? 0);
+                if ($numA !== $numB) return $numA - $numB;
+                return strcmp($am[3] ?? '', $bm[3] ?? '');
+            })
+            ->groupBy(fn($t) => $t->category->name ?? 'Uncategorized');
+
+        $menuItems      = MenuItem::with('menuCategory')->where('is_available', true)->get();
+        $menuCategories = MenuCategory::whereHas('menuItems', fn($q) => $q->where('is_available', true))->get();
+        $branches       = Branch::where('tenant_id', $this->tenantId())->where('is_active', true)->get();
+
+        return view('admin.orders.create', compact('allTables', 'menuItems', 'menuCategories', 'branches', 'branchId', 'preTableId'))
+            ->with('instantMode', true);
+    }
+
+    public function instantStore(Request $request)
+    {
+        $isParcel = $request->boolean('is_parcel');
+        $branchId = $this->resolvedBranchId($request);
+
+        $request->validate([
+            'table_id'             => $isParcel ? 'nullable' : 'required|exists:restaurant_tables,id',
+            'items'                => 'required|array',
+            'items.*.menu_item_id' => 'required|exists:menu_items,id',
+            'items.*.quantity'     => 'required|integer|min:1',
+            'items.*.notes'        => 'nullable|string|max:500',
+            'customer_notes'       => 'nullable|string|max:500',
+        ]);
+
+        $total = 0;
+        foreach ($request->items as $item) {
+            $menuItem = MenuItem::findOrFail($item['menu_item_id']);
+            $total += $menuItem->price * $item['quantity'];
+        }
+
+        // Instant mode: order goes straight to checkout status
+        $order = Order::create([
+            'tenant_id'      => $this->tenantId(),
+            'branch_id'      => $branchId,
+            'table_id'       => $isParcel ? null : $request->table_id,
+            'user_id'        => auth()->guard('employee')->id() ?? null,
+            'status'         => 'checkout',
+            'total_amount'   => $total,
+            'customer_notes' => $request->customer_notes,
+            'is_parcel'      => $isParcel,
+        ]);
+
+        foreach ($request->items as $item) {
+            $menuItem = MenuItem::findOrFail($item['menu_item_id']);
+            OrderItem::create([
+                'tenant_id'    => $this->tenantId(),
+                'branch_id'    => $branchId,
+                'order_id'     => $order->id,
+                'menu_item_id' => $menuItem->id,
+                'quantity'     => $item['quantity'],
+                'price'        => $menuItem->price,
+                'status'       => 'prepared',
+                'notes'        => $item['notes'] ?? null,
+            ]);
+        }
+
+        if (!$isParcel) {
+            RestaurantTable::findOrFail($request->table_id)->update(['is_occupied' => true]);
+        }
+
+        return redirect()->route('admin.orders.instant', $branchId ? ['branch_id' => $branchId] : [])
+            ->with('success', 'Order #' . $order->id . ' created — ready for payment!');
+    }
+
     public function index(Request $request)
     {
         $branchId = $this->resolvedBranchId($request);
@@ -37,7 +138,7 @@ class OrderController extends BaseAdminController
         $paymentOrders = Order::with(['table.category', 'branch.gstSlab', 'orderItems' => fn($q) => $q->withoutGlobalScopes()->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()])])
             ->whereDate('created_at', today())
             ->where(function ($q) {
-                $q->where(fn($q2) => $q2->where('is_parcel', false)->where('status', 'checkout'))
+                $q->where(fn($q2) => $q2->where('is_parcel', false)->whereIn('status', ['served', 'checkout']))
                   ->orWhere(fn($q2) => $q2->where('is_parcel', true)->where('status', 'ready'));
             })
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId), fn($q) => $q)
@@ -70,7 +171,7 @@ class OrderController extends BaseAdminController
         $branchId   = $this->resolvedBranchId($request);
         $preTableId = $request->filled('table_id') ? (int) $request->table_id : null;
 
-        $allTables = RestaurantTable::with(['category', 'orders' => fn($q) => $q->whereIn('status', ['pending','preparing','ready'])->latest()->limit(1)])
+        $allTables = RestaurantTable::with(['category', 'orders' => fn($q) => $q->whereIn('status', ['pending','preparing','ready','served'])->latest()->limit(1)])
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
             ->get()
             ->sort(function($a, $b) {
@@ -211,7 +312,7 @@ class OrderController extends BaseAdminController
 
         $order->update([
             'total_amount' => $order->total_amount + $additionalTotal,
-            'status'       => $order->status === 'ready' ? 'preparing' : $order->status,
+            'status'       => in_array($order->status, ['ready', 'served']) ? 'preparing' : $order->status,
         ]);
 
         return back()->with('success', 'Items added to Order #' . $order->id . '.');
@@ -261,9 +362,9 @@ class OrderController extends BaseAdminController
         $order = $this->findForTenant(Order::class, $id);
 
         if ($order->is_parcel) {
-            abort_if(!in_array($order->status, ['ready', 'checkout']), 422);
+            abort_if(!in_array($order->status, ['ready', 'served', 'checkout']), 422);
         } else {
-            abort_if($order->status !== 'checkout', 422);
+            abort_if(!in_array($order->status, ['served', 'checkout']), 422);
         }
 
         $request->validate([

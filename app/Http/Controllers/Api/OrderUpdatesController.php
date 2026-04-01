@@ -64,7 +64,7 @@ class OrderUpdatesController extends Controller
 
             $paymentOrders = (clone $base)
                 ->where(function ($q) {
-                    $q->where(fn($q2) => $q2->where('is_parcel', false)->where('status', 'checkout'))
+                    $q->where(fn($q2) => $q2->where('is_parcel', false)->whereIn('status', ['served', 'checkout']))
                     ->orWhere(fn($q2) => $q2->where('is_parcel', true)->where('status', 'ready'));
                 })
                 ->latest()->get();
@@ -85,9 +85,14 @@ class OrderUpdatesController extends Controller
             );
 
         match ($panel) {
-            'cook' => $query->whereIn('status', ['pending', 'preparing', 'ready']),
+            'cook' => $query->whereIn('status', ['pending', 'preparing', 'ready', 'served']),
 
-            'cashier' => $query->whereNotIn('status', ['paid', 'cancelled']),
+            'cashier' => $query->where(function ($q) {
+                $q->where(fn($q2) => $q2->where('is_parcel', false)->whereIn('status', ['served', 'checkout']))
+                  ->orWhere(fn($q2) => $q2->where('is_parcel', true)->where('status', 'ready'));
+            }),
+
+            'cashier_instant' => $query->whereNotIn('status', ['paid', 'cancelled']),
 
             'cashier_parcels' => $query->where('is_parcel', true)
                                        ->whereNotIn('status', ['paid', 'cancelled']),

@@ -181,7 +181,20 @@ class OrderController extends Controller
     public function markServed($id)
     {
         $order = $this->findOrder($id);
+        $order->update(['status' => 'served']);
+        return response()->json(['success' => true]);
+    }
+
+    public function checkoutOrder($id)
+    {
+        $order = $this->findOrder($id);
+        if ($order->status !== 'served') {
+            return response()->json(['error' => 'Only served orders can be checked out.'], 422);
+        }
         $order->update(['status' => 'checkout']);
+        if (!$order->is_parcel && $order->table) {
+            $order->table->update(['is_occupied' => false]);
+        }
         return response()->json(['success' => true]);
     }
 

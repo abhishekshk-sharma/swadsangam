@@ -38,7 +38,7 @@ class CashierController extends Controller
         $orders = Order::with(['table.category', 'orderItems.menuItem', 'branch.gstSlab'])
             ->where('tenant_id', $this->tenantId())
             ->where(function ($q) {
-                $q->where(fn($q2) => $q2->where('is_parcel', false)->where('status', 'checkout'))
+                $q->where(fn($q2) => $q2->where('is_parcel', false)->whereIn('status', ['served', 'checkout']))
                   ->orWhere(fn($q2) => $q2->where('is_parcel', true)->where('status', 'ready'));
             })
             ->where(fn($q) => $this->branchScope($q))
@@ -47,8 +47,30 @@ class CashierController extends Controller
             ->get();
 
         return response()->json([
-            'upi_id'  => $branch?->upi_id,
-            'orders'  => $orders->map(fn($o) => $this->formatOrder($o)),
+            'upi_id'       => $branch?->upi_id,
+            'instant_mode' => false,
+            'orders'       => $orders->map(fn($o) => $this->formatOrder($o)),
+        ]);
+    }
+
+    // GET /api/mobile/cashier/payments/instant
+    // Returns ALL today's non-paid orders — bypasses kitchen flow
+    public function paymentsInstant()
+    {
+        $branch = $this->branchId() ? \App\Models\Branch::with('gstSlab')->find($this->branchId()) : null;
+
+        $orders = Order::with(['table.category', 'orderItems.menuItem', 'branch.gstSlab'])
+            ->where('tenant_id', $this->tenantId())
+            ->whereNotIn('status', ['paid', 'cancelled'])
+            ->where(fn($q) => $this->branchScope($q))
+            ->whereDate('created_at', today())
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'upi_id'       => $branch?->upi_id,
+            'instant_mode' => true,
+            'orders'       => $orders->map(fn($o) => $this->formatOrder($o)),
         ]);
     }
 
@@ -61,9 +83,9 @@ class CashierController extends Controller
             ->firstOrFail();
 
         if ($order->is_parcel) {
-            abort_if(!in_array($order->status, ['ready', 'checkout']), 422);
+            abort_if(!in_array($order->status, ['pending', 'preparing', 'ready', 'served', 'checkout']), 422);
         } else {
-            abort_if($order->status !== 'checkout', 422);
+            abort_if(!in_array($order->status, ['pending', 'preparing', 'ready', 'served', 'checkout']), 422);
         }
 
         $request->validate([
@@ -92,7 +114,7 @@ class CashierController extends Controller
             $order->table->update(['is_occupied' => false]);
         }
 
-        event(new OrderStatusUpdated($order, 'checkout'));
+        event(new OrderStatusUpdated($order, 'served'));
 
         $gst    = $this->computeGst($order->fresh('branch.gstSlab'));
         $change = null;

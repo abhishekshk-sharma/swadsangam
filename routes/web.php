@@ -218,6 +218,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('reports/export', [ReportController::class, 'export'])->name('reports.export');
         // Waiter Panel (admin)
         Route::get('orders', [AdminOrderController::class, 'index'])->name('orders.index');
+        Route::get('orders/instant', [AdminOrderController::class, 'instant'])->name('orders.instant');
+        Route::get('orders/instant/create', [AdminOrderController::class, 'instantCreate'])->name('orders.instant.create');
+        Route::post('orders/instant', [AdminOrderController::class, 'instantStore'])->name('orders.instant.store');
         Route::get('orders/create', [AdminOrderController::class, 'create'])->name('orders.create');
         Route::post('orders', [AdminOrderController::class, 'store'])->name('orders.store');
         Route::post('orders/{id}/add-items', [AdminOrderController::class, 'addItems'])->name('orders.addItems');
@@ -257,6 +260,8 @@ Route::prefix('waiter')->name('waiter.')->middleware(['multi.auth', 'role:waiter
     Route::get('orders/create', [WaiterOrderController::class, 'create'])->name('orders.create');
     Route::post('orders', [WaiterOrderController::class, 'store'])->name('orders.store');
     Route::post('orders/{id}/add-items', [WaiterOrderController::class, 'addItems'])->name('orders.addItems');
+    Route::post('orders/{id}/serve', [WaiterOrderController::class, 'markServed'])->name('orders.serve');
+    Route::post('orders/{id}/checkout', [WaiterOrderController::class, 'checkoutOrder'])->name('orders.checkout');
     Route::patch('orders/{id}/cancel', [WaiterOrderController::class, 'cancelOrder'])->name('orders.cancel');
     Route::patch('order-items/{id}/cancel', [WaiterOrderController::class, 'cancelItem'])->name('orderItems.cancel');
     Route::patch('order-items/{id}/update', [WaiterOrderController::class, 'updateItem'])->name('orderItems.update');

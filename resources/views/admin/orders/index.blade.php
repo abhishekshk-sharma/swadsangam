@@ -25,6 +25,10 @@
            style="display:flex;align-items:center;gap:8px;background:#2563eb;color:#fff;padding:9px 18px;border-radius:8px;font-weight:600;font-size:14px;text-decoration:none;">
             <i class="fas fa-plus"></i> New Order
         </a>
+        <a href="{{ route('admin.orders.instant', $branchId ? ['branch_id' => $branchId] : []) }}"
+           style="display:flex;align-items:center;gap:8px;background:#7c3aed;color:#fff;padding:9px 18px;border-radius:8px;font-weight:600;font-size:14px;text-decoration:none;" title="Instant Mode: order creation goes straight to billing">
+            <i class="fas fa-bolt"></i> Instant Mode
+        </a>
     </div>
 </div>
 

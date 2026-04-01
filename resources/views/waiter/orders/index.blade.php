@@ -56,6 +56,7 @@
                 {{ $order->status === 'pending' ? 'bg-yellow-100 text-yellow-800' : '' }}
                 {{ $order->status === 'preparing' ? 'bg-blue-100 text-blue-800' : '' }}
                 {{ $order->status === 'ready' ? 'bg-green-100 text-green-800' : '' }}
+                {{ $order->status === 'served' ? 'bg-purple-100 text-purple-800' : '' }}
                 {{ $order->status === 'cancelled' ? 'bg-red-100 text-red-800' : '' }}"
                 data-order-status-badge>
                 {{ ucfirst($order->status) }}
@@ -147,7 +148,7 @@
             </div>
             
             <div class="order-actions waiter-order-actions">
-                @if(!in_array($order->status, ['paid', 'cancelled', 'checkout']) && $freeWaiters->count() > 0)
+                @if(!in_array($order->status, ['paid', 'cancelled', 'checkout', 'ready', 'served']) && $freeWaiters->count() > 0)
                 <button type="button"
                         onclick="openAssign({{ $order->id }}, '#{{ $order->id }} — {{ $order->is_parcel ? 'Parcel' : 'T'.$order->table?->table_number }}')"
                         title="Assign to another waiter"
@@ -159,7 +160,7 @@
                     </svg>
                 </button>
                 @endif
-                @if(!in_array($order->status, ['paid', 'cancelled', 'checkout']))
+                @if(!in_array($order->status, ['paid', 'cancelled', 'checkout', 'ready', 'served']))
                 <button type="button" onclick="addItemsToOrder({{ $order->id }}, '{{ $order->is_parcel ? 'Parcel' : $order->table?->table_number }}')" 
                         data-add-items-btn title="Add Items"
                         class="waiter-action-btn waiter-btn-add">
@@ -167,6 +168,15 @@
                         <circle cx="12" cy="12" r="10"/>
                         <line x1="12" y1="8" x2="12" y2="16"/>
                         <line x1="8" y1="12" x2="16" y2="12"/>
+                    </svg>
+                </button>
+                @endif
+                @if($order->status === 'ready')
+                <button type="button" onclick="markServed({{ $order->id }})" title="Mark as Served"
+                        class="waiter-action-btn waiter-btn-serve">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
                     </svg>
                 </button>
                 @endif
@@ -186,6 +196,28 @@
                 </form>
                 @endif
             </div>
+            @if($order->status === 'ready')
+            <div style="margin-top:10px;background:#dcfce7;border:1.5px solid #86efac;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;">
+                <span style="font-size:20px;">✅</span>
+                <div>
+                    <div style="font-weight:700;font-size:14px;color:#15803d;">Order is Ready!</div>
+                    <div style="font-size:11px;color:#166534;">Tap the serve button to mark as served.</div>
+                </div>
+            </div>
+            @endif
+            @if($order->status === 'served')
+            <div class="checkout-section">
+                <button type="button" onclick="checkoutOrder({{ $order->id }})" class="checkout-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;display:inline-block;vertical-align:middle;margin-right:6px;">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                        <polyline points="16 17 21 12 16 7"/>
+                        <line x1="21" y1="12" x2="9" y2="12"/>
+                    </svg>
+                    Checkout Table
+                </button>
+                <p class="checkout-hint">Customer is done — free the table for cashier to collect payment.</p>
+            </div>
+            @endif
         </div>
     </div>
     @empty
@@ -479,10 +511,31 @@ function filterModalCategory(category) {
 }
 
 function markServed(orderId) {
+    if (!confirm('Mark order #' + orderId + ' as served?')) return;
     fetch(`/waiter/orders/${orderId}/serve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
-    }).then(r => r.json());
+    }).then(r => r.json()).then(function(data) {
+        if (data.success) location.reload();
+    });
+}
+
+function checkoutOrder(orderId) {
+    if (!confirm('Checkout table for order #' + orderId + '?\n\nThis will free the table. Cashier will collect payment.')) return;
+    fetch(`/waiter/orders/${orderId}/checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+    }).then(r => r.json()).then(function(data) {
+        if (data.success) {
+            var card = document.querySelector('.order-card[data-order-id="' + orderId + '"]');
+            if (card) {
+                card.style.transition = 'opacity 0.4s, transform 0.4s';
+                card.style.opacity = '0';
+                card.style.transform = 'scale(0.95)';
+                setTimeout(function() { card.remove(); }, 400);
+            }
+        }
+    });
 }
 
 function showToast(message) {

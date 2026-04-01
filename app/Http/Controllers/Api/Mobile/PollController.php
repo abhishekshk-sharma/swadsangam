@@ -16,7 +16,7 @@ class PollController extends Controller
         $panel    = $request->query('panel', 'waiter');
 
         // Load branch.gstSlab for cashier panels so GST is computed correctly
-        $isCashierPanel = in_array($panel, ['cashier', 'cashier_parcels']);
+        $isCashierPanel = in_array($panel, ['cashier', 'cashier_instant', 'cashier_parcels']);
 
         $with = ['table.category', 'orderItems' => fn($q) => $q->withoutGlobalScopes()
             ->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()])];
@@ -38,9 +38,11 @@ class PollController extends Controller
             'chef' => $query->whereIn('status', ['pending', 'preparing']),
 
             'cashier' => $query->where(function ($q) {
-                $q->where(fn($q2) => $q2->where('is_parcel', false)->where('status', 'checkout'))
+                $q->where(fn($q2) => $q2->where('is_parcel', false)->whereIn('status', ['served', 'checkout']))
                   ->orWhere(fn($q2) => $q2->where('is_parcel', true)->where('status', 'ready'));
             }),
+
+            'cashier_instant' => $query->whereNotIn('status', ['paid', 'cancelled']),
 
             'cashier_parcels' => $query->where('is_parcel', true)
                                        ->whereNotIn('status', ['paid', 'cancelled']),

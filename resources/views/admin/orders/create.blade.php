@@ -5,6 +5,12 @@
 @section('content')
 <div style="max-width:680px;margin:0 auto;">
 
+@if(isset($instantMode) && $instantMode)
+<div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:10px;padding:10px 16px;margin-bottom:16px;display:flex;align-items:center;gap:8px;font-size:13px;color:#5b21b6;font-weight:600;">
+    <i class="fas fa-bolt"></i> Instant Mode — Order will go straight to billing
+</div>
+@endif
+
 {{-- Branch selector --}}
 @if($branches->count() > 0)
 <div style="margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -244,7 +250,9 @@ function removeItem(i) { cart.splice(i,1); updateCartBadge(); renderCart(); if (
 function submitOrder() {
     if (!cart.length) { alert('Cart is empty!'); return; }
     const form = document.createElement('form');
-    form.method = 'POST'; form.action = '{{ route('admin.orders.store') }}';
+    const instantMode = {{ isset($instantMode) && $instantMode ? 'true' : 'false' }};
+    form.method = 'POST';
+    form.action = instantMode ? '{{ route('admin.orders.instant.store') }}' : '{{ route('admin.orders.store') }}';
     const add = (n,v) => { const i = document.createElement('input'); i.type='hidden'; i.name=n; i.value=v; form.appendChild(i); };
     add('_token', '{{ csrf_token() }}');
     add('is_parcel', isParcel ? '1' : '0');

@@ -49,6 +49,7 @@ Route::prefix('mobile')->group(function () {
         // Cashier
         Route::middleware('api.role:cashier')->prefix('cashier')->group(function () {
             Route::get('payments',                      [CashierController::class, 'payments']);
+            Route::get('payments/instant',              [CashierController::class, 'paymentsInstant']);
             Route::patch('payments/{id}/process',       [CashierController::class, 'processPayment']);
             Route::get('payments/history',              [CashierController::class, 'history']);
             Route::get('bill/{orderId}',                [CashierController::class, 'bill']);

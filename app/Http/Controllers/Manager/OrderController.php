@@ -62,7 +62,7 @@ class OrderController extends BaseManagerController
             ->where('tenant_id', $this->tenantId())
             ->whereDate('created_at', today())
             ->where(function ($q) {
-                $q->where(fn($q2) => $q2->where('is_parcel', false)->where('status', 'checkout'))
+                $q->where(fn($q2) => $q2->where('is_parcel', false)->whereIn('status', ['served', 'checkout']))
                 ->orWhere(fn($q2) => $q2->where('is_parcel', true)->where('status', 'ready'));
             })
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
@@ -105,7 +105,7 @@ class OrderController extends BaseManagerController
     {
         $branchId = $this->branchId();
 
-        $allTables = RestaurantTable::with(['category', 'orders' => fn($q) => $q->whereIn('status', ['pending','preparing','ready'])->latest()->limit(1)])
+        $allTables = RestaurantTable::with(['category', 'orders' => fn($q) => $q->whereIn('status', ['pending','preparing','ready','served'])->latest()->limit(1)])
             ->where('tenant_id', $this->tenantId())
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
             ->get()
@@ -201,7 +201,7 @@ class OrderController extends BaseManagerController
 
         $order->update([
             'total_amount' => $order->total_amount + $additionalTotal,
-            'status'       => $order->status === 'ready' ? 'preparing' : $order->status,
+            'status'       => in_array($order->status, ['ready', 'served']) ? 'preparing' : $order->status,
         ]);
 
         return back()->with('success', 'Items added to Order #' . $order->id . '.');
@@ -270,9 +270,9 @@ class OrderController extends BaseManagerController
         $order = $this->findForTenant(Order::class, $id);
 
         if ($order->is_parcel) {
-            abort_if(!in_array($order->status, ['ready', 'checkout']), 422);
+            abort_if(!in_array($order->status, ['ready', 'served', 'checkout']), 422);
         } else {
-            abort_if($order->status !== 'checkout', 422);
+            abort_if(!in_array($order->status, ['served', 'checkout']), 422);
         }
 
         $request->validate(['payment_mode' => 'required|in:cash,upi,card']);

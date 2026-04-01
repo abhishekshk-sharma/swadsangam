@@ -253,7 +253,7 @@ class WaiterController extends Controller
         $oldStatus = $order->status;
         $order->update([
             'total_amount' => $order->total_amount + $extra,
-            'status'       => $order->status === 'ready' ? 'preparing' : $order->status,
+            'status'       => in_array($order->status, ['ready', 'served']) ? 'preparing' : $order->status,
         ]);
 
         $order->refresh()->load('table.category', 'items.menuItem');
@@ -262,14 +262,29 @@ class WaiterController extends Controller
     }
 
     // PATCH /api/mobile/waiter/orders/{id}/serve
-    // Goes straight to checkout (served status removed)
     public function markServed(int $id)
     {
         $order = $this->findOrder($id);
         $oldStatus = $order->status;
-        $order->update(['status' => 'checkout']);
+        $order->update(['status' => 'served']);
         event(new OrderStatusUpdated($order, $oldStatus));
-        return response()->json(['message' => 'Order sent to cashier for payment.']);
+        return response()->json(['message' => 'Order marked as served.']);
+    }
+
+    // PATCH /api/mobile/waiter/orders/{id}/checkout
+    public function checkout(int $id)
+    {
+        $order = $this->findOrder($id);
+        if ($order->status !== 'served') {
+            return response()->json(['message' => 'Only served orders can be checked out.'], 422);
+        }
+        $oldStatus = $order->status;
+        $order->update(['status' => 'checkout']);
+        if (!$order->is_parcel && $order->table) {
+            $order->table->update(['is_occupied' => false]);
+        }
+        event(new OrderStatusUpdated($order, $oldStatus));
+        return response()->json(['message' => 'Order checked out.']);
     }
 
     // PATCH /api/mobile/waiter/orders/{id}/cancel
