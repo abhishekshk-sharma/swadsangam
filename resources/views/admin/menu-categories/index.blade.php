@@ -89,15 +89,12 @@
                     {{-- Order column --}}
                     <td style="padding:12px 16px;vertical-align:middle;">
                         <div style="display:flex;align-items:center;gap:6px;">
-                            <span style="font-size:13px;color:#9ca3af;font-weight:700;min-width:20px;text-align:center;">{{ $loop->iteration }}</span>
-                            <div style="display:flex;flex-direction:column;gap:3px;">
-                                <button type="button" onclick="moveRow(this,-1)"
-                                    style="background:#f3f4f6;border:1px solid #d1d5db;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:11px;line-height:1.4;color:#374151;transition:background .1s;"
-                                    onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f3f4f6'">▲</button>
-                                <button type="button" onclick="moveRow(this,1)"
-                                    style="background:#f3f4f6;border:1px solid #d1d5db;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:11px;line-height:1.4;color:#374151;transition:background .1s;"
-                                    onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f3f4f6'">▼</button>
-                            </div>
+                            <select onchange="moveRowTo(this)" data-id="{{ $category->id }}"
+                                style="padding:4px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;font-weight:600;color:#374151;background:#f9fafb;cursor:pointer;width:64px;">
+                                @foreach($categories as $i => $cat)
+                                    <option value="{{ $i + 1 }}" {{ $cat->id === $category->id ? 'selected' : '' }}>{{ $i + 1 }}</option>
+                                @endforeach
+                            </select>
                         </div>
                     </td>
                     {{-- Name column --}}
@@ -194,24 +191,41 @@ function toggleEdit(id) {
     const row = document.getElementById('editRow' + id);
     row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
 }
-function moveRow(btn, dir) {
-    const row   = btn.closest('tr[data-id]');
+
+function moveRowTo(select) {
+    const newPos = parseInt(select.value) - 1;
+    const row = select.closest('tr[data-id]');
     const tbody = document.getElementById('sortableBody');
-    const rows  = Array.from(tbody.querySelectorAll('tr[data-id]'));
-    const idx   = rows.indexOf(row);
-    const target = rows[idx + dir];
-    if (!target) return;
-    if (dir === -1) tbody.insertBefore(row, target);
-    else tbody.insertBefore(target, row);
-    updateNumbers();
+    const rows = Array.from(tbody.querySelectorAll('tr[data-id]'));
+    const currentPos = rows.indexOf(row);
+    if (currentPos === newPos) return;
+
+    // Move the data row (and its paired edit row if present)
+    const editRow = row.nextElementSibling;
+    const hasEditRow = editRow && editRow.id && editRow.id.startsWith('editRow');
+
+    rows.splice(currentPos, 1);
+    rows.splice(newPos, 0, row);
+
+    // Re-insert all data rows (and their edit rows) in new order
+    rows.forEach(r => {
+        tbody.appendChild(r);
+        const er = document.getElementById('editRow' + r.dataset.id);
+        if (er) tbody.appendChild(er);
+    });
+
+    updateDropdowns();
     document.getElementById('saveOrderBtn').style.display = 'inline-block';
 }
-function updateNumbers() {
-    document.querySelectorAll('#sortableBody tr[data-id]').forEach(function(row, i) {
-        const num = row.querySelector('td:first-child span');
-        if (num) num.textContent = i + 1;
+
+function updateDropdowns() {
+    const rows = Array.from(document.querySelectorAll('#sortableBody tr[data-id]'));
+    rows.forEach((row, idx) => {
+        const select = row.querySelector('select[data-id]');
+        if (select) select.value = idx + 1;
     });
 }
+
 function saveOrder() {
     const ids = Array.from(document.querySelectorAll('#sortableBody tr[data-id]')).map(r => r.dataset.id);
     const btn = document.getElementById('saveOrderBtn');
