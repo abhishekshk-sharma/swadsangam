@@ -48,7 +48,7 @@ class OrderStatusUpdated implements ShouldBroadcastNow
                 'created_at'     => $this->order->created_at->format('h:i A'),
                 'items'          => $this->order->orderItems->map(fn($i) => [
                     'id'       => $i->id,
-                    'name'     => $i->menuItem->name,
+                    'name'     => $i->menuItem?->name ?? '[Deleted]',
                     'quantity' => $i->quantity,
                     'price'    => (float) $i->price,
                     'status'   => $i->status,

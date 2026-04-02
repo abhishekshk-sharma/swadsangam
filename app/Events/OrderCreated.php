@@ -42,13 +42,4 @@ class OrderCreated implements ShouldBroadcastNow
                 'created_at'     => $this->order->created_at->format('h:i A'),
                 'items'          => $this->order->orderItems->map(fn($i) => [
                     'id'       => $i->id,
-                    'name'     => $i->menuItem->name,
-                    'quantity' => $i->quantity,
-                    'price'    => (float) $i->price,
-                    'status'   => $i->status,
-                    'notes'    => $i->notes,
-                ])->values()->toArray(),
-            ],
-        ];
-    }
-}
+                    'name'     => $i->menuItem?->name ?? '[Deleted]',

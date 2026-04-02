@@ -9,14 +9,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            $table->unsignedSmallInteger('daily_number')->nullable()->after('id');
+            if (!Schema::hasColumn('orders', 'daily_number')) {
+                $table->unsignedInteger('daily_number')->nullable()->after('id');
+            }
         });
     }
 
     public function down(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            $table->dropColumn('daily_number');
+            if (Schema::hasColumn('orders', 'daily_number')) {
+                $table->dropColumn('daily_number');
+            }
         });
     }
 };

@@ -17,6 +17,7 @@ class BillController extends Controller
                 'branch.gstSlab',
             ])
             ->where('status', 'paid');
+<<<<<<< HEAD
 
         // Only filter bill_hidden if the column exists (production DB may not have it yet)
         if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_hidden')) {
@@ -24,8 +25,15 @@ class BillController extends Controller
         }
 
         $order = $query->findOrFail($orderId);
+=======
+>>>>>>> sub3
 
-        $gst = $this->computeGst($order);
+        if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_hidden')) {
+            $query->where('bill_hidden', false);
+        }
+
+        $order = $query->findOrFail($orderId);
+        $gst   = $this->computeGst($order);
 
         return view('bill.show', compact('order', 'gst'));
     }

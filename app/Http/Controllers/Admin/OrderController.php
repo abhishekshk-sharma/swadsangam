@@ -120,7 +120,7 @@ class OrderController extends BaseAdminController
         }
 
         return redirect()->route('admin.orders.instant', $branchId ? ['branch_id' => $branchId] : [])
-            ->with('success', 'Order #' . $order->id . ' created — ready for payment!');
+            ->with('success', 'Order #' . ($order->daily_number ?? $order->id) . ' created — ready for payment!');
     }
 
     public function index(Request $request)
@@ -260,7 +260,7 @@ class OrderController extends BaseAdminController
         event(new \App\Events\OrderCreated($order));
 
         return redirect()->route('admin.orders.index', $branchId ? ['branch_id' => $branchId] : [])
-            ->with('success', 'Order #' . $order->id . ' created.');
+            ->with('success', 'Order #' . ($order->daily_number ?? $order->id) . ' created.');
     }
 
     public function assign(Request $request, $id)
@@ -291,7 +291,7 @@ class OrderController extends BaseAdminController
             'note'         => $request->note,
         ]);
 
-        return back()->with('success', 'Order #' . $order->id . ' assigned to ' . $toUser->name . '.');
+        return back()->with('success', 'Order #' . ($order->daily_number ?? $order->id) . ' assigned to ' . $toUser->name . '.');
     }
 
     public function addItems(Request $request, $id)
@@ -330,7 +330,7 @@ class OrderController extends BaseAdminController
             'status'       => in_array($order->status, ['ready', 'served']) ? 'preparing' : $order->status,
         ]);
 
-        return back()->with('success', 'Items added to Order #' . $order->id . '.');
+        return back()->with('success', 'Items added to Order #' . ($order->daily_number ?? $order->id) . '.');
     }
 
     public function updateItem(Request $request, $id)
@@ -422,7 +422,7 @@ class OrderController extends BaseAdminController
         }
 
         return redirect()->route('admin.orders.index', array_filter(['branch_id' => $this->resolvedBranchId($request)]))
-            ->with('success', 'Payment received for Order #' . $order->id);
+            ->with('success', 'Payment received for Order #' . ($order->daily_number ?? $order->id));
     }
 
     private function computeBranchGst(?Branch $branch): array

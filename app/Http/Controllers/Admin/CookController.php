@@ -88,6 +88,7 @@ class CookController extends BaseAdminController
             'status'       => 'paid',
             'payment_mode' => $request->payment_mode,
             'paid_at'      => now(),
+            'cashier_id'   => auth()->guard('admin')->id() ?? auth()->guard('employee')->id() ?? null,
         ]);
 
         if (!$order->is_parcel && $order->table) {
@@ -100,7 +101,7 @@ class CookController extends BaseAdminController
             return response()->json(['success' => true, 'bill_url' => $billUrl, 'order_id' => $order->id]);
         }
 
-        return redirect('/admin/cook')->with('success', 'Payment received! Order closed.');
+        return redirect('/admin/cook')->with('success', 'Payment received! Order #' . ($order->daily_number ?? $order->id) . ' closed.');
     }
 
     public function updateItem(Request $request, $id)

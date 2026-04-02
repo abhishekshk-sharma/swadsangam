@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bill #{{ $order->id }}</title>
+    <title>Bill #{{ $order->daily_number ?? $order->id }}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -113,7 +113,7 @@
     <div class="divider-dashed"></div>
 
     {{-- Order meta --}}
-    <div class="row"><span>Order #</span><span>{{ $order->id }}</span></div>
+    <div class="row"><span>Order #</span><span>{{ $order->daily_number ?? $order->id }}</span></div>
     <div class="row"><span>{{ $order->is_parcel ? 'Type' : 'Table' }}</span><span>{{ $order->is_parcel ? '📦 Parcel' : ($order->table?->table_number ?? 'N/A') }}</span></div>
     <div class="row"><span>Date</span><span>{{ $order->paid_at->format('d/m/Y') }}</span></div>
     <div class="row"><span>Time</span><span>{{ $order->paid_at->format('h:i A') }}</span></div>
