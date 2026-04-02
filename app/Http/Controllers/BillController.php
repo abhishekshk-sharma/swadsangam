@@ -9,16 +9,21 @@ class BillController extends Controller
 {
     public function show(Request $request, $orderId)
     {
-        $order = Order::withoutGlobalScope('tenant')
+        $query = Order::withoutGlobalScope('tenant')
             ->with([
                 'table',
                 'orderItems' => fn($q) => $q->withoutGlobalScopes()->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()]),
                 'tenant.gstSlab',
                 'branch.gstSlab',
             ])
-            ->where('status', 'paid')
-            ->where('bill_hidden', false)
-            ->findOrFail($orderId);
+            ->where('status', 'paid');
+
+        // Only filter bill_hidden if the column exists (production DB may not have it yet)
+        if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'bill_hidden')) {
+            $query->where('bill_hidden', false);
+        }
+
+        $order = $query->findOrFail($orderId);
 
         $gst = $this->computeGst($order);
 
