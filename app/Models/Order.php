@@ -9,8 +9,23 @@ use App\Models\Concerns\BelongsToBranch;
 class Order extends Model
 {
     use BelongsToTenant, BelongsToBranch;
-    protected $fillable = ['tenant_id', 'branch_id', 'table_id', 'user_id', 'assigned_to', 'cashier_id', 'status', 'preparation_time', 'ready_at', 'total_amount', 'grand_total', 'bill_hidden', 'payment_mode', 'paid_at', 'customer_notes', 'is_parcel'];
+    protected $fillable = ['tenant_id', 'branch_id', 'table_id', 'user_id', 'assigned_to', 'cashier_id', 'status', 'preparation_time', 'ready_at', 'total_amount', 'grand_total', 'bill_hidden', 'daily_number', 'payment_mode', 'paid_at', 'customer_notes', 'is_parcel'];
     protected $casts = ['ready_at' => 'datetime', 'paid_at' => 'datetime', 'bill_hidden' => 'boolean'];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Order $order) {
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('orders', 'daily_number')) {
+                return;
+            }
+            $last = static::withoutGlobalScopes()
+                ->where('tenant_id', $order->tenant_id)
+                ->where('branch_id', $order->branch_id)
+                ->whereDate('created_at', now()->toDateString())
+                ->max('daily_number');
+            $order->daily_number = ($last ?? 0) + 1;
+        });
+    }
 
     public function tenant()
     {
