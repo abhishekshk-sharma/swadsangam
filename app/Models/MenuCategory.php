@@ -23,7 +23,7 @@ class MenuCategory extends Model
         });
 
         static::addGlobalScope('sorted', function (Builder $builder) {
-            $builder->orderBy('menu_categories.sort_order');
+            $builder->orderByRaw('COALESCE(menu_categories.sort_order, 9999)');
         });
 
         static::creating(function ($model) {
@@ -36,7 +36,7 @@ class MenuCategory extends Model
 
     public function menuItems()
     {
-        return $this->hasMany(MenuItem::class, 'menu_category_id');
+        return $this->hasMany(MenuItem::class, 'menu_category_id')->orderBy('name');
     }
 
     public function tenant()

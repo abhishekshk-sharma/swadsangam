@@ -44,13 +44,27 @@
     <div class="card-body">
         <form action="{{ route('admin.menu-categories.store') }}" method="POST">
             @csrf
+            @if($selectedBranch)
+                <input type="hidden" name="branch_id" value="{{ $selectedBranch }}">
+            @endif
             <div class="row g-3">
-                <div class="col-md-5">
+                @if(!$selectedBranch && $branches->count() > 0)
+                <div class="col-md-3">
+                    <label class="form-label">Branch <span style="color:var(--gray-400);font-weight:400;">(optional)</span></label>
+                    <select name="branch_id" class="form-control">
+                        <option value="">All Branches</option>
+                        @foreach($branches as $branch)
+                            <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                @endif
+                <div class="{{ !$selectedBranch && $branches->count() > 0 ? 'col-md-4' : 'col-md-5' }}">
                     <label class="form-label">Category Name <span style="color:var(--error)">*</span></label>
                     <input type="text" name="name" class="form-control" placeholder="e.g., Pizza, Beverages, Starters" required>
                     @error('name')<div style="color:var(--error);font-size:12px;margin-top:4px;">{{ $message }}</div>@enderror
                 </div>
-                <div class="col-md-5">
+                <div class="{{ !$selectedBranch && $branches->count() > 0 ? 'col-md-3' : 'col-md-5' }}">
                     <label class="form-label">Description <span style="color:var(--gray-400);font-weight:400;">(optional)</span></label>
                     <input type="text" name="description" class="form-control" placeholder="Brief description">
                 </div>
@@ -113,9 +127,16 @@
                     {{-- Type --}}
                     <td style="padding:12px 16px;vertical-align:middle;">
                         @if($category->tenant_id)
-                            <span style="display:inline-flex;align-items:center;gap:4px;background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;">
-                                <i class="fas fa-user" style="font-size:10px;"></i>Custom
-                            </span>
+                            @if($category->branch_id)
+                                @php $branchName = $branches->firstWhere('id', $category->branch_id)?->name ?? 'Branch'; @endphp
+                                <span style="display:inline-flex;align-items:center;gap:4px;background:#fef3c7;color:#92400e;border:1px solid #fde68a;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;">
+                                    <i class="fas fa-store" style="font-size:10px;"></i>{{ $branchName }}
+                                </span>
+                            @else
+                                <span style="display:inline-flex;align-items:center;gap:4px;background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;">
+                                    <i class="fas fa-user" style="font-size:10px;"></i>Custom
+                                </span>
+                            @endif
                         @else
                             <span style="display:inline-flex;align-items:center;gap:4px;background:#f3f4f6;color:#4b5563;border:1px solid #d1d5db;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;">
                                 <i class="fas fa-globe" style="font-size:10px;"></i>Global

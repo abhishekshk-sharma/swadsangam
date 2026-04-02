@@ -9,14 +9,21 @@ class MenuCategoryController extends BaseAdminController
 {
     public function index()
     {
-        $categories     = MenuCategory::withCount('menuItems')->get();
         $branches       = \App\Models\Branch::where('tenant_id', $this->tenantId())->where('is_active', true)->get();
         $selectedBranch = request('branch_id');
+
+        $query = MenuCategory::withCount(['menuItems' => function ($q) use ($selectedBranch) {
+            if ($selectedBranch) {
+                $q->where(fn($q2) => $q2->whereNull('branch_id')->orWhere('branch_id', $selectedBranch));
+            }
+        }]);
+
         if ($selectedBranch) {
-            $categories = MenuCategory::withCount('menuItems')
-                ->where(fn($q) => $q->whereNull('branch_id')->orWhere('branch_id', $selectedBranch))
-                ->get();
+            $query->where(fn($q) => $q->whereNull('branch_id')->orWhere('branch_id', $selectedBranch));
         }
+
+        $categories = $query->get();
+
         return view('admin.menu-categories.index', compact('categories', 'branches', 'selectedBranch'));
     }
 
@@ -26,11 +33,13 @@ class MenuCategoryController extends BaseAdminController
 
         MenuCategory::create([
             'tenant_id'   => $this->tenantId(),
+            'branch_id'   => $request->branch_id ?: null,
             'name'        => $request->name,
             'description' => $request->description,
         ]);
 
-        return redirect()->route('admin.menu-categories.index')->with('success', 'Category created successfully');
+        return redirect()->route('admin.menu-categories.index', $request->branch_id ? ['branch_id' => $request->branch_id] : [])
+            ->with('success', 'Category created successfully');
     }
 
     public function update(Request $request, $id)

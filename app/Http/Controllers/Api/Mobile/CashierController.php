@@ -289,20 +289,42 @@ class CashierController extends Controller
     // GET /api/mobile/cashier/menu
     public function menu()
     {
-        $items = MenuItem::with('category')
-            ->where('tenant_id', $this->tenantId())
-            ->where('is_available', true)
-            ->get()
-            ->map(fn($i) => [
-                'id'          => $i->id,
-                'name'        => $i->name,
-                'description' => $i->description,
-                'price'       => $i->price,
-                'image'       => $i->image ? asset($i->image) : null,
-                'category'    => $i->category?->name,
-            ]);
+        $tenantId = $this->tenantId();
+        $branchId = $this->branchId();
 
-        return response()->json($items);
+        $categories = MenuCategory::withoutGlobalScopes()
+            ->with(['menuItems' => function ($q) use ($tenantId, $branchId) {
+                $q->where('tenant_id', $tenantId)
+                  ->where('is_available', true)
+                  ->when($branchId, fn($q2) =>
+                      $q2->where(fn($q3) => $q3->whereNull('branch_id')->orWhere('branch_id', $branchId))
+                  );
+            }])
+            ->where(fn($q) => $q->whereNull('tenant_id')->orWhere('tenant_id', $tenantId))
+            ->when($branchId, fn($q) =>
+                $q->where(fn($q2) => $q2->whereNull('branch_id')->orWhere('branch_id', $branchId))
+            )
+            ->orderByRaw('COALESCE(sort_order, 9999)')
+            ->get()
+            ->filter(fn($cat) => $cat->menuItems->isNotEmpty());
+
+        $result = [];
+        foreach ($categories as $cat) {
+            foreach ($cat->menuItems as $i) {
+                $result[] = [
+                    'id'                  => $i->id,
+                    'name'                => $i->name,
+                    'description'         => $i->description,
+                    'price'               => $i->price,
+                    'image'               => $i->image ? asset($i->image) : null,
+                    'category'            => $cat->name,
+                    'category_id'         => $cat->id,
+                    'category_sort_order' => $cat->sort_order ?? 9999,
+                ];
+            }
+        }
+
+        return response()->json($result);
     }
 
     // GET /api/mobile/cashier/bill/{orderId}

@@ -15,12 +15,21 @@ class OrderController extends Controller
     public function showMenu($qrCode)
     {
         $table = RestaurantTable::where('qr_code', $qrCode)->firstOrFail();
-        $menuItems = MenuItem::where('is_available', true)->get()->groupBy('category');
+
+        $menuItems = MenuItem::with('menuCategory')
+            ->where('is_available', true)
+            ->get()
+            ->groupBy(fn($i) => $i->menuCategory?->sort_order . '||' . ($i->menuCategory?->name ?? 'Other'))
+            ->sortKeys()
+            ->mapWithKeys(fn($items, $key) => [
+                explode('||', $key)[1] => $items
+            ]);
+
         $activeOrders = Order::where('table_id', $table->id)
             ->whereIn('status', ['pending', 'preparing'])
             ->with('items.menuItem')
             ->get();
-        
+
         return view('customer.menu', compact('table', 'menuItems', 'activeOrders'));
     }
 
