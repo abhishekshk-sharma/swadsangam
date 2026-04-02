@@ -135,7 +135,8 @@
                     ],
 
                     'Reports' => [
-                        ['icon' => 'fa-chart-bar',     'label' => 'Reports',          'route' => 'manager.reports.index'],
+                        ['icon' => 'fa-chart-bar',    'label' => 'Reports', 'route' => 'manager.reports.index'],
+                        ['icon' => 'fa-file-invoice', 'label' => 'Bills',   'route' => 'manager.bills.index'],
                         ['icon' => 'fa-exchange-alt',  'label' => 'Assignment Logs',  'route' => 'manager.assignment-logs.index'],
                         ['icon' => 'fa-cash-register', 'label' => 'Handover',         'route' => 'manager.handover.index'],
                     ],

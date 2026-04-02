@@ -10,27 +10,35 @@ class MenuController extends BaseAdminController
 {
     public function index(Request $request)
     {
-        $query = MenuItem::with('menuCategory');
+        $selectedBranch = $request->branch_id;
 
-        if ($request->filled('branch_id')) {
-            $catIds = MenuCategory::where(fn($q) =>
-                $q->where('branch_id', $request->branch_id)->orWhereNull('branch_id')
-            )->pluck('id');
-            $query->whereIn('menu_category_id', $catIds);
+        $query = MenuItem::withoutGlobalScope('branch')->with('menuCategory');
+
+        // Filter items strictly by branch_id when selected
+        if ($selectedBranch) {
+            $query->where('branch_id', $selectedBranch);
         }
-        if ($request->menu_category_id) {
+
+        if ($request->filled('menu_category_id')) {
             $query->where('menu_category_id', $request->menu_category_id);
         }
+
         if ($request->status === 'available') {
             $query->where('is_available', true);
         } elseif ($request->status === 'unavailable') {
             $query->where('is_available', false);
         }
 
-        $menuItems      = $query->get();
-        $menuCategories = MenuCategory::get();
-        $branches       = \App\Models\Branch::where('tenant_id', $this->tenantId())->where('is_active', true)->get();
-        $selectedBranch = $request->branch_id;
+        $menuItems = $query->get();
+
+        // Categories scoped to selected branch (branch-specific + global)
+        $menuCategories = MenuCategory::withoutGlobalScope('branch')
+            ->when($selectedBranch, fn($q) =>
+                $q->where(fn($q2) => $q2->where('branch_id', $selectedBranch)->orWhereNull('branch_id'))
+            )->get();
+
+        $branches = \App\Models\Branch::where('tenant_id', $this->tenantId())->where('is_active', true)->get();
+
         return view('admin.menu.index', compact('menuItems', 'menuCategories', 'branches', 'selectedBranch'));
     }
 

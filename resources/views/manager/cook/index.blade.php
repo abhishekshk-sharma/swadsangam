@@ -63,8 +63,8 @@
                         @if($order->is_parcel)
                             <span style="background:#ea580c;color:#fff;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;">📦 Parcel</span>
                         @else
-                            <span style="background:#1e3a5f;color:#fff;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;">T{{ $order->table->table_number }}</span>
-                            @if($order->table->category)
+                            <span style="background:#1e3a5f;color:#fff;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;">T{{ $order->table?->table_number }}</span>
+                            @if($order->table?->category)
                                 <span style="background:#e0e7ff;color:#3730a3;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;">{{ $order->table->category->name }}</span>
                             @endif
                         @endif
@@ -87,7 +87,7 @@
                 @foreach($order->items as $item)
                 <div class="item-row">
                     <div class="flex-grow-1">
-                        <span class="item-name {{ $item->status === 'cancelled' ? 'text-decoration-line-through text-muted' : '' }}">{{ $item->menuItem->name }}</span>
+                        <span class="item-name {{ $item->status === 'cancelled' ? 'text-decoration-line-through text-muted' : '' }}">{{ $item->menuItem?->name ?? '[Deleted Item]' }}</span>
                         @if($item->status === 'cancelled')<span style="font-size:11px;color:#dc3545;"> (cancelled)</span>@endif
                         @if($item->notes)<div style="font-size:11px;color:#3b82f6;font-style:italic;margin-top:2px;">→ {{ $item->notes }}</div>@endif
                     </div>

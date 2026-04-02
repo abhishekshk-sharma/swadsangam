@@ -32,8 +32,41 @@
     </div>
 </div>
 
+{{-- Day Stats --}}
+<div style="display:grid;grid-template-columns:repeat(4,1fr) repeat(3,1fr);gap:10px;margin-bottom:20px;">
+    <div style="background:#fff;border-radius:10px;padding:12px 14px;border:1px solid #e5e7eb;border-left:4px solid #6b7280;text-align:center;">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:3px;">Total</div>
+        <div style="font-size:24px;font-weight:700;color:#111827;">{{ $stats['total'] }}</div>
+    </div>
+    <div style="background:#fff;border-radius:10px;padding:12px 14px;border:1px solid #e5e7eb;border-left:4px solid #f59e0b;text-align:center;cursor:pointer;" onclick="oQuickFilter('pending')">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:3px;">Pending</div>
+        <div style="font-size:24px;font-weight:700;color:#b45309;">{{ $stats['pending'] }}</div>
+    </div>
+    <div style="background:#fff;border-radius:10px;padding:12px 14px;border:1px solid #e5e7eb;border-left:4px solid #3b82f6;text-align:center;cursor:pointer;" onclick="oQuickFilter('preparing')">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:3px;">Preparing</div>
+        <div style="font-size:24px;font-weight:700;color:#1d4ed8;">{{ $stats['preparing'] }}</div>
+    </div>
+    <div style="background:#fff;border-radius:10px;padding:12px 14px;border:1px solid #e5e7eb;border-left:4px solid #22c55e;text-align:center;cursor:pointer;" onclick="oQuickFilter('ready')">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:3px;">Ready</div>
+        <div style="font-size:24px;font-weight:700;color:#15803d;">{{ $stats['ready'] }}</div>
+    </div>
+    <div style="background:#fff;border-radius:10px;padding:12px 14px;border:1px solid #e5e7eb;border-left:4px solid #8b5cf6;text-align:center;cursor:pointer;" onclick="oQuickFilter('served')">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:3px;">Served</div>
+        <div style="font-size:24px;font-weight:700;color:#6d28d9;">{{ $stats['served'] }}</div>
+    </div>
+    <div style="background:#fff;border-radius:10px;padding:12px 14px;border:1px solid #e5e7eb;border-left:4px solid #16a34a;text-align:center;cursor:pointer;" onclick="switchOrderSection('payments')">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:3px;">Paid</div>
+        <div style="font-size:24px;font-weight:700;color:#15803d;">{{ $stats['paid'] }}</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:1px;">₹{{ number_format($stats['revenue'], 0) }}</div>
+    </div>
+    <div style="background:#fff;border-radius:10px;padding:12px 14px;border:1px solid #e5e7eb;border-left:4px solid #dc2626;text-align:center;">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:3px;">Cancelled</div>
+        <div style="font-size:24px;font-weight:700;color:#dc2626;">{{ $stats['cancelled'] }}</div>
+    </div>
+</div>
+
 {{-- Section Tabs --}}
-<div style="display:flex;gap:0;margin-bottom:24px;border-bottom:2px solid #e5e7eb;">
+<div style="display:flex;gap:0;margin-bottom:16px;border-bottom:2px solid #e5e7eb;">
     <button onclick="switchOrderSection('orders')" id="oSectionTab-orders"
         style="padding:11px 28px;font-size:14px;font-weight:700;border:none;background:none;cursor:pointer;border-bottom:3px solid #2563eb;color:#2563eb;margin-bottom:-2px;transition:all 0.2s;">
         <i class="fas fa-concierge-bell me-2"></i>Orders
@@ -46,11 +79,33 @@
 </div>
 
 <div id="oSection-orders">
-<div style="display:flex;flex-direction:column;gap:12px;">
+{{-- Type tabs --}}
+<div style="display:flex;gap:10px;margin-bottom:10px;">
+    <button onclick="oSwitchType('table')" id="oMasterTab-table"
+        style="display:flex;align-items:center;gap:8px;padding:9px 20px;border-radius:8px;border:2px solid #1e3a5f;background:#1e3a5f;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">
+        🍽️ Table
+        <span id="oMasterCount-table" style="background:rgba(255,255,255,0.25);border-radius:20px;padding:1px 8px;font-size:12px;">{{ $orders->where('is_parcel', false)->count() }}</span>
+    </button>
+    <button onclick="oSwitchType('parcel')" id="oMasterTab-parcel"
+        style="display:flex;align-items:center;gap:8px;padding:9px 20px;border-radius:8px;border:2px solid #d1d5db;background:#fff;color:#6b7280;font-size:14px;font-weight:700;cursor:pointer;">
+        📦 Parcel
+        <span id="oMasterCount-parcel" style="background:#f3f4f6;border-radius:20px;padding:1px 8px;font-size:12px;color:#374151;">{{ $orders->where('is_parcel', true)->count() }}</span>
+    </button>
+</div>
+{{-- Status sub-tabs --}}
+<div style="display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px;">
+    <button onclick="oFilterStatus('all')" data-ostatus="all" class="o-status-tab" style="padding:7px 16px;border-radius:20px;border:1px solid #d1d5db;background:#2563eb;color:#fff;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">All</button>
+    <button onclick="oFilterStatus('pending')" data-ostatus="pending" class="o-status-tab" style="padding:7px 16px;border-radius:20px;border:1px solid #d1d5db;background:#fff;color:#374151;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Pending</button>
+    <button onclick="oFilterStatus('preparing')" data-ostatus="preparing" class="o-status-tab" style="padding:7px 16px;border-radius:20px;border:1px solid #d1d5db;background:#fff;color:#374151;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Preparing</button>
+    <button onclick="oFilterStatus('ready')" data-ostatus="ready" class="o-status-tab" style="padding:7px 16px;border-radius:20px;border:1px solid #d1d5db;background:#fff;color:#374151;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Ready</button>
+    <button onclick="oFilterStatus('served')" data-ostatus="served" class="o-status-tab" style="padding:7px 16px;border-radius:20px;border:1px solid #d1d5db;background:#fff;color:#374151;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Served</button>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;" id="oOrdersList">
     @forelse($orders as $order)
-    <div class="content-card" style="padding:0;border-left:4px solid
+    <div class="content-card o-order-item" style="padding:0;border-left:4px solid
         {{ $order->status === 'pending' ? '#f59e0b' : ($order->status === 'preparing' ? '#3b82f6' : ($order->status === 'ready' ? '#22c55e' : ($order->status === 'served' ? '#8b5cf6' : '#6b7280'))) }}"
-        data-order-id="{{ $order->id }}" data-order-status="{{ $order->status }}">
+        data-order-id="{{ $order->id }}" data-order-status="{{ $order->status }}"
+        data-type="{{ $order->is_parcel ? 'parcel' : 'table' }}" data-status="{{ $order->status }}">
         <div style="padding:16px;">
             {{-- Header --}}
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
@@ -178,7 +233,7 @@
         </a>
     </div>
     @endforelse
-</div>
+</div>{{-- end oOrdersList --}}
 </div>{{-- end oSection-orders --}}
 
 {{-- PAYMENTS SECTION --}}
@@ -582,16 +637,79 @@ function closeAdminAssign() {
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
-//Section switching
+var O_STORAGE_KEY = 'adminOrders_{{ $branchId ?? 0 }}';
+var oActiveSection = localStorage.getItem(O_STORAGE_KEY + '_section') || 'orders';
+var oActiveType    = localStorage.getItem(O_STORAGE_KEY + '_type')    || 'table';
+var oActiveStatus  = localStorage.getItem(O_STORAGE_KEY + '_status')  || 'all';
+
+function oSaveState() {
+    localStorage.setItem(O_STORAGE_KEY + '_section', oActiveSection);
+    localStorage.setItem(O_STORAGE_KEY + '_type',    oActiveType);
+    localStorage.setItem(O_STORAGE_KEY + '_status',  oActiveStatus);
+}
+
 function switchOrderSection(s) {
+    oActiveSection = s;
+    oSaveState();
     document.getElementById('oSection-orders').style.display   = s === 'orders'   ? '' : 'none';
     document.getElementById('oSection-payments').style.display = s === 'payments' ? '' : 'none';
-    const oTab = document.getElementById('oSectionTab-orders');
-    const pTab = document.getElementById('oSectionTab-payments');
+    var oTab = document.getElementById('oSectionTab-orders');
+    var pTab = document.getElementById('oSectionTab-payments');
     oTab.style.borderBottomColor = s === 'orders'   ? '#2563eb' : 'transparent';
     oTab.style.color             = s === 'orders'   ? '#2563eb' : '#6b7280';
     pTab.style.borderBottomColor = s === 'payments' ? '#2563eb' : 'transparent';
     pTab.style.color             = s === 'payments' ? '#2563eb' : '#6b7280';
+}
+
+function oSwitchType(type) {
+    oActiveType = type;
+    oSaveState();
+    var tableBtn  = document.getElementById('oMasterTab-table');
+    var parcelBtn = document.getElementById('oMasterTab-parcel');
+    if (type === 'table') {
+        tableBtn.style.background  = '#1e3a5f'; tableBtn.style.color  = '#fff'; tableBtn.style.borderColor  = '#1e3a5f';
+        parcelBtn.style.background = '#fff';    parcelBtn.style.color = '#6b7280'; parcelBtn.style.borderColor = '#d1d5db';
+    } else {
+        parcelBtn.style.background = '#ea580c'; parcelBtn.style.color = '#fff'; parcelBtn.style.borderColor = '#ea580c';
+        tableBtn.style.background  = '#fff';    tableBtn.style.color  = '#6b7280'; tableBtn.style.borderColor  = '#d1d5db';
+    }
+    oApplyFilters();
+}
+
+function oFilterStatus(status) {
+    oActiveStatus = status;
+    oSaveState();
+    document.querySelectorAll('.o-status-tab').forEach(function(btn) {
+        var active = btn.dataset.ostatus === status;
+        btn.style.background  = active ? '#2563eb' : '#fff';
+        btn.style.color       = active ? '#fff'    : '#374151';
+        btn.style.borderColor = active ? '#2563eb' : '#d1d5db';
+    });
+    oApplyFilters();
+}
+
+function oQuickFilter(status) {
+    oActiveSection = 'orders';
+    oActiveStatus  = status;
+    oSaveState();
+    switchOrderSection('orders');
+    document.querySelectorAll('.o-status-tab').forEach(function(btn) {
+        var active = btn.dataset.ostatus === status;
+        btn.style.background  = active ? '#2563eb' : '#fff';
+        btn.style.color       = active ? '#fff'    : '#374151';
+        btn.style.borderColor = active ? '#2563eb' : '#d1d5db';
+    });
+    document.querySelectorAll('.o-order-item').forEach(function(item) {
+        item.style.display = (status === 'all' || item.dataset.status === status) ? '' : 'none';
+    });
+}
+
+function oApplyFilters() {
+    document.querySelectorAll('.o-order-item').forEach(function(item) {
+        var typeMatch   = item.dataset.type === oActiveType;
+        var statusMatch = oActiveStatus === 'all' || item.dataset.status === oActiveStatus;
+        item.style.display = (typeMatch && statusMatch) ? '' : 'none';
+    });
 }
 
 // Payment mode selection
@@ -812,10 +930,12 @@ document.addEventListener('DOMContentLoaded', function () {
             : '';
 
         var div = document.createElement('div');
-        div.className = 'content-card';
+        div.className = 'content-card o-order-item';
         div.style.cssText = 'padding:0;border-left:4px solid ' + statusColor(order.status) + ';opacity:0;transition:opacity .4s;';
         div.setAttribute('data-order-id', order.id);
         div.setAttribute('data-order-status', order.status);
+        div.setAttribute('data-type', order.is_parcel ? 'parcel' : 'table');
+        div.setAttribute('data-status', order.status);
         div.innerHTML =
             '<div style="padding:16px;">'
             + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">'
@@ -984,7 +1104,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function checkOrderEmpty() {
-        var list = document.querySelector('#oSection-orders > div');
+        var list = document.getElementById('oOrdersList');
         if (list && !list.querySelector('[data-order-id]')) {
             list.innerHTML = '<div class="content-card" style="text-align:center;padding:48px;"><div style="font-size:48px;margin-bottom:12px;">&#127869;</div><p style="color:#6b7280;font-size:15px;">No active orders today</p></div>';
         }
@@ -995,6 +1115,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var card = document.querySelector('#oSection-orders [data-order-id="' + order.id + '"]');
         if (!card) return;
         card.dataset.orderStatus = order.status;
+        card.dataset.status = order.status;
         card.style.borderLeftColor = statusColor(order.status);
         var badge = card.querySelector('[data-order-status-badge]');
         if (badge) {
@@ -1035,16 +1156,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (!snapOrders[oid]) {
                     snapOrders[oid] = { status: order.status };
-                    var list = document.querySelector('#oSection-orders > div');
+                    var list = document.getElementById('oOrdersList');
                     if (list && !list.querySelector('[data-order-id="' + oid + '"]')) {
                         var empty = list.querySelector('.content-card:not([data-order-id])');
                         if (empty) empty.remove();
                         var card = buildOrderCard(order);
                         list.insertBefore(card, list.firstChild);
                         requestAnimationFrame(function () { card.style.opacity = '1'; });
+                        if (typeof oApplyFilters === 'function') oApplyFilters();
                         var branchInfo = (!currentBranchId && order.branch_name) ? ' [' + order.branch_name + ']' : '';
                         toast('New order #' + order.id + ' - ' + orderLabel(order) + branchInfo, '#2563eb');
-
                     }
                 } else if (snapOrders[oid].status !== order.status) {
                     var prev = snapOrders[oid].status;
@@ -1117,11 +1238,17 @@ toast('Order #' + order.id + ' (' + orderLabel(order) + branchInfo + ') ready fo
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function () {
+            switchOrderSection(oActiveSection);
+            oSwitchType(oActiveType);
+            oFilterStatus(oActiveStatus);
             buildSnapshot();
             setInterval(poll, 7000);
             setTimeout(poll, 1000);
         });
     } else {
+        switchOrderSection(oActiveSection);
+        oSwitchType(oActiveType);
+        oFilterStatus(oActiveStatus);
         buildSnapshot();
         setInterval(poll, 7000);
         setTimeout(poll, 1000);

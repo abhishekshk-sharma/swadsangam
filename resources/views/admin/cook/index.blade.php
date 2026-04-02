@@ -165,32 +165,63 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="section-title"><i class="fas fa-fire-burner me-2"></i>Kitchen Panel</h1>
-    <div class="d-flex gap-2">
-        <span class="badge-custom badge-pending">{{ $orders->where('status', 'pending')->count() }} Pending</span>
-        <span class="badge-custom badge-processing">{{ $orders->where('status', 'preparing')->count() }} Preparing</span>
-        <span class="badge-custom badge-completed">{{ $orders->where('status', 'ready')->count() }} Ready</span>
+</div>
+
+{{-- Filters --}}
+<div class="content-card mb-4">
+    <div class="card-body" style="padding:14px 20px;">
+        <form method="GET" action="{{ route('admin.cook.index') }}" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+            @if($branches->count() > 0)
+            <div style="display:flex;flex-direction:column;gap:5px;">
+                <label style="font-size:12px;font-weight:600;color:var(--gray-600);"><i class="fas fa-store me-1"></i>Branch</label>
+                <select name="branch_id" onchange="this.form.submit()" style="padding:7px 12px;border:1px solid var(--gray-300);border-radius:8px;font-size:13px;background:#fff;min-width:160px;">
+                    <option value="">All Branches</option>
+                    @foreach($branches as $branch)
+                        <option value="{{ $branch->id }}" {{ $selectedBranch == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            @endif
+            <div style="display:flex;flex-direction:column;gap:5px;">
+                <label style="font-size:12px;font-weight:600;color:var(--gray-600);"><i class="fas fa-calendar me-1"></i>Date</label>
+                <input type="date" name="date" value="{{ $selectedDate }}" onchange="this.form.submit()"
+                    style="padding:7px 12px;border:1px solid var(--gray-300);border-radius:8px;font-size:13px;background:#fff;">
+            </div>
+            @if($selectedBranch || $selectedDate !== today()->toDateString())
+            <a href="{{ route('admin.cook.index') }}" style="padding:7px 14px;background:#f3f4f6;color:#374151;border:1px solid #d1d5db;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;align-self:flex-end;"><i class="fas fa-times me-1"></i>Clear</a>
+            @endif
+        </form>
     </div>
 </div>
 
-
-
-
-@if($branches->count() > 0)
-<form method="GET" action="{{ route('admin.cook.index') }}" style="margin-bottom:16px;">
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        <label style="font-size:13px;font-weight:600;color:var(--gray-600);white-space:nowrap;"><i class="fas fa-store me-1"></i>Branch:</label>
-        <select name="branch_id" onchange="this.form.submit()" style="padding:7px 12px;border:1px solid var(--gray-300);border-radius:8px;font-size:13px;font-weight:500;color:var(--gray-700);background:var(--white);min-width:180px;cursor:pointer;">
-            <option value="">All Branches</option>
-            @foreach($branches as $branch)
-                <option value="{{ $branch->id }}" {{ $selectedBranch == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
-            @endforeach
-        </select>
-        @if($selectedBranch)
-            <a href="{{ route('admin.cook.index') }}" style="font-size:12px;color:var(--gray-500);text-decoration:none;"><i class="fas fa-times me-1"></i>Clear</a>
-        @endif
+{{-- Stats Cards --}}
+<div style="display:grid;grid-template-columns:repeat(4,1fr) repeat(2,1fr);gap:12px;margin-bottom:20px;">
+    <div style="background:#fff;border-radius:10px;padding:14px 16px;border:1px solid #e5e7eb;border-left:4px solid #6b7280;text-align:center;">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:4px;">Total</div>
+        <div style="font-size:26px;font-weight:700;color:#111827;">{{ $stats['total'] }}</div>
     </div>
-</form>
-@endif
+    <div style="background:#fff;border-radius:10px;padding:14px 16px;border:1px solid #e5e7eb;border-left:4px solid #f59e0b;text-align:center;cursor:pointer;" onclick="quickFilter('pending')">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:4px;">Pending</div>
+        <div style="font-size:26px;font-weight:700;color:#b45309;">{{ $stats['pending'] }}</div>
+    </div>
+    <div style="background:#fff;border-radius:10px;padding:14px 16px;border:1px solid #e5e7eb;border-left:4px solid #3b82f6;text-align:center;cursor:pointer;" onclick="quickFilter('preparing')">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:4px;">Preparing</div>
+        <div style="font-size:26px;font-weight:700;color:#1d4ed8;">{{ $stats['preparing'] }}</div>
+    </div>
+    <div style="background:#fff;border-radius:10px;padding:14px 16px;border:1px solid #e5e7eb;border-left:4px solid #22c55e;text-align:center;cursor:pointer;" onclick="quickFilter('ready')">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:4px;">Ready</div>
+        <div style="font-size:26px;font-weight:700;color:#15803d;">{{ $stats['ready'] }}</div>
+    </div>
+    <div style="background:#fff;border-radius:10px;padding:14px 16px;border:1px solid #e5e7eb;border-left:4px solid #16a34a;text-align:center;cursor:pointer;" onclick="quickFilter('paid')">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:4px;">Paid</div>
+        <div style="font-size:26px;font-weight:700;color:#15803d;">{{ $stats['paid'] }}</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:2px;">₹{{ number_format($stats['revenue'], 0) }}</div>
+    </div>
+    <div style="background:#fff;border-radius:10px;padding:14px 16px;border:1px solid #e5e7eb;border-left:4px solid #dc2626;text-align:center;cursor:pointer;" onclick="quickFilter('cancelled')">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:4px;">Cancelled</div>
+        <div style="font-size:26px;font-weight:700;color:#dc2626;">{{ $stats['cancelled'] }}</div>
+    </div>
+</div>
 
 {{-- Master type tabs --}}
 <div style="display:flex;gap:10px;margin-bottom:12px;">
@@ -208,30 +239,14 @@
 
 {{-- Status sub-tabs --}}
 <div class="kitchen-tabs">
-    <a href="#" class="kitchen-tab active" onclick="filterOrders('all'); return false;">
-        <i class="fas fa-th me-2"></i>All
-    </a>
-    <a href="#" class="kitchen-tab" onclick="filterOrders('pending'); return false;">
-        <i class="fas fa-clock me-2"></i>Pending
-    </a>
-    <a href="#" class="kitchen-tab" onclick="filterOrders('preparing'); return false;">
-        <i class="fas fa-fire me-2"></i>Preparing
-    </a>
-    <a href="#" class="kitchen-tab" onclick="filterOrders('ready'); return false;">
-        <i class="fas fa-check-circle me-2"></i>Ready
-    </a>
-    <a href="#" class="kitchen-tab" onclick="filterOrders('served'); return false;">
-        <i class="fas fa-check me-2"></i>Served
-    </a>
-    <a href="#" class="kitchen-tab" onclick="filterOrders('checkout'); return false;">
-        <i class="fas fa-sign-out-alt me-2"></i>Checkout
-    </a>
-    <a href="#" class="kitchen-tab" onclick="filterOrders('paid'); return false;">
-        <i class="fas fa-rupee-sign me-2"></i>Paid
-    </a>
-    <a href="#" class="kitchen-tab" onclick="filterOrders('cancelled'); return false;">
-        <i class="fas fa-ban me-2"></i>Cancelled
-    </a>
+    <a href="#" class="kitchen-tab" data-status="all" onclick="filterOrders('all'); return false;"><i class="fas fa-th me-2"></i>All</a>
+    <a href="#" class="kitchen-tab" data-status="pending" onclick="filterOrders('pending'); return false;"><i class="fas fa-clock me-2"></i>Pending</a>
+    <a href="#" class="kitchen-tab" data-status="preparing" onclick="filterOrders('preparing'); return false;"><i class="fas fa-fire me-2"></i>Preparing</a>
+    <a href="#" class="kitchen-tab" data-status="ready" onclick="filterOrders('ready'); return false;"><i class="fas fa-check-circle me-2"></i>Ready</a>
+    <a href="#" class="kitchen-tab" data-status="served" onclick="filterOrders('served'); return false;"><i class="fas fa-check me-2"></i>Served</a>
+    <a href="#" class="kitchen-tab" data-status="checkout" onclick="filterOrders('checkout'); return false;"><i class="fas fa-sign-out-alt me-2"></i>Checkout</a>
+    <a href="#" class="kitchen-tab" data-status="paid" onclick="filterOrders('paid'); return false;"><i class="fas fa-rupee-sign me-2"></i>Paid</a>
+    <a href="#" class="kitchen-tab" data-status="cancelled" onclick="filterOrders('cancelled'); return false;"><i class="fas fa-ban me-2"></i>Cancelled</a>
 </div>
 
 <div id="orders-container" class="row g-4">
@@ -499,111 +514,114 @@
 </style>
 
 <script>
-function toggleAdminEdit(id) {
-    const el = document.getElementById(id);
-    el.style.display = el.style.display === 'none' ? 'block' : 'none';
-}
+var STORAGE_KEY = 'adminCookTab_{{ $selectedDate }}_{{ $selectedBranch ?? 0 }}';
+var activeType   = localStorage.getItem(STORAGE_KEY + '_type')   || 'table';
+var activeStatus = localStorage.getItem(STORAGE_KEY + '_status') || 'all';
 
-let activeType = 'table';
-let activeStatus = 'all';
+function saveState() {
+    localStorage.setItem(STORAGE_KEY + '_type',   activeType);
+    localStorage.setItem(STORAGE_KEY + '_status', activeStatus);
+}
 
 function switchType(type) {
     activeType = type;
-    activeStatus = 'all';
+    saveState();
+    updateMasterTabs();
+    applyFilters();
+}
 
-    // Update master tab styles
-    const tableBtn  = document.getElementById('masterTab-table');
-    const parcelBtn = document.getElementById('masterTab-parcel');
-    if (type === 'table') {
+function filterOrders(status) {
+    activeStatus = status;
+    saveState();
+    updateStatusTabs();
+    applyFilters();
+}
+
+// Stats card click — show that status across both types
+function quickFilter(status) {
+    activeStatus = status;
+    saveState();
+    updateStatusTabs();
+    // Show all matching orders regardless of type
+    document.querySelectorAll('.order-item').forEach(function(item) {
+        item.style.display = (activeStatus === 'all' || item.dataset.status === activeStatus) ? 'block' : 'none';
+    });
+}
+
+function updateMasterTabs() {
+    var tableBtn  = document.getElementById('masterTab-table');
+    var parcelBtn = document.getElementById('masterTab-parcel');
+    if (activeType === 'table') {
         tableBtn.style.background  = '#1e3a5f'; tableBtn.style.color  = '#fff'; tableBtn.style.borderColor  = '#1e3a5f';
         parcelBtn.style.background = '#fff';    parcelBtn.style.color = '#6b7280'; parcelBtn.style.borderColor = '#d1d5db';
     } else {
         parcelBtn.style.background = '#ea580c'; parcelBtn.style.color = '#fff'; parcelBtn.style.borderColor = '#ea580c';
         tableBtn.style.background  = '#fff';    tableBtn.style.color  = '#6b7280'; tableBtn.style.borderColor  = '#d1d5db';
     }
-
-    // Reset status sub-tabs to 'All'
-    document.querySelectorAll('.kitchen-tab').forEach(t => t.classList.remove('active'));
-    document.querySelector('.kitchen-tab').classList.add('active');
-
-    applyFilters();
 }
 
-function filterOrders(status) {
-    activeStatus = status;
-    document.querySelectorAll('.kitchen-tab').forEach(tab => tab.classList.remove('active'));
-    event.target.closest('.kitchen-tab').classList.add('active');
-    applyFilters();
+function updateStatusTabs() {
+    document.querySelectorAll('.kitchen-tab').forEach(function(tab) {
+        tab.classList.toggle('active', tab.dataset.status === activeStatus);
+    });
 }
 
 function applyFilters() {
-    document.querySelectorAll('.order-item').forEach(item => {
-        const typeMatch   = item.dataset.type === activeType;
-        const statusMatch = activeStatus === 'all' || item.dataset.status === activeStatus;
+    document.querySelectorAll('.order-item').forEach(function(item) {
+        var typeMatch   = item.dataset.type === activeType;
+        var statusMatch = activeStatus === 'all' || item.dataset.status === activeStatus;
         item.style.display = (typeMatch && statusMatch) ? 'block' : 'none';
     });
 }
 
+function toggleAdminEdit(id) {
+    var el = document.getElementById(id);
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+// Order status actions — save state before reload so tab is restored
 function startPreparing(orderId) {
-    fetch(`/admin/cook/${orderId}/start`, {
+    saveState();
+    fetch('/admin/cook/' + orderId + '/start', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        }
-    })
-    .then(response => response.json())
-    .then(() => location.reload());
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+    }).then(function(r) { return r.json(); }).then(function() { location.reload(); });
 }
 
 function markReady(orderId) {
-    fetch(`/admin/cook/${orderId}/ready`, {
+    saveState();
+    fetch('/admin/cook/' + orderId + '/ready', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        }
-    })
-    .then(response => response.json())
-    .then(() => location.reload());
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+    }).then(function(r) { return r.json(); }).then(function() { location.reload(); });
 }
 
 function markServed(orderId) {
-    fetch(`/admin/cook/${orderId}/served`, {
+    saveState();
+    fetch('/admin/cook/' + orderId + '/served', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        }
-    })
-    .then(response => response.json())
-    .then(() => location.reload());
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+    }).then(function(r) { return r.json(); }).then(function() { location.reload(); });
 }
 
-let currentOrderId = null;
-let currentTotalAmount = 0;
+// Payment modal
+var currentOrderId = null;
+var currentTotalAmount = 0;
 
 function openPaymentModal(orderId, totalAmount, tableNumber) {
-    currentOrderId = orderId;
+    currentOrderId    = orderId;
     currentTotalAmount = totalAmount;
-    
-    document.getElementById('modalOrderId').textContent = orderId;
+    document.getElementById('modalOrderId').textContent    = orderId;
     document.getElementById('modalTableNumber').textContent = tableNumber;
-    document.getElementById('modalTotalAmount').textContent = '₹' + totalAmount.toFixed(2);
-    document.getElementById('paymentForm').action = `/admin/cook/${orderId}/payment`;
-    
-    // Reset form
-    document.getElementById('paymentMode').value = '';
+    document.getElementById('modalTotalAmount').textContent = '₹' + parseFloat(totalAmount).toFixed(2);
+    document.getElementById('paymentForm').action = '/admin/cook/' + orderId + '/payment';
+    document.getElementById('paymentMode').value  = '';
     document.getElementById('cashReceived').value = '';
-    document.getElementById('cashSection').style.display = 'none';
+    document.getElementById('cashSection').style.display   = 'none';
     document.getElementById('changeSection').style.display = 'none';
-    document.getElementById('submitPaymentBtn').disabled = true;
-    
-    document.querySelectorAll('.payment-mode-btn').forEach(btn => {
-        btn.classList.remove('selected');
-    });
-    
-    document.getElementById('paymentModal').style.display = 'block';
+    document.getElementById('submitPaymentBtn').disabled   = true;
+    document.querySelectorAll('.payment-mode-btn').forEach(function(b) { b.classList.remove('selected'); });
+    document.getElementById('paymentModal').style.display  = 'block';
     document.getElementById('paymentModal').classList.add('show');
     document.getElementById('modalBackdrop').style.display = 'block';
     document.getElementById('modalBackdrop').classList.add('show');
@@ -611,7 +629,7 @@ function openPaymentModal(orderId, totalAmount, tableNumber) {
 }
 
 function closePaymentModal() {
-    document.getElementById('paymentModal').style.display = 'none';
+    document.getElementById('paymentModal').style.display  = 'none';
     document.getElementById('paymentModal').classList.remove('show');
     document.getElementById('modalBackdrop').style.display = 'none';
     document.getElementById('modalBackdrop').classList.remove('show');
@@ -619,51 +637,39 @@ function closePaymentModal() {
 }
 
 function selectPaymentMode(mode) {
-    document.querySelectorAll('.payment-mode-btn').forEach(btn => {
-        btn.classList.remove('selected');
-    });
-    
+    document.querySelectorAll('.payment-mode-btn').forEach(function(b) { b.classList.remove('selected'); });
     event.target.closest('.payment-mode-btn').classList.add('selected');
     document.getElementById('paymentMode').value = mode;
-    
-    const cashSection = document.getElementById('cashSection');
-    const changeSection = document.getElementById('changeSection');
-    const submitBtn = document.getElementById('submitPaymentBtn');
-    
-    if (mode === 'cash') {
-        cashSection.style.display = 'block';
-        changeSection.style.display = 'none';
-        submitBtn.disabled = true;
-    } else {
-        cashSection.style.display = 'none';
-        changeSection.style.display = 'none';
-        submitBtn.disabled = false;
-    }
+    var isCash = mode === 'cash';
+    document.getElementById('cashSection').style.display   = isCash ? 'block' : 'none';
+    document.getElementById('changeSection').style.display = 'none';
+    document.getElementById('submitPaymentBtn').disabled   = isCash;
 }
 
 function calculateChange() {
-    const cashReceived = parseFloat(document.getElementById('cashReceived').value);
-    
-    if (!cashReceived || cashReceived < currentTotalAmount) {
-        alert(`Cash received must be at least ₹${currentTotalAmount.toFixed(2)}`);
+    var cash = parseFloat(document.getElementById('cashReceived').value);
+    if (!cash || cash < currentTotalAmount) {
+        alert('Cash received must be at least ₹' + parseFloat(currentTotalAmount).toFixed(2));
         return;
     }
-    
-    const change = cashReceived - currentTotalAmount;
-    document.getElementById('changeAmount').textContent = '₹' + change.toFixed(2);
+    document.getElementById('changeAmount').textContent    = '₹' + (cash - currentTotalAmount).toFixed(2);
     document.getElementById('changeSection').style.display = 'block';
-    document.getElementById('submitPaymentBtn').disabled = false;
+    document.getElementById('submitPaymentBtn').disabled   = false;
 }
 
-document.getElementById('paymentForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    if (!document.getElementById('paymentMode').value) {
-        alert('Please select a payment method');
-        return;
-    }
-    
-    this.submit();
+document.addEventListener('DOMContentLoaded', function() {
+    updateMasterTabs();
+    updateStatusTabs();
+    applyFilters();
+
+    document.getElementById('paymentForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (!document.getElementById('paymentMode').value) {
+            alert('Please select a payment method');
+            return;
+        }
+        this.submit();
+    });
 });
 </script>
 
@@ -712,7 +718,5 @@ function closeAdminQr() {
 })();
 </script>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() { applyFilters(); });
-</script>
+
 @endsection

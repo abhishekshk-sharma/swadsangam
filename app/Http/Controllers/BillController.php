@@ -17,6 +17,7 @@ class BillController extends Controller
                 'branch.gstSlab',
             ])
             ->where('status', 'paid')
+            ->where('bill_hidden', false)
             ->findOrFail($orderId);
 
         $gst = $this->computeGst($order);

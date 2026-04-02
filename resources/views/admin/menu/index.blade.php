@@ -90,8 +90,6 @@
     <div class="card-body">
         @if($branches->count() > 0)
         <form method="GET" action="{{ route('admin.menu.index') }}" style="margin-bottom:16px;">
-            <input type="hidden" name="menu_category_id" value="{{ request('menu_category_id') }}">
-            <input type="hidden" name="status" value="{{ request('status') }}">
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                 <label style="font-size:13px;font-weight:600;color:var(--gray-600);white-space:nowrap;"><i class="fas fa-store me-1"></i>Branch:</label>
                 <select name="branch_id" onchange="this.form.submit()" style="padding:7px 12px;border:1px solid var(--gray-300);border-radius:8px;font-size:13px;font-weight:500;color:var(--gray-700);background:var(--white);min-width:180px;cursor:pointer;">
@@ -101,7 +99,7 @@
                     @endforeach
                 </select>
                 @if($selectedBranch)
-                    <a href="{{ route('admin.menu.index', array_filter(['menu_category_id' => request('menu_category_id'), 'status' => request('status')])) }}" style="font-size:12px;color:var(--gray-500);text-decoration:none;"><i class="fas fa-times me-1"></i>Clear</a>
+                    <a href="{{ route('admin.menu.index') }}" style="font-size:12px;color:var(--gray-500);text-decoration:none;"><i class="fas fa-times me-1"></i>Clear branch</a>
                 @endif
             </div>
         </form>
@@ -137,21 +135,14 @@
 
 <script>
 function filterMenu(categoryId, status) {
-    let url = '{{ route('admin.menu.index') }}';
-    let params = [];
-    
-    if (categoryId) params.push('menu_category_id=' + categoryId);
-    if (status) params.push('status=' + status);
-    
-    if (params.length > 0) {
-        url += '?' + params.join('&');
-    }
-    
-    window.location.href = url;
+    const params = new URLSearchParams(window.location.search);
+    if (categoryId) params.set('menu_category_id', categoryId); else params.delete('menu_category_id');
+    if (status)     params.set('status', status);               else params.delete('status');
+    window.location.href = '{{ route('admin.menu.index') }}?' + params.toString();
 }
-
 function clearFilters() {
-    window.location.href = '{{ route('admin.menu.index') }}';
+    const branchId = '{{ $selectedBranch }}';
+    window.location.href = '{{ route('admin.menu.index') }}' + (branchId ? '?branch_id=' + branchId : '');
 }
 </script>
 

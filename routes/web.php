@@ -216,6 +216,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::delete('telegram/unlink/{id}', [TelegramIntegrationController::class, 'unlink'])->name('telegram.unlink');
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('reports/export', [ReportController::class, 'export'])->name('reports.export');
+        Route::delete('reports/orders', [ReportController::class, 'deleteOrders'])->name('reports.deleteOrders');
+        // Bills
+        Route::get('bills', [\App\Http\Controllers\Admin\BillsController::class, 'index'])->name('bills.index');
+        Route::patch('bills/{id}/toggle-hidden', [\App\Http\Controllers\Admin\BillsController::class, 'toggleHidden'])->name('bills.toggleHidden');
+        Route::patch('bills/bulk-hide', [\App\Http\Controllers\Admin\BillsController::class, 'bulkHide'])->name('bills.bulkHide');
         // Waiter Panel (admin)
         Route::get('orders', [AdminOrderController::class, 'index'])->name('orders.index');
         Route::get('orders/instant', [AdminOrderController::class, 'instant'])->name('orders.instant');
@@ -300,6 +305,11 @@ Route::prefix('manager')->name('manager.')->middleware(['multi.auth', 'role:mana
     // Reports
     Route::get('reports', [ManagerReportController::class, 'index'])->name('reports.index');
     Route::get('reports/export', [ManagerReportController::class, 'export'])->name('reports.export');
+    Route::delete('reports/orders', [ManagerReportController::class, 'deleteOrders'])->name('reports.deleteOrders');
+    // Bills
+    Route::get('bills', [\App\Http\Controllers\Manager\BillsController::class, 'index'])->name('bills.index');
+    Route::patch('bills/{id}/toggle-hidden', [\App\Http\Controllers\Manager\BillsController::class, 'toggleHidden'])->name('bills.toggleHidden');
+    Route::patch('bills/bulk-hide', [\App\Http\Controllers\Manager\BillsController::class, 'bulkHide'])->name('bills.bulkHide');
     // Table Categories
     Route::get('table-categories', [ManagerTableCategoryController::class, 'index'])->name('table-categories.index');
     Route::post('table-categories', [ManagerTableCategoryController::class, 'store'])->name('table-categories.store');

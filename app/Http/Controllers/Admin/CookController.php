@@ -10,40 +10,48 @@ class CookController extends BaseAdminController
 {
     public function index(Request $request)
     {
+        $tenantId = $this->tenantId();
+        $selectedBranch = $request->branch_id;
+        $selectedDate   = $request->filled('date') ? $request->date : today()->toDateString();
+
         $query = Order::with(['table.category', 'items.menuItem'])
-            ->whereIn('status', ['pending', 'preparing', 'ready', 'served', 'checkout', 'paid', 'cancelled'])
+            ->where('tenant_id', $tenantId)
+            ->whereDate('created_at', $selectedDate)
             ->orderBy('created_at', 'asc');
 
-        if ($request->filled('branch_id')) {
-            $query->where('branch_id', $request->branch_id);
-        }
-        if ($request->filled('table_id')) {
-            $query->where('table_id', $request->table_id);
-        }
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
+        if ($selectedBranch) $query->where('branch_id', $selectedBranch);
+        if ($request->filled('status')) $query->where('status', $request->status);
 
         $orders   = $query->get();
-        $branches = \App\Models\Branch::where('tenant_id', $this->tenantId())->where('is_active', true)->get();
-        $selectedBranch = $request->branch_id;
+        $branches = \App\Models\Branch::where('tenant_id', $tenantId)->where('is_active', true)->get();
 
-        $paymentQuery = Order::with(['table.category', 'orderItems' => fn($q) => $q->with('menuItem')])
-            ->where('tenant_id', $this->tenantId())
-            ->whereDate('created_at', today())
+        // Day stats
+        $statsQuery = Order::where('tenant_id', $tenantId)->whereDate('created_at', $selectedDate);
+        if ($selectedBranch) $statsQuery->where('branch_id', $selectedBranch);
+        $allToday = $statsQuery->get();
+
+        $stats = [
+            'total'     => $allToday->count(),
+            'pending'   => $allToday->where('status', 'pending')->count(),
+            'preparing' => $allToday->where('status', 'preparing')->count(),
+            'ready'     => $allToday->where('status', 'ready')->count(),
+            'served'    => $allToday->where('status', 'served')->count(),
+            'paid'      => $allToday->where('status', 'paid')->count(),
+            'cancelled' => $allToday->where('status', 'cancelled')->count(),
+            'revenue'   => $allToday->where('status', 'paid')->sum(fn($o) => $o->grand_total ?? $o->total_amount),
+        ];
+
+        $paymentOrders = Order::with(['table.category', 'orderItems' => fn($q) => $q->with('menuItem')])
+            ->where('tenant_id', $tenantId)
+            ->whereDate('created_at', $selectedDate)
             ->where(function ($q) {
-                $q->where(function ($q2) {
-                    $q2->where('is_parcel', false)->whereIn('status', ['served', 'checkout']);
-                })->orWhere(function ($q2) {
-                    $q2->where('is_parcel', true)->where('status', 'ready');
-                });
-            });
-        if ($request->filled('branch_id')) {
-            $paymentQuery->where('branch_id', $request->branch_id);
-        }
-        $paymentOrders = $paymentQuery->latest()->get();
+                $q->where(fn($q2) => $q2->where('is_parcel', false)->whereIn('status', ['served', 'checkout']))
+                  ->orWhere(fn($q2) => $q2->where('is_parcel', true)->where('status', 'ready'));
+            })
+            ->when($selectedBranch, fn($q) => $q->where('branch_id', $selectedBranch))
+            ->latest()->get();
 
-        return view('admin.cook.index', compact('orders', 'branches', 'selectedBranch', 'paymentOrders'));
+        return view('admin.cook.index', compact('orders', 'branches', 'selectedBranch', 'paymentOrders', 'stats', 'selectedDate'));
     }
 
     public function startPreparing($id)

@@ -43,6 +43,36 @@ class ReportController extends BaseManagerController
         return view('manager.reports.index', compact('orders', 'totalRevenue', 'totalOrders', 'gstStats', 'paymentTotals'));
     }
 
+    public function deleteOrders(Request $request)
+    {
+        $request->validate([
+            'filter_type' => 'required|in:day,month,year,custom',
+            'confirm'     => 'required|in:yes',
+        ]);
+
+        $query = Order::where('tenant_id', $this->tenantId())
+            ->whereIn('status', ['paid', 'cancelled']);
+
+        $this->scopeBranch($query);
+
+        if ($request->filter_type === 'day' && $request->filled('day')) {
+            $query->whereDate('created_at', $request->day);
+        } elseif ($request->filter_type === 'month' && $request->filled('month')) {
+            $query->whereYear('created_at', substr($request->month, 0, 4))
+                  ->whereMonth('created_at', substr($request->month, 5, 2));
+        } elseif ($request->filter_type === 'year' && $request->filled('year')) {
+            $query->whereYear('created_at', $request->year);
+        } elseif ($request->filter_type === 'custom' && $request->filled('date_from') && $request->filled('date_to')) {
+            $query->whereDate('created_at', '>=', $request->date_from)
+                  ->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        $count = $query->count();
+        $query->delete();
+
+        return back()->with('delete_success', $count . ' order(s) deleted successfully.');
+    }
+
     public function export(Request $request)
     {
         $query = Order::where('tenant_id', $this->tenantId())

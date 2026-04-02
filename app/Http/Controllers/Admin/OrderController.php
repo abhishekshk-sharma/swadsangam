@@ -153,6 +153,21 @@ class OrderController extends BaseAdminController
         $branchUpiId    = $selectedBranch?->upi_id;
         $branchGst      = $this->computeBranchGst($selectedBranch);
 
+        // Day stats
+        $statsQuery = Order::where('tenant_id', $this->tenantId())->whereDate('created_at', today());
+        if ($branchId) $statsQuery->where('branch_id', $branchId);
+        $allToday = $statsQuery->get();
+        $stats = [
+            'total'     => $allToday->count(),
+            'pending'   => $allToday->where('status', 'pending')->count(),
+            'preparing' => $allToday->where('status', 'preparing')->count(),
+            'ready'     => $allToday->where('status', 'ready')->count(),
+            'served'    => $allToday->where('status', 'served')->count(),
+            'paid'      => $allToday->where('status', 'paid')->count(),
+            'cancelled' => $allToday->where('status', 'cancelled')->count(),
+            'revenue'   => $allToday->where('status', 'paid')->sum(fn($o) => $o->grand_total ?? $o->total_amount),
+        ];
+
         // Build a map of branch_id => waiters for the assign modal
         $branchIds = $orders->pluck('branch_id')->filter()->unique()->values();
         $waitersByBranch = Employee::where('tenant_id', $this->tenantId())
@@ -163,7 +178,7 @@ class OrderController extends BaseAdminController
             ->groupBy('branch_id')
             ->map(fn($w) => $w->map(fn($e) => ['id' => $e->id, 'name' => $e->name]));
 
-        return view('admin.orders.index', compact('orders', 'paymentOrders', 'menuItems', 'branches', 'branchId', 'waitersByBranch', 'branchUpiId', 'branchGst'));
+        return view('admin.orders.index', compact('orders', 'paymentOrders', 'menuItems', 'branches', 'branchId', 'waitersByBranch', 'branchUpiId', 'branchGst', 'stats'));
     }
 
     public function create(Request $request)

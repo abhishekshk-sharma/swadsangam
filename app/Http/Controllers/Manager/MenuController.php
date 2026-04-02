@@ -10,9 +10,17 @@ class MenuController extends BaseManagerController
 {
     public function index(Request $request)
     {
-        $query = MenuItem::with('menuCategory');
+        $branchId = $this->branchId();
 
-        if ($request->menu_category_id) {
+        // Bypass global branch scope — apply our own strict filter
+        $query = MenuItem::withoutGlobalScope('branch')->with('menuCategory');
+
+        // Always scope to manager's branch (strict — no null-branch bleed)
+        if ($branchId) {
+            $query->where('branch_id', $branchId);
+        }
+
+        if ($request->filled('menu_category_id')) {
             $query->where('menu_category_id', $request->menu_category_id);
         }
 
@@ -22,8 +30,15 @@ class MenuController extends BaseManagerController
             $query->where('is_available', false);
         }
 
-        $menuItems      = $query->get();
-        $menuCategories = MenuCategory::get();
+        $menuItems = $query->get();
+
+        // Categories scoped to manager's branch + global
+        $menuCategories = MenuCategory::withoutGlobalScope('branch')
+            ->where(fn($q) => $branchId
+                ? $q->where('branch_id', $branchId)->orWhereNull('branch_id')
+                : $q
+            )->get();
+
         return view('manager.menu.index', compact('menuItems', 'menuCategories'));
     }
 

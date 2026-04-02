@@ -829,6 +829,40 @@
         }
 
         /* ===== UTILITIES ===== */
+        .stat-card-report {
+            background: var(--white);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border: 1px solid var(--gray-200);
+            text-align: center;
+        }
+        .stat-card-report h5 {
+            font-size: 12px;
+            color: var(--gray-500);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+        .stat-card-report h2 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin: 0;
+        }
+        .btn-danger {
+            background: var(--error);
+            color: #fff;
+            border: 1px solid var(--error);
+            padding: 6px 14px;
+            border-radius: var(--button-radius);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-danger:hover { background: #b91c1c; }
+
         .d-flex { display: flex; }
         .align-center { align-items: center; }
         .justify-between { justify-content: space-between; }
@@ -886,9 +920,10 @@
                         ['icon' => 'fa-camera',      'label' => 'Menu OCR',   'route' => 'admin.menu-ocr.index',        'badge' => null],
                     ],
                     'Reports' => [
-                        ['icon' => 'fa-chart-bar',     'label' => 'Reports',          'route' => 'admin.reports.index',          'badge' => null],
-                        ['icon' => 'fa-exchange-alt',  'label' => 'Assignment Logs',  'route' => 'admin.assignment-logs.index',  'badge' => null],
-                        ['icon' => 'fa-cash-register', 'label' => 'Handover',         'route' => 'admin.handover.index',         'badge' => null],
+                        ['icon' => 'fa-chart-bar',       'label' => 'Reports',          'route' => 'admin.reports.index',          'badge' => null],
+                        ['icon' => 'fa-file-invoice',    'label' => 'Bills',            'route' => 'admin.bills.index',            'badge' => null],
+                        ['icon' => 'fa-exchange-alt',    'label' => 'Assignment Logs',  'route' => 'admin.assignment-logs.index',  'badge' => null],
+                        ['icon' => 'fa-cash-register',   'label' => 'Handover',         'route' => 'admin.handover.index',         'badge' => null],
                     ],
                     'Settings' => [
                         ['icon' => 'fa-telegram',    'label' => 'Telegram', 'route' => 'admin.telegram.index', 'badge' => null],

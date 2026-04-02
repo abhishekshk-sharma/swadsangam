@@ -70,10 +70,10 @@
 
 <script>
 function filterMenu(cat, status) {
-    let params = [];
-    if (cat) params.push('menu_category_id=' + cat);
-    if (status) params.push('status=' + status);
-    window.location.href = '{{ route('manager.menu.index') }}' + (params.length ? '?' + params.join('&') : '');
+    const params = new URLSearchParams(window.location.search);
+    if (cat)    params.set('menu_category_id', cat);    else params.delete('menu_category_id');
+    if (status) params.set('status', status);           else params.delete('status');
+    window.location.href = '{{ route('manager.menu.index') }}?' + params.toString();
 }
 </script>
 @endsection
