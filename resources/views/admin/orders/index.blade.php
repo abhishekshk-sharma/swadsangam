@@ -110,7 +110,7 @@
             {{-- Header --}}
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
                 <div>
-                    <div style="font-weight:700;font-size:16px;">Order #{{ $order->id }}</div>
+                    <div style="font-weight:700;font-size:16px;">Order #{{ $order->daily_number ?? $order->id }}</div>
                     <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
                         @if($order->is_parcel)
                             <span style="background:#ea580c;color:#fff;font-size:12px;font-weight:700;padding:2px 10px;border-radius:6px;"><i class="fas fa-box"></i> Parcel</span>
@@ -254,7 +254,7 @@
             <div style="padding:20px;">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
                     <div>
-                        <div style="font-size:17px;font-weight:700;">Order #{{ $order->id }}</div>
+                        <div style="font-size:17px;font-weight:700;">Order #{{ $order->daily_number ?? $order->id }}</div>
                         <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
                             @if($order->is_parcel)
                                 <span style="background:#ea580c;color:#fff;font-size:12px;font-weight:700;padding:2px 10px;border-radius:6px;"><i class="fas fa-box"></i> Parcel</span>
@@ -939,7 +939,7 @@ document.addEventListener('DOMContentLoaded', function () {
         div.innerHTML =
             '<div style="padding:16px;">'
             + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">'
-            + '<div><div style="font-weight:700;font-size:16px;">Order #' + order.id + '</div>'
+            + '<div><div style="font-weight:700;font-size:16px;">Order #' + (order.daily_number || order.id) + '</div>'
             + '<div style="display:flex;align-items:center;gap:8px;margin-top:4px;">' + typeBadge + branchBadge + '</div>'
             + '<div style="font-size:11px;color:#9ca3af;margin-top:3px;">' + order.created_at + '</div></div>'
             + '<span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;' + statusBg(order.status) + '" data-order-status-badge>' + ucfirst(order.status) + '</span>'
@@ -1015,7 +1015,7 @@ document.addEventListener('DOMContentLoaded', function () {
         div.innerHTML =
             '<div style="padding:20px;">'
             + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">'
-            + '<div><div style="font-size:17px;font-weight:700;">Order #' + oid + '</div>'
+            + '<div><div style="font-size:17px;font-weight:700;">Order #' + (order.daily_number || order.id) + '</div>'
             + '<div style="display:flex;align-items:center;gap:8px;margin-top:6px;">' + typeBadge + '</div>'
             + '<div style="font-size:11px;color:#9ca3af;margin-top:3px;">' + order.created_at + '</div></div>'
             + '<span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;' + statusBg(order.status) + '">' + ucfirst(order.status) + '</span>'
@@ -1165,7 +1165,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         requestAnimationFrame(function () { card.style.opacity = '1'; });
                         if (typeof oApplyFilters === 'function') oApplyFilters();
                         var branchInfo = (!currentBranchId && order.branch_name) ? ' [' + order.branch_name + ']' : '';
-                        toast('New order #' + order.id + ' - ' + orderLabel(order) + branchInfo, '#2563eb');
+                        toast('New order #' + (order.daily_number || order.id) + ' - ' + orderLabel(order) + branchInfo, '#2563eb');
                     }
                 } else if (snapOrders[oid].status !== order.status) {
                     var prev = snapOrders[oid].status;
@@ -1182,7 +1182,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         updateOrderCard(order);
                         var colors = { preparing:'#3b82f6', ready:'#16a34a', served:'#8b5cf6' };
                         var branchInfo = (!currentBranchId && order.branch_name) ? ' [' + order.branch_name + ']' : '';
-toast('Order #' + order.id + ' (' + orderLabel(order) + branchInfo + ') -> ' + ucfirst(order.status), colors[order.status] || '#6b7280');
+toast('Order #' + (order.daily_number || order.id) + ' (' + orderLabel(order) + branchInfo + ') -> ' + ucfirst(order.status), colors[order.status] || '#6b7280');
 
 
                     }
@@ -1215,7 +1215,7 @@ toast('Order #' + order.id + ' (' + orderLabel(order) + branchInfo + ') -> ' + u
                         requestAnimationFrame(function () { card.style.opacity = '1'; });
                         refreshPaymentBadge();
                         var branchInfo = (!currentBranchId && order.branch_name) ? ' [' + order.branch_name + ']' : '';
-toast('Order #' + order.id + ' (' + orderLabel(order) + branchInfo + ') ready for payment!', '#dc2626');
+toast('Order #' + (order.daily_number || order.id) + ' (' + orderLabel(order) + branchInfo + ') ready for payment!', '#dc2626');
 
                     }
                 }

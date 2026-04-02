@@ -58,7 +58,7 @@
         <div class="order-card {{ $order->status }}">
             <div class="order-header">
                 <div>
-                    <div style="font-size:18px;font-weight:700;color:#232f3e;">Order #{{ $order->id }}</div>
+                    <div style="font-size:18px;font-weight:700;color:#232f3e;">Order #{{ $order->daily_number ?? $order->id }}</div>
                     <div class="mt-1 d-flex align-items-center gap-2">
                         @if($order->is_parcel)
                             <span style="background:#ea580c;color:#fff;font-size:13px;font-weight:800;padding:2px 10px;border-radius:6px;">📦 Parcel</span>
