@@ -75,7 +75,7 @@ class CashierController extends Controller
     }
 
     // PATCH /api/mobile/cashier/payments/{id}/process
-    public function processPayment(Request $request, int $id)
+    public function processPayment(Request $request, $id)
     {
         $order = Order::with('branch.gstSlab')
             ->where('id', $id)
@@ -103,11 +103,12 @@ class CashierController extends Controller
             }
         }
 
+        $cashierId = $this->employee()->id;
         $order->update([
             'status'       => 'paid',
             'payment_mode' => $request->payment_mode,
             'paid_at'      => now(),
-            'cashier_id'   => $this->employee()->id,
+            'cashier_id'   => \App\Models\Employee::withoutGlobalScopes()->where('id', $cashierId)->exists() ? $cashierId : null,
         ]);
 
         if (!$order->is_parcel && $order->table) {
@@ -210,7 +211,7 @@ class CashierController extends Controller
     }
 
     // POST /api/mobile/cashier/parcels/{id}/add-items
-    public function addParcelItems(Request $request, int $id)
+    public function addParcelItems(Request $request, $id)
     {
         $order = Order::where('id', $id)
             ->where('tenant_id', $this->tenantId())
@@ -255,7 +256,7 @@ class CashierController extends Controller
     }
 
     // PATCH /api/mobile/cashier/parcels/{id}/cancel
-    public function cancelParcel(int $id)
+    public function cancelParcel($id)
     {
         $order = Order::where('id', $id)
             ->where('tenant_id', $this->tenantId())
@@ -276,7 +277,7 @@ class CashierController extends Controller
     }
 
     // PATCH /api/mobile/cashier/parcel-items/{id}/cancel
-    public function cancelParcelItem(int $id)
+    public function cancelParcelItem($id)
     {
         $item = OrderItem::with('order')->findOrFail($id);
         abort_if($item->order->tenant_id !== $this->tenantId(), 403);
@@ -328,7 +329,7 @@ class CashierController extends Controller
     }
 
     // GET /api/mobile/cashier/bill/{orderId}
-    public function bill(int $orderId)
+    public function bill($orderId)
     {
         $order = Order::withoutGlobalScope('tenant')
             ->with(['table', 'orderItems' => fn($q) => $q->withoutGlobalScopes()->with(['menuItem' => fn($q2) => $q2->withoutGlobalScopes()]), 'branch.gstSlab'])

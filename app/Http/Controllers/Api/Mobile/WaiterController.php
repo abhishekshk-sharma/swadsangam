@@ -30,9 +30,10 @@ class WaiterController extends Controller
         $b ? $query->where('branch_id', $b) : $query->whereNull('branch_id');
     }
 
-    private function findOrder(int $id): Order
+    private function findOrder($id): Order
     {
-        return Order::where('id', $id)
+        return Order::withoutGlobalScope('branch')
+            ->where('id', $id)
             ->where('tenant_id', $this->tenantId())
             ->firstOrFail();
     }
@@ -53,7 +54,7 @@ class WaiterController extends Controller
     }
 
     // POST /api/mobile/waiter/orders/{id}/assign
-    public function assign(Request $request, int $id)
+    public function assign(Request $request, $id)
     {
         $order = $this->findOrder($id);
         $myId  = $this->employee()->id;
@@ -240,7 +241,7 @@ class WaiterController extends Controller
     }
 
     // POST /api/mobile/waiter/orders/{id}/add-items
-    public function addItems(Request $request, int $id)
+    public function addItems(Request $request, $id)
     {
         $order = $this->findOrder($id);
 
@@ -284,7 +285,7 @@ class WaiterController extends Controller
     }
 
     // PATCH /api/mobile/waiter/orders/{id}/serve
-    public function markServed(int $id)
+    public function markServed($id)
     {
         $order = $this->findOrder($id);
         $oldStatus = $order->status;
@@ -294,7 +295,7 @@ class WaiterController extends Controller
     }
 
     // PATCH /api/mobile/waiter/orders/{id}/checkout
-    public function checkout(int $id)
+    public function checkout($id)
     {
         $order = $this->findOrder($id);
         if ($order->status !== 'served') {
@@ -310,7 +311,7 @@ class WaiterController extends Controller
     }
 
     // PATCH /api/mobile/waiter/orders/{id}/cancel
-    public function cancelOrder(int $id)
+    public function cancelOrder($id)
     {
         $order = $this->findOrder($id);
         if ($order->status === 'paid') {
@@ -330,7 +331,7 @@ class WaiterController extends Controller
     }
 
     // PATCH /api/mobile/waiter/order-items/{id}/cancel
-    public function cancelItem(int $id)
+    public function cancelItem($id)
     {
         $item = OrderItem::with('order')->findOrFail($id);
         abort_if($item->order->tenant_id !== $this->tenantId(), 403);
@@ -340,7 +341,7 @@ class WaiterController extends Controller
     }
 
     // PATCH /api/mobile/waiter/order-items/{id}
-    public function updateItem(Request $request, int $id)
+    public function updateItem(Request $request, $id)
     {
         $item = OrderItem::with('order')->findOrFail($id);
         abort_if($item->order->tenant_id !== $this->tenantId(), 403);

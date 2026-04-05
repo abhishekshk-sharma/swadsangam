@@ -15,7 +15,9 @@ class IdentifyTenant
             return $next($request);
         }
 
-        $authUser = Auth::guard('admin')->user() ?? Auth::guard('employee')->user();
+        $authUser = Auth::guard('admin')->user()
+                 ?? Auth::guard('employee')->user()
+                 ?? Auth::guard('sanctum')->user();
 
         if ($authUser && $authUser->tenant_id) {
             app()->instance('current_tenant_id', (int) $authUser->tenant_id);

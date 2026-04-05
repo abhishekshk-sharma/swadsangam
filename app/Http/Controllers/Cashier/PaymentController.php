@@ -78,11 +78,12 @@ public function processPayment(Request $request, Order $order)
             }
         }
 
+        $cashierId = auth()->guard('employee')->id();
         $order->update([
             'status'       => 'paid',
             'payment_mode' => $request->payment_mode,
             'paid_at'      => now(),
-            'cashier_id'   => auth()->guard('employee')->id(),
+            'cashier_id'   => \App\Models\Employee::withoutGlobalScopes()->where('id', $cashierId)->exists() ? $cashierId : null,
         ]);
 
         if (!$order->is_parcel && $order->table) {

@@ -80,6 +80,9 @@
             <i class="fas fa-tags me-1"></i> Manage Categories
         </a>
         @endif
+        <a href="{{ route('admin.menu.export-csv', request()->only('branch_id', 'menu_category_id', 'status')) }}" class="btn-secondary">
+            <i class="fas fa-file-csv me-1"></i> Export CSV
+        </a>
         <a href="{{ route('admin.menu.create') }}" class="btn-primary">
             <i class="fas fa-plus me-1"></i> Add Item
         </a>

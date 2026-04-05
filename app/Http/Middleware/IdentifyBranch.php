@@ -10,7 +10,9 @@ class IdentifyBranch
 {
     public function handle(Request $request, Closure $next)
     {
-        $user = Auth::guard('admin')->user() ?? Auth::guard('employee')->user();
+        $user = Auth::guard('admin')->user()
+             ?? Auth::guard('employee')->user()
+             ?? Auth::guard('sanctum')->user();
 
         if ($user && isset($user->branch_id) && $user->branch_id) {
             app()->instance('current_branch_id', (int) $user->branch_id);

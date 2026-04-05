@@ -84,11 +84,12 @@ class CookController extends BaseAdminController
             'cash_received' => 'nullable|numeric|min:0',
         ]);
 
+        $employeeId = auth()->guard('employee')->id();
         $order->update([
             'status'       => 'paid',
             'payment_mode' => $request->payment_mode,
             'paid_at'      => now(),
-            'cashier_id'   => auth()->guard('admin')->id() ?? auth()->guard('employee')->id() ?? null,
+            'cashier_id'   => $employeeId && \App\Models\Employee::withoutGlobalScopes()->where('id', $employeeId)->exists() ? $employeeId : null,
         ]);
 
         if (!$order->is_parcel && $order->table) {

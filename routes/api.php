@@ -26,6 +26,7 @@ Route::prefix('mobile')->group(function () {
             Route::post('orders',                       [WaiterController::class, 'store']);
             Route::post('orders/{id}/add-items',        [WaiterController::class, 'addItems']);
             Route::patch('orders/{id}/serve',           [WaiterController::class, 'markServed']);
+            Route::patch('orders/{id}/checkout',        [WaiterController::class, 'checkout']);
             Route::post('orders/{id}/assign',           [WaiterController::class, 'assign']);
             Route::patch('orders/{id}/cancel',          [WaiterController::class, 'cancelOrder']);
             Route::patch('order-items/{id}/cancel',     [WaiterController::class, 'cancelItem']);

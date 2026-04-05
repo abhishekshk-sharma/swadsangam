@@ -17,6 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\IdentifyTenant::class,
             \App\Http\Middleware\IdentifyBranch::class,
         ]);
+        $middleware->api(append: [
+            \App\Http\Middleware\IdentifyTenant::class,
+            \App\Http\Middleware\IdentifyBranch::class,
+        ]);
         $middleware->validateCsrfTokens(except: [
             '/telegram/webhook',
         ]);

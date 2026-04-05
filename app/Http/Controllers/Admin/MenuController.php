@@ -115,4 +115,51 @@ class MenuController extends BaseAdminController
         $this->findForTenant(MenuItem::class, $id)->delete();
         return redirect()->route('admin.menu.index')->with('success', 'Menu item deleted successfully');
     }
+
+    public function exportCsv(Request $request)
+    {
+        $query = MenuItem::withoutGlobalScope('branch')
+            ->with('menuCategory')
+            ->where('tenant_id', $this->tenantId());
+
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        }
+
+        $items = $query->get()
+            ->sortBy(fn($i) => [$i->menuCategory?->sort_order ?? 9999, $i->menuCategory?->name, $i->name]);
+
+        $filename = 'menu_' . now()->format('Ymd_His') . '.csv';
+
+        $headers = [
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
+        ];
+
+        $callback = function () use ($items) {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, ['Category', 'Item Name', 'Description', 'Price', 'Available']);
+
+            $currentCategory = null;
+            foreach ($items as $item) {
+                $catName = $item->menuCategory?->name ?? 'Uncategorized';
+                if ($catName !== $currentCategory) {
+                    if ($currentCategory !== null) {
+                        fputcsv($out, []);
+                    }
+                    $currentCategory = $catName;
+                }
+                fputcsv($out, [
+                    $catName,
+                    $item->name,
+                    $item->description ?? '',
+                    number_format($item->price, 2),
+                    $item->is_available ? 'Yes' : 'No',
+                ]);
+            }
+            fclose($out);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
 }

@@ -201,6 +201,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('menu-categories/quick-create', [MenuCategoryController::class, 'quickCreate'])->name('menu-categories.quickCreate');
         Route::post('menu-categories/reorder', [MenuCategoryController::class, 'reorder'])->name('menu-categories.reorder');
         Route::post('menu/{id}/update', [MenuController::class, 'update'])->name('menu.update.post');
+        Route::get('menu/export-csv', [MenuController::class, 'exportCsv'])->name('menu.export-csv');
         Route::resource('menu', MenuController::class);
         Route::get('cook', [CookController::class, 'index'])->name('cook.index');
         Route::post('cook/{id}/start', [CookController::class, 'startPreparing'])->name('cook.start');
