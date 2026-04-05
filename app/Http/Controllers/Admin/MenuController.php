@@ -132,12 +132,14 @@ class MenuController extends BaseAdminController
         $filename = 'menu_' . now()->format('Ymd_His') . '.csv';
 
         $headers = [
-            'Content-Type'        => 'text/csv',
+            'Content-Type'        => 'text/csv; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=\"$filename\"",
         ];
 
         $callback = function () use ($items) {
             $out = fopen('php://output', 'w');
+            // UTF-8 BOM — makes Excel/Sheets render Gujarati, Hindi, etc. correctly
+            fwrite($out, "\xEF\xBB\xBF");
             fputcsv($out, ['Category', 'Item Name', 'Description', 'Price', 'Available']);
 
             $currentCategory = null;

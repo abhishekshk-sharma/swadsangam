@@ -49,8 +49,15 @@ class AuthController extends Controller
 
     public function updateFcmToken(Request $request)
     {
-        // FCM disabled — polling only.
-        return response()->json(['message' => 'Polling mode active. FCM not used.']);
+        $request->validate(['token' => 'required|string']);
+        $request->user()->update(['fcm_token' => $request->token]);
+        return response()->json(['message' => 'FCM token updated.']);
+    }
+
+    public function deleteFcmToken(Request $request)
+    {
+        $request->user()->update(['fcm_token' => null]);
+        return response()->json(['message' => 'FCM token removed.']);
     }
 
     public function profile(Request $request)

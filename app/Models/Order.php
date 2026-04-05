@@ -19,12 +19,17 @@ class Order extends Model
                 if (!\Illuminate\Support\Facades\Schema::hasColumn('orders', 'daily_number')) {
                     return;
                 }
-                $last = static::withoutGlobalScopes()
+                $query = static::withoutGlobalScopes()
                     ->where('tenant_id', (int) $order->tenant_id)
-                    ->where('branch_id', $order->branch_id ? (int) $order->branch_id : null)
-                    ->whereDate('created_at', now()->toDateString())
-                    ->max('daily_number');
-                $order->daily_number = ($last ?? 0) + 1;
+                    ->whereDate('created_at', now()->toDateString());
+
+                if ($order->branch_id) {
+                    $query->where('branch_id', (int) $order->branch_id);
+                } else {
+                    $query->whereNull('branch_id');
+                }
+
+                $order->daily_number = ((int) $query->max('daily_number')) + 1;
             } catch (\Throwable $e) {
                 // Column missing on production — skip silently
             }
