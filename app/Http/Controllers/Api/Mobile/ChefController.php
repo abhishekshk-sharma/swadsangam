@@ -176,6 +176,7 @@ class ChefController extends Controller
     {
         return [
             'id'             => $order->id,
+            'daily_number'   => $order->daily_number ?? $order->id,
             'status'         => $order->status,
             'is_parcel'      => (bool) $order->is_parcel,
             'total_amount'   => (float) $order->total_amount,

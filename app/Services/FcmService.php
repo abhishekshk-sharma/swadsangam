@@ -12,9 +12,12 @@ class FcmService
 
     public function __construct()
     {
-        $this->projectId        = config('services.fcm.project_id', '');
-        $this->serviceAccountPath = config('services.fcm.service_account_path',
-            storage_path('app/firebase-service-account.json'));
+        $this->projectId          = config('services.fcm.project_id', '');
+        $rawPath                  = config('services.fcm.service_account_path', '');
+        // Support both absolute paths and paths relative to Laravel root
+        $this->serviceAccountPath = $rawPath && !str_starts_with($rawPath, '/')
+            ? base_path($rawPath)
+            : ($rawPath ?: storage_path('app/firebase-service-account.json'));
     }
 
     /**

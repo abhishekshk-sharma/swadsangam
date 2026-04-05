@@ -252,6 +252,7 @@ class CashierController extends Controller
 
         $order->refresh()->load('orderItems.menuItem');
         event(new OrderStatusUpdated($order, $order->status === 'preparing' ? 'ready' : $order->status));
+        (new \App\Services\OrderFcmNotifier())->notifyItemsAdded($order, count($request->items));
         return response()->json($this->formatOrder($order));
     }
 

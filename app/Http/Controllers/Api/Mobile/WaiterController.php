@@ -281,6 +281,7 @@ class WaiterController extends Controller
 
         $order->refresh()->load('table.category', 'items.menuItem');
         event(new OrderStatusUpdated($order, $oldStatus));
+        (new \App\Services\OrderFcmNotifier())->notifyItemsAdded($order, count($newItems));
         return response()->json($this->formatOrder($order));
     }
 
