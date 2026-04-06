@@ -51,6 +51,10 @@
                     <div class="text-2xl">▦</div>
                     <div class="text-xs">Orders</div>
                 </a>
+                <a href="/waiter/settings" class="flex-1 text-center py-3 {{ request()->is('waiter/settings') ? 'text-indigo-600 bg-indigo-50' : 'text-gray-600' }}">
+                    <div class="text-2xl">⚙️</div>
+                    <div class="text-xs">Settings</div>
+                </a>
                 <a href="/profile" class="flex-1 text-center py-3 {{ request()->is('profile*') ? 'text-indigo-600 bg-indigo-50' : 'text-gray-600' }}">
                     <div class="text-2xl">👤</div>
                     <div class="text-xs">Profile</div>

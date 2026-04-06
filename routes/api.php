@@ -35,6 +35,8 @@ Route::prefix('mobile')->group(function () {
             Route::get('menu',                          [WaiterController::class, 'menu']);
             Route::get('tables',                        [WaiterController::class, 'tables']);
             Route::get('waiters',                       [WaiterController::class, 'waiters']);
+            Route::get('categories',                    [WaiterController::class, 'getCategories']);
+            Route::post('categories/reorder',           [WaiterController::class, 'reorderCategories']);
         });
 
         // Chef

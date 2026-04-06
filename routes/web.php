@@ -262,6 +262,9 @@ Route::get('order/{orderId}/status', [OrderController::class, 'getOrderStatus'])
 // Waiter Routes
 Route::prefix('waiter')->name('waiter.')->middleware(['multi.auth', 'role:waiter'])->group(function () {
     Route::get('dashboard', [WaiterDashboardController::class, 'index'])->name('dashboard');
+    Route::post('preferences/category', [WaiterOrderController::class, 'savePreference'])->name('preferences.category');
+    Route::get('settings', [WaiterOrderController::class, 'settings'])->name('settings');
+    Route::post('settings/reorder', [WaiterOrderController::class, 'reorderCategories'])->name('settings.reorder');
     Route::get('orders', [WaiterOrderController::class, 'index'])->name('orders.index');
     Route::get('orders/create', [WaiterOrderController::class, 'create'])->name('orders.create');
     Route::post('orders', [WaiterOrderController::class, 'store'])->name('orders.store');

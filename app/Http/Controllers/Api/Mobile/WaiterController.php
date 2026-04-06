@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
 use App\Events\{OrderCreated, OrderStatusUpdated};
-use App\Models\{Order, OrderItem, MenuItem, MenuCategory, RestaurantTable};
+use App\Models\{Order, OrderItem, MenuItem, MenuCategory, RestaurantTable, WaiterCategorySortOrder, WaiterCategoryPreference};
 use Illuminate\Http\Request;
 
 class WaiterController extends Controller
@@ -36,6 +36,63 @@ class WaiterController extends Controller
             ->where('id', $id)
             ->where('tenant_id', $this->tenantId())
             ->firstOrFail();
+    }
+
+    // GET /api/mobile/waiter/categories
+    public function getCategories()
+    {
+        $employee = $this->employee();
+        $tenantId = $this->tenantId();
+        $branchId = $this->branchId();
+
+        $waiterSorts = WaiterCategorySortOrder::where('employee_id', $employee->id)
+            ->pluck('sort_order', 'menu_category_id');
+
+        $pref = WaiterCategoryPreference::where('employee_id', $employee->id)->value('menu_category_id');
+
+        $categories = MenuCategory::withoutGlobalScopes()
+            ->where(fn($q) => $q->whereNull('tenant_id')->orWhere('tenant_id', $tenantId))
+            ->when($branchId, fn($q) =>
+                $q->where(fn($q2) => $q2->whereNull('branch_id')->orWhere('branch_id', $branchId))
+            )
+            ->whereHas('menuItems', fn($q) => $q->where('is_available', true))
+            ->get()
+            ->sortBy(fn($cat) => $waiterSorts->get($cat->id, $cat->sort_order ?? 9999))
+            ->values()
+            ->map(fn($cat) => [
+                'id'         => $cat->id,
+                'name'       => $cat->name,
+                'sort_order' => $waiterSorts->get($cat->id, $cat->sort_order ?? 9999),
+                'is_default' => $cat->id === $pref,
+            ]);
+
+        return response()->json($categories);
+    }
+
+    // POST /api/mobile/waiter/categories/reorder
+    public function reorderCategories(Request $request)
+    {
+        $request->validate([
+            'ids'   => 'required|array',
+            'ids.*' => 'integer',
+            'reset' => 'nullable|boolean',
+        ]);
+
+        $waiterId = $this->employee()->id;
+
+        if ($request->boolean('reset')) {
+            WaiterCategorySortOrder::where('employee_id', $waiterId)->delete();
+            return response()->json(['message' => 'Reset to default order.']);
+        }
+
+        foreach ($request->ids as $order => $categoryId) {
+            WaiterCategorySortOrder::updateOrCreate(
+                ['employee_id' => $waiterId, 'menu_category_id' => $categoryId],
+                ['sort_order'  => $order + 1]
+            );
+        }
+
+        return response()->json(['message' => 'Category order saved.']);
     }
 
     // GET /api/mobile/waiter/waiters — list other active waiters in same branch
@@ -106,6 +163,10 @@ class WaiterController extends Controller
     {
         $tenantId = $this->tenantId();
         $branchId = $this->branchId();
+        $waiterId = $this->employee()->id;
+
+        $waiterSorts = WaiterCategorySortOrder::where('employee_id', $waiterId)
+            ->pluck('sort_order', 'menu_category_id');
 
         $categories = MenuCategory::withoutGlobalScopes()
             ->with(['menuItems' => function ($q) use ($tenantId, $branchId) {
@@ -121,7 +182,9 @@ class WaiterController extends Controller
             )
             ->orderByRaw('COALESCE(sort_order, 9999)')
             ->get()
-            ->filter(fn($cat) => $cat->menuItems->isNotEmpty());
+            ->filter(fn($cat) => $cat->menuItems->isNotEmpty())
+            ->sortBy(fn($cat) => $waiterSorts->get($cat->id, $cat->sort_order ?? 9999))
+            ->values();
 
         $result = [];
         foreach ($categories as $cat) {
@@ -134,7 +197,7 @@ class WaiterController extends Controller
                     'image'               => $i->image ? asset($i->image) : null,
                     'category'            => $cat->name,
                     'category_id'         => $cat->id,
-                    'category_sort_order' => $cat->sort_order ?? 9999,
+                    'category_sort_order' => $waiterSorts->get($cat->id, $cat->sort_order ?? 9999),
                 ];
             }
         }

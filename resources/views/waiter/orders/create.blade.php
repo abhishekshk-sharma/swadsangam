@@ -50,47 +50,55 @@
     
     <div class="mb-4">
         <div class="flex gap-2 overflow-x-auto pb-2">
-            <button onclick="filterCategory('all', this)" class="category-btn px-4 py-2 rounded-full bg-blue-600 text-white text-sm whitespace-nowrap">All</button>
+            <button onclick="filterCategory('all', this)" id="catBtn-all" class="category-btn px-4 py-2 rounded-full bg-gray-200 text-gray-700 text-sm whitespace-nowrap">All</button>
             @foreach($menuCategories as $cat)
-                <button onclick="filterCategory('{{ $cat->id }}', this)" class="category-btn px-4 py-2 rounded-full bg-gray-200 text-gray-700 text-sm whitespace-nowrap">{{ $cat->name }}</button>
+                <button onclick="filterCategory('{{ $cat->id }}', this)" id="catBtn-{{ $cat->id }}" class="category-btn px-4 py-2 rounded-full bg-gray-200 text-gray-700 text-sm whitespace-nowrap">{{ $cat->name }}</button>
             @endforeach
         </div>
     </div>
 
     <div id="menuItems" class="flex flex-col gap-2 pb-24">
-        @foreach($menuItems as $item)
-            <div class="menu-item bg-white rounded-lg shadow-sm border border-gray-200"
-                 data-category="{{ $item->menu_category_id }}" data-name="{{ strtolower($item->name) }}"
-                 data-id="{{ $item->id }}">
-                <div class="flex items-center justify-between px-4 py-3 cursor-pointer"
-                     onclick="toggleItemRow({{ $item->id }})">
-                    <div>
-                        <div class="font-semibold text-sm text-gray-800">{{ $item->name }}</div>
-                        @if($item->description)
-                            <div class="text-xs text-gray-400 mt-0.5">{{ $item->description }}</div>
-                        @endif
+        @foreach($menuCategories as $cat)
+            @php $catItems = $menuItems->where('menu_category_id', $cat->id)->values(); @endphp
+            @if($catItems->count())
+            <div class="menu-category-group" data-category-id="{{ $cat->id }}">
+                <div class="text-xs font-bold text-gray-500 uppercase tracking-widest px-1 py-2 mt-2">{{ $cat->name }}</div>
+                @foreach($catItems as $item)
+                <div class="menu-item bg-white rounded-lg shadow-sm border border-gray-200"
+                     data-category="{{ $item->menu_category_id }}" data-name="{{ strtolower($item->name) }}"
+                     data-id="{{ $item->id }}">
+                    <div class="flex items-center justify-between px-4 py-3 cursor-pointer"
+                         onclick="toggleItemRow({{ $item->id }})">
+                        <div>
+                            <div class="font-semibold text-sm text-gray-800">{{ $item->name }}</div>
+                            @if($item->description)
+                                <div class="text-xs text-gray-400 mt-0.5">{{ $item->description }}</div>
+                            @endif
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="font-bold text-blue-600">₹{{ $item->price }}</span>
+                            <span id="addIcon{{ $item->id }}" class="text-blue-600 text-xl font-bold leading-none">+</span>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <span class="font-bold text-blue-600">₹{{ $item->price }}</span>
-                        <span id="addIcon{{ $item->id }}" class="text-blue-600 text-xl font-bold leading-none">+</span>
+                    <div id="qtyRow{{ $item->id }}" class="hidden px-4 pb-3">
+                        <div class="flex items-center gap-3 mb-2">
+                            <button onclick="changeInlineQty({{ $item->id }}, -1)" class="w-8 h-8 bg-gray-200 rounded-full font-bold text-lg">−</button>
+                            <span id="inlineQty{{ $item->id }}" class="font-bold text-lg w-8 text-center">1</span>
+                            <button onclick="changeInlineQty({{ $item->id }}, 1)" class="w-8 h-8 bg-blue-600 text-white rounded-full font-bold text-lg">+</button>
+                            <button onclick="confirmAdd({{ $item->id }}, '{{ addslashes($item->name) }}', {{ $item->price }})"
+                                    class="ml-2 bg-blue-600 text-white px-4 py-1.5 rounded-full text-sm font-semibold">
+                                Add to Order
+                            </button>
+                            <button onclick="toggleItemRow({{ $item->id }})" class="text-gray-400 text-xl ml-auto">×</button>
+                        </div>
+                        <textarea id="inlineNotes{{ $item->id }}" rows="2"
+                            class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            placeholder="Special request (e.g. less spicy, no onion)..."></textarea>
                     </div>
                 </div>
-                <div id="qtyRow{{ $item->id }}" class="hidden px-4 pb-3">
-                    <div class="flex items-center gap-3 mb-2">
-                        <button onclick="changeInlineQty({{ $item->id }}, -1)" class="w-8 h-8 bg-gray-200 rounded-full font-bold text-lg">−</button>
-                        <span id="inlineQty{{ $item->id }}" class="font-bold text-lg w-8 text-center">1</span>
-                        <button onclick="changeInlineQty({{ $item->id }}, 1)" class="w-8 h-8 bg-blue-600 text-white rounded-full font-bold text-lg">+</button>
-                        <button onclick="confirmAdd({{ $item->id }}, '{{ addslashes($item->name) }}', {{ $item->price }})"
-                                class="ml-2 bg-blue-600 text-white px-4 py-1.5 rounded-full text-sm font-semibold">
-                            Add to Order
-                        </button>
-                        <button onclick="toggleItemRow({{ $item->id }})" class="text-gray-400 text-xl ml-auto">×</button>
-                    </div>
-                    <textarea id="inlineNotes{{ $item->id }}" rows="2"
-                        class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-400"
-                        placeholder="Special request (e.g. less spicy, no onion)..."></textarea>
-                </div>
+                @endforeach
             </div>
+            @endif
         @endforeach
     </div>
 </div>
@@ -372,6 +380,9 @@ function submitOrder() {
     form.submit();
 }
 
+const PREF_URL  = '{{ route('waiter.preferences.category') }}';
+const CSRF_TOKEN = '{{ csrf_token() }}';
+
 function filterCategory(category, btn) {
     document.querySelectorAll('.category-btn').forEach(b => {
         b.classList.remove('bg-blue-600', 'text-white');
@@ -383,7 +394,24 @@ function filterCategory(category, btn) {
     document.querySelectorAll('.menu-item').forEach(item => {
         item.style.display = (category === 'all' || item.dataset.category === String(category)) ? 'block' : 'none';
     });
+
+    document.querySelectorAll('.menu-category-group').forEach(group => {
+        group.style.display = (category === 'all' || group.dataset.categoryId === String(category)) ? 'block' : 'none';
+    });
+
+    // Save preference via AJAX (fire-and-forget)
+    const body = new FormData();
+    body.append('_token', CSRF_TOKEN);
+    body.append('menu_category_id', category === 'all' ? '' : category);
+    fetch(PREF_URL, { method: 'POST', body });
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+    const prefId = '{{ $preferredCategoryId }}';
+    const btn = prefId ? document.getElementById('catBtn-' + prefId) : document.getElementById('catBtn-all');
+    if (btn) filterCategory(prefId || 'all', btn);
+    else document.getElementById('catBtn-all').click();
+});
 
 function filterMenu() {
     const search = document.getElementById('menuSearch').value.toLowerCase();

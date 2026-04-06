@@ -128,9 +128,34 @@
             @elseif($order->status === 'ready')
             <button onclick="doAction('{{ route('manager.cook.served', $order->id) }}')" class="btn btn-primary w-100"><i class="fas fa-utensils me-1"></i>Mark Served</button>
             @elseif(in_array($order->status, ['served','checkout']))
+            @php
+                $gst = $branchGst;
+                $grandTotal = $order->total_amount;
+                if ($gst['enabled'] && $gst['mode'] === 'excluded') {
+                    $cgstAmt    = round($order->total_amount * $gst['cgst_pct'] / 100, 2);
+                    $sgstAmt    = round($order->total_amount * $gst['sgst_pct'] / 100, 2);
+                    $grandTotal = $order->total_amount + $cgstAmt + $sgstAmt;
+                } elseif ($gst['enabled'] && $gst['mode'] === 'included') {
+                    $base    = round($order->total_amount * 100 / (100 + $gst['total_pct']), 2);
+                    $cgstAmt = round($base * $gst['cgst_pct'] / 100, 2);
+                    $sgstAmt = round($base * $gst['sgst_pct'] / 100, 2);
+                }
+            @endphp
             <div class="mb-3">
-                <div style="font-size:18px;font-weight:700;color:#16a34a;text-align:center;margin-bottom:12px;">Total: ₹{{ number_format($order->total_amount, 2) }}</div>
-                <button onclick="openPaymentModal({{ $order->id }}, {{ $order->total_amount }}, '{{ $order->is_parcel ? 'Parcel' : $order->table?->table_number }}')" class="btn btn-primary w-100">
+                @if($gst['enabled'])
+                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;">
+                    @if($gst['mode'] === 'excluded')
+                    <div style="display:flex;justify-content:space-between;"><span>Subtotal</span><span>₹{{ number_format($order->total_amount, 2) }}</span></div>
+                    @else
+                    <div style="display:flex;justify-content:space-between;"><span>Subtotal (excl. GST)</span><span>₹{{ number_format($base, 2) }}</span></div>
+                    @endif
+                    <div style="display:flex;justify-content:space-between;color:#6b7280;"><span>CGST ({{ $gst['cgst_pct'] }}%)</span><span>₹{{ number_format($cgstAmt, 2) }}</span></div>
+                    <div style="display:flex;justify-content:space-between;color:#6b7280;"><span>SGST ({{ $gst['sgst_pct'] }}%)</span><span>₹{{ number_format($sgstAmt, 2) }}</span></div>
+                    <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid #bbf7d0;margin-top:6px;padding-top:6px;"><span>Grand Total</span><span>₹{{ number_format($grandTotal, 2) }}</span></div>
+                </div>
+                @endif
+                <div style="font-size:18px;font-weight:700;color:#16a34a;text-align:center;margin-bottom:12px;">Total: ₹{{ number_format($grandTotal, 2) }}</div>
+                <button onclick="openPaymentModal({{ $order->id }}, {{ $grandTotal }}, '{{ $order->is_parcel ? 'Parcel' : $order->table?->table_number }}')" class="btn btn-primary w-100">
                     <i class="fas fa-money-bill me-1"></i>Take Payment
                 </button>
             </div>
@@ -165,30 +190,28 @@
 <!-- Payment Modal -->
 <div id="paymentModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
     <div style="background:#fff;border-radius:12px;width:100%;max-width:480px;margin:auto;box-shadow:0 10px 40px rgba(0,0,0,.2);">
-        <div style="background:linear-gradient(135deg,#1e3a5f,#2a4f7c);color:#fff;padding:20px 24px;border-radius:12px 12px 0 0;">
-            <h5 style="margin:0;font-weight:700;">Process Payment</h5>
-            <p style="margin:4px 0 0;font-size:13px;opacity:.9;">Order #<span id="modalOrderId"></span> — <span id="modalTableNumber"></span></p>
+        <div style="background:linear-gradient(135deg,#1e3a5f,#2a4f7c);color:#fff;padding:20px 24px;border-radius:12px 12px 0 0;display:flex;justify-content:space-between;align-items:start;">
+            <div>
+                <h5 style="margin:0;font-weight:700;">Process Payment</h5>
+                <p style="margin:4px 0 0;font-size:13px;opacity:.9;">Order #<span id="modalOrderId"></span> — <span id="modalTableNumber"></span></p>
+            </div>
+            <button onclick="closePaymentModal()" style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:16px;">×</button>
         </div>
         <div style="padding:24px;">
             <form id="paymentForm" method="POST">
                 @csrf @method('PATCH')
+                <input type="hidden" name="grand_total" id="modalGrandTotal">
                 <div style="background:#f0fdf4;border:2px solid #86efac;border-radius:8px;padding:16px;text-align:center;margin-bottom:20px;">
                     <div style="font-size:14px;color:#166534;font-weight:600;margin-bottom:4px;">Total Amount</div>
                     <div id="modalTotalAmount" style="font-size:32px;font-weight:700;color:#15803d;">₹0.00</div>
                 </div>
-                <div class="row g-2 mb-4">
-                    @foreach(['cash'=>'💵 Cash','upi'=>'📱 UPI','card'=>'💳 Card'] as $mode => $label)
-                    <div class="col-4">
-                        <button type="button" onclick="selectMode('{{ $mode }}')" class="payment-mode-btn w-100" data-mode="{{ $mode }}" style="padding:16px;border:2px solid #d5d9d9;border-radius:8px;background:#fff;cursor:pointer;transition:all .2s;">
-                            <div style="font-size:28px;margin-bottom:6px;">{{ explode(' ',$label)[0] }}</div>
-                            <div style="font-size:13px;font-weight:600;">{{ explode(' ',$label)[1] }}</div>
-                        </button>
-                    </div>
-                    @endforeach
+                <div class="mb-4">
+                    <label style="font-weight:600;display:block;margin-bottom:8px;">Payment Method</label>
+                    <div id="paymentMethodGrid" class="row g-2"></div>
+                    <input type="hidden" name="payment_mode" id="paymentMode" required>
                 </div>
-                <input type="hidden" name="payment_mode" id="paymentMode" required>
                 <div id="cashSection" style="display:none;margin-bottom:16px;">
-                    <label class="form-label" style="font-weight:600;">Cash Received</label>
+                    <label style="font-weight:600;display:block;margin-bottom:6px;">Cash Received</label>
                     <div style="display:flex;gap:8px;">
                         <input type="number" step="0.01" min="0" id="cashReceived" class="form-control" placeholder="Enter amount">
                         <button type="button" onclick="calcChange()" class="btn btn-primary">Calc</button>
@@ -202,9 +225,6 @@
                     <i class="fas fa-check-circle me-2"></i>Complete Payment
                 </button>
             </form>
-        </div>
-        <div style="padding:12px 24px;border-top:1px solid #e5e7eb;text-align:right;">
-            <button onclick="closePaymentModal()" class="btn btn-secondary btn-sm">Cancel</button>
         </div>
     </div>
 </div>
@@ -223,8 +243,28 @@
     </div>
 </div>
 
+<!-- UPI QR Modal -->
+<div id="upiQrModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:340px;margin:auto;text-align:center;">
+        <h5 style="font-weight:700;margin-bottom:4px;">📱 UPI Payment</h5>
+        <p style="font-size:13px;color:#6b7280;margin-bottom:8px;">Ask customer to scan with Google Pay / PhonePe</p>
+        <div style="font-size:22px;font-weight:700;color:#16a34a;margin-bottom:12px;" id="upiAmountDisplay"></div>
+        <div style="background:#f9fafb;border-radius:12px;padding:16px;display:flex;justify-content:center;margin-bottom:12px;">
+            <div id="upiQrContainer"></div>
+        </div>
+        <p style="font-size:12px;color:#9ca3af;margin-bottom:16px;" id="upiIdDisplay"></p>
+        <div style="display:flex;gap:8px;">
+            <button onclick="closeUpiModal()" style="flex:1;background:#f3f4f6;border:none;border-radius:8px;padding:10px;font-weight:600;cursor:pointer;">Cancel</button>
+            <button onclick="confirmUpiPayment()" style="flex:1;background:#16a34a;color:#fff;border:none;border-radius:8px;padding:10px;font-weight:600;cursor:pointer;">✓ Payment Received</button>
+        </div>
+    </div>
+</div>
+
 <script>
-let activeType = 'table', activeStatus = 'all', currentTotal = 0;
+let activeType = 'table', activeStatus = 'all', currentTotal = 0, currentOrderId = null;
+const BRANCH_UPI_ID = '{{ $branchUpiId }}';
+const BRANCH_GST    = @json($branchGst);
+let upiPendingOrderId = null;
 
 function toggleEdit(id) { const el = document.getElementById(id); el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
 
@@ -255,17 +295,33 @@ function doAction(url) {
         .then(r => r.json()).then(() => location.reload());
 }
 
-function openPaymentModal(id, total, table) {
-    currentTotal = total;
-    document.getElementById('modalOrderId').textContent = id;
+function openPaymentModal(id, grandTotal, table) {
+    currentOrderId = id;
+    currentTotal   = grandTotal;
+    document.getElementById('modalOrderId').textContent     = id;
     document.getElementById('modalTableNumber').textContent = table;
-    document.getElementById('modalTotalAmount').textContent = '₹' + total.toFixed(2);
-    document.getElementById('paymentForm').action = `/manager/cook/${id}/payment`;
-    document.getElementById('paymentMode').value = '';
-    document.getElementById('cashSection').style.display = 'none';
-    document.getElementById('changeSection').style.display = 'none';
-    document.getElementById('submitPaymentBtn').disabled = true;
-    document.querySelectorAll('.payment-mode-btn').forEach(b => b.classList.remove('selected'));
+    document.getElementById('modalTotalAmount').textContent = '₹' + parseFloat(grandTotal).toFixed(2);
+    document.getElementById('modalGrandTotal').value        = grandTotal;
+    document.getElementById('paymentForm').action           = `/manager/cook/${id}/payment`;
+    document.getElementById('paymentMode').value            = '';
+    document.getElementById('cashSection').style.display    = 'none';
+    document.getElementById('changeSection').style.display  = 'none';
+    document.getElementById('submitPaymentBtn').disabled    = true;
+
+    // Build payment buttons based on branch UPI
+    const grid = document.getElementById('paymentMethodGrid');
+    grid.innerHTML = '';
+    const methods = BRANCH_UPI_ID
+        ? [['cash','💵','Cash'],['upi','📱','UPI']]
+        : [['cash','💵','Cash']];
+    const colClass = BRANCH_UPI_ID ? 'col-6' : 'col-12';
+    methods.forEach(function(m) {
+        const div = document.createElement('div');
+        div.className = colClass;
+        div.innerHTML = `<button type="button" onclick="selectMode('${m[0]}')" class="payment-mode-btn w-100" data-mode="${m[0]}" style="padding:16px;border:2px solid #d5d9d9;border-radius:8px;background:#fff;cursor:pointer;transition:all .2s;"><div style="font-size:28px;margin-bottom:6px;">${m[1]}</div><div style="font-size:13px;font-weight:600;">${m[2]}</div></button>`;
+        grid.appendChild(div);
+    });
+
     document.getElementById('paymentModal').style.display = 'flex';
 }
 
@@ -273,23 +329,78 @@ function closePaymentModal() { document.getElementById('paymentModal').style.dis
 
 function selectMode(mode) {
     document.querySelectorAll('.payment-mode-btn').forEach(b => b.classList.remove('selected'));
-    document.querySelector(`[data-mode="${mode}"]`).classList.add('selected');
+    document.querySelector(`[data-mode="${mode}"]`)?.classList.add('selected');
     document.getElementById('paymentMode').value = mode;
-    document.getElementById('cashSection').style.display = mode === 'cash' ? 'block' : 'none';
+    document.getElementById('cashSection').style.display  = mode === 'cash' ? 'block' : 'none';
     document.getElementById('changeSection').style.display = 'none';
-    document.getElementById('submitPaymentBtn').disabled = mode === 'cash';
+    if (mode === 'upi') {
+        document.getElementById('submitPaymentBtn').disabled = true;
+        showUpiQr(currentOrderId, currentTotal, BRANCH_UPI_ID);
+    } else {
+        document.getElementById('submitPaymentBtn').disabled = mode === 'cash';
+    }
+}
+
+function showUpiQr(orderId, amount, upiId) {
+    upiPendingOrderId = orderId;
+    const upiUri = `upi://pay?pa=${encodeURIComponent(upiId)}&am=${parseFloat(amount).toFixed(2)}&cu=INR`;
+    document.getElementById('upiAmountDisplay').textContent = '₹' + parseFloat(amount).toFixed(2);
+    document.getElementById('upiIdDisplay').textContent     = 'UPI ID: ' + upiId;
+    const container = document.getElementById('upiQrContainer');
+    container.innerHTML = '';
+    new QRCode(container, { text: upiUri, width: 200, height: 200, colorDark: '#111827', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+    document.getElementById('upiQrModal').style.display = 'flex';
+}
+
+function closeUpiModal() {
+    document.getElementById('upiQrModal').style.display = 'none';
+    document.querySelectorAll('.payment-mode-btn').forEach(b => b.classList.remove('selected'));
+    document.getElementById('paymentMode').value = '';
+    upiPendingOrderId = null;
+}
+
+function confirmUpiPayment() {
+    document.getElementById('upiQrModal').style.display  = 'none';
+    document.getElementById('submitPaymentBtn').disabled = false;
+    document.getElementById('submitPaymentBtn').click();
 }
 
 function calcChange() {
     const cash = parseFloat(document.getElementById('cashReceived').value);
     if (!cash || cash < currentTotal) { alert('Cash must be at least ₹' + currentTotal.toFixed(2)); return; }
-    document.getElementById('changeAmount').textContent = '₹' + (cash - currentTotal).toFixed(2);
+    document.getElementById('changeAmount').textContent    = '₹' + (cash - currentTotal).toFixed(2);
     document.getElementById('changeSection').style.display = 'block';
-    document.getElementById('submitPaymentBtn').disabled = false;
+    document.getElementById('submitPaymentBtn').disabled   = false;
 }
 
 document.getElementById('paymentForm').addEventListener('submit', function(e) {
-    if (!document.getElementById('paymentMode').value) { e.preventDefault(); alert('Select a payment method'); }
+    e.preventDefault();
+    if (!document.getElementById('paymentMode').value) { alert('Select a payment method'); return; }
+    const submitBtn = document.getElementById('submitPaymentBtn');
+    submitBtn.disabled    = true;
+    submitBtn.textContent = 'Processing…';
+    fetch(this.action, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+        body: new FormData(this),
+    })
+    .then(r => r.json())
+    .then(function(res) {
+        if (res.success) {
+            closePaymentModal();
+            showQr(res.order_id, res.bill_url);
+            location.reload();
+        } else {
+            submitBtn.disabled    = false;
+            submitBtn.innerHTML   = '<i class="fas fa-check-circle me-2"></i>Complete Payment';
+            alert(res.message || 'Payment failed.');
+        }
+    })
+    .catch(function() {
+        submitBtn.disabled    = false;
+        submitBtn.innerHTML   = '<i class="fas fa-check-circle me-2"></i>Complete Payment';
+        alert('Network error.');
+    });
 });
 
 const BILL_URLS = {
@@ -298,11 +409,11 @@ const BILL_URLS = {
     @endforeach
 };
 
-function showQr(id) {
-    const url = BILL_URLS[id]; if (!url) return;
+function showQr(id, billUrl) {
+    const url = billUrl || BILL_URLS[id]; if (!url) return;
     document.getElementById('billLink').textContent = url;
-    document.getElementById('billLink').href = url;
-    document.getElementById('openBillBtn').href = url;
+    document.getElementById('billLink').href        = url;
+    document.getElementById('openBillBtn').href     = url;
     const c = document.getElementById('qrContainer'); c.innerHTML = '';
     new QRCode(c, { text:url, width:200, height:200, colorDark:'#111827', colorLight:'#ffffff', correctLevel:QRCode.CorrectLevel.M });
     document.getElementById('qrModal').style.display = 'flex';

@@ -183,14 +183,29 @@
             </div>
             @endif
             <div style="display:flex;flex-direction:column;gap:5px;">
-                <label style="font-size:12px;font-weight:600;color:var(--gray-600);"><i class="fas fa-calendar me-1"></i>Date</label>
-                <input type="date" name="date" value="{{ $selectedDate }}" onchange="this.form.submit()"
+                <label style="font-size:12px;font-weight:600;color:var(--gray-600);"><i class="fas fa-calendar me-1"></i>From</label>
+                <input type="date" name="date_from" value="{{ $dateFrom }}"
                     style="padding:7px 12px;border:1px solid var(--gray-300);border-radius:8px;font-size:13px;background:#fff;">
             </div>
-            @if($selectedBranch || $selectedDate !== today()->toDateString())
-            <a href="{{ route('admin.cook.index') }}" style="padding:7px 14px;background:#f3f4f6;color:#374151;border:1px solid #d1d5db;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;align-self:flex-end;"><i class="fas fa-times me-1"></i>Clear</a>
+            <div style="display:flex;flex-direction:column;gap:5px;">
+                <label style="font-size:12px;font-weight:600;color:var(--gray-600);"><i class="fas fa-calendar me-1"></i>To</label>
+                <input type="date" name="date_to" value="{{ $dateTo }}"
+                    style="padding:7px 12px;border:1px solid var(--gray-300);border-radius:8px;font-size:13px;background:#fff;">
+            </div>
+            <button type="submit" style="padding:7px 16px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;align-self:flex-end;">
+                <i class="fas fa-search me-1"></i>Filter
+            </button>
+            @if($selectedBranch || $dateFrom !== today()->toDateString() || $dateTo !== today()->toDateString())
+            <a href="{{ route('admin.cook.index') }}" style="padding:7px 14px;background:#f3f4f6;color:#374151;border:1px solid #d1d5db;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;align-self:flex-end;">
+                <i class="fas fa-times me-1"></i>Clear
+            </a>
             @endif
         </form>
+        @if($dateFrom !== $dateTo)
+        <div style="margin-top:8px;font-size:12px;color:#6b7280;">
+            <i class="fas fa-info-circle me-1"></i>Showing orders from <strong>{{ \Carbon\Carbon::parse($dateFrom)->format('d M Y') }}</strong> to <strong>{{ \Carbon\Carbon::parse($dateTo)->format('d M Y') }}</strong>
+        </div>
+        @endif
     </div>
 </div>
 
@@ -307,6 +322,9 @@
                                     style="font-size:11px;padding:2px 6px;border:1px solid #3b82f6;background:#eff6ff;color:#1d4ed8;border-radius:4px;cursor:pointer;">Edit</button>
                             <form action="{{ route('admin.cook.orderItems.cancel', $item->id) }}" method="POST" class="mb-0">
                                 @csrf @method('PATCH')
+                                <input type="hidden" name="branch_id" value="{{ $selectedBranch }}">
+                                <input type="hidden" name="date_from" value="{{ $dateFrom }}">
+                                <input type="hidden" name="date_to" value="{{ $dateTo }}">
                                 <button class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size:11px;">Cancel</button>
                             </form>
                         @endif
@@ -316,6 +334,9 @@
                 <div id="aedit-{{ $item->id }}" style="display:none;background:#f8fafc;border-radius:6px;padding:8px;margin-top:4px;">
                     <form action="{{ route('admin.cook.orderItems.update', $item->id) }}" method="POST" class="d-flex flex-column gap-2">
                         @csrf @method('PATCH')
+                        <input type="hidden" name="branch_id" value="{{ $selectedBranch }}">
+                        <input type="hidden" name="date_from" value="{{ $dateFrom }}">
+                        <input type="hidden" name="date_to" value="{{ $dateTo }}">
                         <div class="d-flex align-items-center gap-2">
                             <label style="font-size:12px;color:#666;min-width:40px;">Qty:</label>
                             <input type="number" name="quantity" value="{{ $item->quantity }}" min="1"
@@ -355,11 +376,36 @@
                 <i class="fas fa-utensils me-1"></i>Mark as Served
             </button>
             @elseif(in_array($order->status, ['served', 'checkout']))
+            @php
+                $gst = $branchGst;
+                $grandTotal = $order->total_amount;
+                if ($gst['enabled'] && $gst['mode'] === 'excluded') {
+                    $cgstAmt    = round($order->total_amount * $gst['cgst_pct'] / 100, 2);
+                    $sgstAmt    = round($order->total_amount * $gst['sgst_pct'] / 100, 2);
+                    $grandTotal = $order->total_amount + $cgstAmt + $sgstAmt;
+                } elseif ($gst['enabled'] && $gst['mode'] === 'included') {
+                    $base    = round($order->total_amount * 100 / (100 + $gst['total_pct']), 2);
+                    $cgstAmt = round($base * $gst['cgst_pct'] / 100, 2);
+                    $sgstAmt = round($base * $gst['sgst_pct'] / 100, 2);
+                }
+            @endphp
             <div class="mb-3">
-                <div style="font-size: 18px; font-weight: 700; color: #16a34a; text-align: center; margin-bottom: 12px;">
-                    Total: ₹{{ number_format($order->total_amount, 2) }}
+                @if($gst['enabled'])
+                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;">
+                    @if($gst['mode'] === 'excluded')
+                    <div style="display:flex;justify-content:space-between;"><span>Subtotal</span><span>₹{{ number_format($order->total_amount, 2) }}</span></div>
+                    @else
+                    <div style="display:flex;justify-content:space-between;"><span>Subtotal (excl. GST)</span><span>₹{{ number_format($base, 2) }}</span></div>
+                    @endif
+                    <div style="display:flex;justify-content:space-between;color:#6b7280;"><span>CGST ({{ $gst['cgst_pct'] }}%)</span><span>₹{{ number_format($cgstAmt, 2) }}</span></div>
+                    <div style="display:flex;justify-content:space-between;color:#6b7280;"><span>SGST ({{ $gst['sgst_pct'] }}%)</span><span>₹{{ number_format($sgstAmt, 2) }}</span></div>
+                    <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid #bbf7d0;margin-top:6px;padding-top:6px;"><span>Grand Total</span><span>₹{{ number_format($grandTotal, 2) }}</span></div>
                 </div>
-                <button onclick="openPaymentModal({{ $order->id }}, {{ $order->total_amount }}, '{{ $order->is_parcel ? 'Parcel' : $order->table?->table_number }}')" class="btn-primary w-100">
+                @endif
+                <div style="font-size:18px;font-weight:700;color:#16a34a;text-align:center;margin-bottom:12px;">
+                    Total: ₹{{ number_format($grandTotal, 2) }}
+                </div>
+                <button onclick="openPaymentModal({{ $order->id }}, {{ $grandTotal }}, '{{ $order->is_parcel ? 'Parcel' : $order->table?->table_number }}')" class="btn-primary w-100">
                     <i class="fas fa-money-bill me-1"></i>Take Payment
                 </button>
             </div>
@@ -381,6 +427,9 @@
             <form action="{{ route('admin.cook.orders.cancel', $order->id) }}" method="POST" class="mt-2"
                   onsubmit="return confirm('Cancel entire order #{{ $order->id }}?')">
                 @csrf @method('PATCH')
+                <input type="hidden" name="branch_id" value="{{ $selectedBranch }}">
+                <input type="hidden" name="date_from" value="{{ $dateFrom }}">
+                <input type="hidden" name="date_to" value="{{ $dateTo }}">
                 <button class="w-100" style="background:#fee2e2;color:#dc2626;border:none;padding:8px;border-radius:6px;font-size:13px;font-weight:600;">
                     <i class="fas fa-ban me-1"></i>Cancel Order
                 </button>
@@ -405,7 +454,7 @@
             <div class="modal-header" style="background: linear-gradient(135deg, #1e3a5f 0%, #2a4f7c 100%); color: white; border-radius: 12px 12px 0 0;">
                 <div>
                     <h5 class="modal-title" style="margin: 0; font-weight: 700;">Process Payment</h5>
-                    <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">Order #<span id="modalOrderId"></span> - Table <span id="modalTableNumber"></span></p>
+                    <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">Order #<span id="modalOrderId"></span> - <span id="modalTableNumber"></span></p>
                 </div>
                 <button type="button" class="btn-close btn-close-white" onclick="closePaymentModal()"></button>
             </div>
@@ -413,53 +462,36 @@
                 <form id="paymentForm" method="POST">
                     @csrf
                     @method('PATCH')
-                    
+                    <input type="hidden" name="branch_id" value="{{ $selectedBranch }}">
+                    <input type="hidden" name="date_from" value="{{ $dateFrom }}">
+                    <input type="hidden" name="date_to" value="{{ $dateTo }}">
+                    <input type="hidden" name="grand_total" id="modalGrandTotal">
+
                     <div class="mb-4" style="background: #f0fdf4; border: 2px solid #86efac; border-radius: 8px; padding: 16px; text-align: center;">
                         <div style="font-size: 14px; color: #166534; font-weight: 600; margin-bottom: 4px;">Total Amount</div>
                         <div id="modalTotalAmount" style="font-size: 32px; font-weight: 700; color: #15803d;">₹0.00</div>
                     </div>
-                    
+
                     <div class="mb-4">
                         <label class="form-label" style="font-weight: 600; color: #232f3e;">Payment Method</label>
-                        <div class="row g-2">
-                            <div class="col-4">
-                                <button type="button" onclick="selectPaymentMode('cash')" class="payment-mode-btn w-100" data-mode="cash" style="padding: 16px; border: 2px solid #d5d9d9; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;">
-                                    <div style="font-size: 32px; margin-bottom: 8px;">💵</div>
-                                    <div style="font-size: 13px; font-weight: 600;">Cash</div>
-                                </button>
-                            </div>
-                            <div class="col-4">
-                                <button type="button" onclick="selectPaymentMode('upi')" class="payment-mode-btn w-100" data-mode="upi" style="padding: 16px; border: 2px solid #d5d9d9; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;">
-                                    <div style="font-size: 32px; margin-bottom: 8px;">📱</div>
-                                    <div style="font-size: 13px; font-weight: 600;">UPI</div>
-                                </button>
-                            </div>
-                            <div class="col-4">
-                                <button type="button" onclick="selectPaymentMode('card')" class="payment-mode-btn w-100" data-mode="card" style="padding: 16px; border: 2px solid #d5d9d9; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;">
-                                    <div style="font-size: 32px; margin-bottom: 8px;">💳</div>
-                                    <div style="font-size: 13px; font-weight: 600;">Card</div>
-                                </button>
-                            </div>
-                        </div>
+                        <div id="paymentMethodGrid" class="row g-2"></div>
                         <input type="hidden" name="payment_mode" id="paymentMode" required>
                     </div>
-                    
+
                     <div id="cashSection" style="display: none;">
                         <label class="form-label" style="font-weight: 600; color: #232f3e;">Cash Received</label>
                         <div class="input-group mb-3">
                             <span class="input-group-text" style="background: #f7f8f9; border: 1px solid #d5d9d9;">₹</span>
                             <input type="number" step="0.01" min="0" id="cashReceived" class="form-control" placeholder="Enter amount" style="border: 1px solid #d5d9d9; padding: 12px;">
-                            <button type="button" onclick="calculateChange()" class="btn-primary" style="padding: 12px 24px;">
-                                Calculate
-                            </button>
+                            <button type="button" onclick="calculateChange()" class="btn-primary" style="padding: 12px 24px;">Calculate</button>
                         </div>
                     </div>
-                    
+
                     <div id="changeSection" style="display: none; background: #fef3c7; border: 2px solid #fbbf24; border-radius: 8px; padding: 16px; text-align: center; margin-bottom: 16px;">
                         <div style="font-size: 13px; color: #92400e; font-weight: 600; margin-bottom: 4px;">Change to Return</div>
                         <div id="changeAmount" style="font-size: 28px; font-weight: 700; color: #b45309;">₹0.00</div>
                     </div>
-                    
+
                     <button type="submit" id="submitPaymentBtn" class="btn-success w-100" style="padding: 14px; font-size: 16px; font-weight: 600;" disabled>
                         <i class="fas fa-check-circle me-2"></i>Complete Payment
                     </button>
@@ -483,6 +515,23 @@
         <div style="display:flex;gap:8px;">
             <button onclick="closeAdminQr()" style="flex:1;background:#f3f4f6;border:none;border-radius:8px;padding:10px;font-weight:600;cursor:pointer;">Close</button>
             <a id="adminOpenBillBtn" href="#" target="_blank" style="flex:1;background:#2563eb;color:#fff;border-radius:8px;padding:10px;font-weight:600;text-decoration:none;display:inline-block;">Open Bill</a>
+        </div>
+    </div>
+</div>
+
+<!-- UPI QR Modal -->
+<div id="upiQrModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:340px;margin:auto;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,0.25);">
+        <h5 style="font-weight:700;margin-bottom:4px;">📱 UPI Payment</h5>
+        <p style="font-size:13px;color:#6b7280;margin-bottom:8px;">Ask customer to scan with Google Pay / PhonePe</p>
+        <div style="font-size:22px;font-weight:700;color:#16a34a;margin-bottom:12px;" id="upiAmountDisplay"></div>
+        <div style="background:#f9fafb;border-radius:12px;padding:16px;display:flex;justify-content:center;margin-bottom:12px;">
+            <div id="upiQrContainer"></div>
+        </div>
+        <p style="font-size:12px;color:#9ca3af;margin-bottom:16px;" id="upiIdDisplay"></p>
+        <div style="display:flex;gap:8px;">
+            <button onclick="closeUpiModal()" style="flex:1;background:#f3f4f6;border:none;border-radius:8px;padding:10px;font-weight:600;cursor:pointer;">Cancel</button>
+            <button onclick="confirmUpiPayment()" style="flex:1;background:#16a34a;color:#fff;border:none;border-radius:8px;padding:10px;font-weight:600;cursor:pointer;">✓ Payment Received</button>
         </div>
     </div>
 </div>
@@ -514,9 +563,14 @@
 </style>
 
 <script>
-var STORAGE_KEY = 'adminCookTab_{{ $selectedDate }}_{{ $selectedBranch ?? 0 }}';
+var STORAGE_KEY = 'adminCookTab_{{ $dateFrom }}_{{ $dateTo }}_{{ $selectedBranch ?? 0 }}';
 var activeType   = localStorage.getItem(STORAGE_KEY + '_type')   || 'table';
 var activeStatus = localStorage.getItem(STORAGE_KEY + '_status') || 'all';
+var BRANCH_UPI_ID = '{{ $branchUpiId }}';
+var BRANCH_GST    = @json($branchGst);
+var upiPendingOrderId = null;
+var currentTotalAmount = 0;
+var currentOrderId = null;
 
 function saveState() {
     localStorage.setItem(STORAGE_KEY + '_type',   activeType);
@@ -537,12 +591,10 @@ function filterOrders(status) {
     applyFilters();
 }
 
-// Stats card click — show that status across both types
 function quickFilter(status) {
     activeStatus = status;
     saveState();
     updateStatusTabs();
-    // Show all matching orders regardless of type
     document.querySelectorAll('.order-item').forEach(function(item) {
         item.style.display = (activeStatus === 'all' || item.dataset.status === activeStatus) ? 'block' : 'none';
     });
@@ -579,13 +631,12 @@ function toggleAdminEdit(id) {
     el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
 
-// Order status actions — save state before reload so tab is restored
 function startPreparing(orderId) {
     saveState();
     fetch('/admin/cook/' + orderId + '/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
-    }).then(function(r) { return r.json(); }).then(function() { location.reload(); });
+    }).then(function(r) { return r.json(); }).then(function() { reloadWithFilters(); });
 }
 
 function markReady(orderId) {
@@ -593,7 +644,7 @@ function markReady(orderId) {
     fetch('/admin/cook/' + orderId + '/ready', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
-    }).then(function(r) { return r.json(); }).then(function() { location.reload(); });
+    }).then(function(r) { return r.json(); }).then(function() { reloadWithFilters(); });
 }
 
 function markServed(orderId) {
@@ -601,26 +652,50 @@ function markServed(orderId) {
     fetch('/admin/cook/' + orderId + '/served', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
-    }).then(function(r) { return r.json(); }).then(function() { location.reload(); });
+    }).then(function(r) { return r.json(); }).then(function() { reloadWithFilters(); });
 }
 
-// Payment modal
-var currentOrderId = null;
-var currentTotalAmount = 0;
+function reloadWithFilters() {
+    var params = new URLSearchParams(window.location.search);
+    if (!params.has('date_from')) params.set('date_from', '{{ $dateFrom }}');
+    if (!params.has('date_to'))   params.set('date_to',   '{{ $dateTo }}');
+    @if($selectedBranch)
+    if (!params.has('branch_id')) params.set('branch_id', '{{ $selectedBranch }}');
+    @endif
+    window.location.href = '/admin/cook?' + params.toString();
+}
 
-function openPaymentModal(orderId, totalAmount, tableNumber) {
-    currentOrderId    = orderId;
-    currentTotalAmount = totalAmount;
-    document.getElementById('modalOrderId').textContent    = orderId;
-    document.getElementById('modalTableNumber').textContent = tableNumber;
-    document.getElementById('modalTotalAmount').textContent = '₹' + parseFloat(totalAmount).toFixed(2);
-    document.getElementById('paymentForm').action = '/admin/cook/' + orderId + '/payment';
-    document.getElementById('paymentMode').value  = '';
-    document.getElementById('cashReceived').value = '';
-    document.getElementById('cashSection').style.display   = 'none';
-    document.getElementById('changeSection').style.display = 'none';
-    document.getElementById('submitPaymentBtn').disabled   = true;
-    document.querySelectorAll('.payment-mode-btn').forEach(function(b) { b.classList.remove('selected'); });
+// ── Payment Modal ─────────────────────────────────────────────────────────
+function openPaymentModal(orderId, grandTotal, tableLabel) {
+    currentOrderId     = orderId;
+    currentTotalAmount = grandTotal;
+    document.getElementById('modalOrderId').textContent     = orderId;
+    document.getElementById('modalTableNumber').textContent = tableLabel;
+    document.getElementById('modalTotalAmount').textContent = '₹' + parseFloat(grandTotal).toFixed(2);
+    document.getElementById('modalGrandTotal').value        = grandTotal;
+    document.getElementById('paymentForm').action           = '/admin/cook/' + orderId + '/payment';
+    document.getElementById('paymentMode').value            = '';
+    document.getElementById('cashReceived').value           = '';
+    document.getElementById('cashSection').style.display    = 'none';
+    document.getElementById('changeSection').style.display  = 'none';
+    document.getElementById('submitPaymentBtn').disabled    = true;
+
+    // Build payment method buttons based on branch UPI
+    var grid = document.getElementById('paymentMethodGrid');
+    grid.innerHTML = '';
+    var methods = BRANCH_UPI_ID
+        ? [['cash','💵','Cash'],['upi','📱','UPI']]
+        : [['cash','💵','Cash']];
+    var colClass = BRANCH_UPI_ID ? 'col-6' : 'col-12';
+    methods.forEach(function(m) {
+        var div = document.createElement('div');
+        div.className = colClass;
+        div.innerHTML = '<button type="button" onclick="selectPaymentMode(\''+m[0]+'\')" class="payment-mode-btn w-100" data-mode="'+m[0]+'" style="padding:16px;border:2px solid #d5d9d9;border-radius:8px;background:#fff;cursor:pointer;transition:all .2s;">'
+            + '<div style="font-size:32px;margin-bottom:8px;">'+m[1]+'</div>'
+            + '<div style="font-size:13px;font-weight:600;">'+m[2]+'</div></button>';
+        grid.appendChild(div);
+    });
+
     document.getElementById('paymentModal').style.display  = 'block';
     document.getElementById('paymentModal').classList.add('show');
     document.getElementById('modalBackdrop').style.display = 'block';
@@ -638,12 +713,42 @@ function closePaymentModal() {
 
 function selectPaymentMode(mode) {
     document.querySelectorAll('.payment-mode-btn').forEach(function(b) { b.classList.remove('selected'); });
-    event.target.closest('.payment-mode-btn').classList.add('selected');
+    var btn = document.querySelector('[data-mode="'+mode+'"]');
+    if (btn) btn.classList.add('selected');
     document.getElementById('paymentMode').value = mode;
-    var isCash = mode === 'cash';
-    document.getElementById('cashSection').style.display   = isCash ? 'block' : 'none';
+    document.getElementById('cashSection').style.display   = mode === 'cash' ? 'block' : 'none';
     document.getElementById('changeSection').style.display = 'none';
-    document.getElementById('submitPaymentBtn').disabled   = isCash;
+    if (mode === 'upi') {
+        document.getElementById('submitPaymentBtn').disabled = true;
+        showUpiQr(currentOrderId, currentTotalAmount, BRANCH_UPI_ID);
+    } else {
+        document.getElementById('submitPaymentBtn').disabled = mode === 'cash';
+    }
+}
+
+function showUpiQr(orderId, amount, upiId) {
+    upiPendingOrderId = orderId;
+    var upiUri = 'upi://pay?pa=' + encodeURIComponent(upiId) + '&am=' + parseFloat(amount).toFixed(2) + '&cu=INR';
+    document.getElementById('upiAmountDisplay').textContent = '₹' + parseFloat(amount).toFixed(2);
+    document.getElementById('upiIdDisplay').textContent     = 'UPI ID: ' + upiId;
+    var container = document.getElementById('upiQrContainer');
+    container.innerHTML = '';
+    new QRCode(container, { text: upiUri, width: 200, height: 200, colorDark: '#111827', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+    document.getElementById('upiQrModal').style.display = 'flex';
+}
+
+function closeUpiModal() {
+    document.getElementById('upiQrModal').style.display = 'none';
+    // reset UPI button
+    document.querySelectorAll('.payment-mode-btn').forEach(function(b) { b.classList.remove('selected'); });
+    document.getElementById('paymentMode').value = '';
+    upiPendingOrderId = null;
+}
+
+function confirmUpiPayment() {
+    document.getElementById('upiQrModal').style.display  = 'none';
+    document.getElementById('submitPaymentBtn').disabled = false;
+    document.getElementById('submitPaymentBtn').click();
 }
 
 function calculateChange() {
@@ -668,7 +773,39 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Please select a payment method');
             return;
         }
-        this.submit();
+        var submitBtn = document.getElementById('submitPaymentBtn');
+        submitBtn.disabled    = true;
+        submitBtn.textContent = 'Processing…';
+
+        fetch(this.action, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+            body: new FormData(this),
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            if (res.success) {
+                closePaymentModal();
+                showAdminQr(res.order_id, res.bill_url);
+                // Update the order card status without full reload
+                var card = document.querySelector('[data-order-id="'+res.order_id+'"]');
+                if (card) {
+                    card.dataset.status = 'paid';
+                    card.querySelector('[data-order-status-badge]') && (card.querySelector('[data-order-status-badge]').textContent = 'Paid');
+                }
+                saveState();
+                reloadWithFilters();
+            } else {
+                submitBtn.disabled    = false;
+                submitBtn.innerHTML   = '<i class="fas fa-check-circle me-2"></i>Complete Payment';
+                alert(res.message || 'Payment failed. Please try again.');
+            }
+        })
+        .catch(function() {
+            submitBtn.disabled    = false;
+            submitBtn.innerHTML   = '<i class="fas fa-check-circle me-2"></i>Complete Payment';
+            alert('Network error. Please try again.');
+        });
     });
 });
 </script>
@@ -680,13 +817,13 @@ const ADMIN_BILL_URLS = {
     {{ $order->id }}: "{{ URL::signedRoute('bill.show', ['orderId' => $order->id]) }}",
     @endforeach
 };
-function showAdminQr(orderId) {
-    const url = ADMIN_BILL_URLS[orderId];
+function showAdminQr(orderId, billUrl) {
+    var url = billUrl || ADMIN_BILL_URLS[orderId];
     if (!url) return;
     document.getElementById('adminBillLink').textContent = url;
-    document.getElementById('adminBillLink').href = url;
-    document.getElementById('adminOpenBillBtn').href = url;
-    const container = document.getElementById('adminQrContainer');
+    document.getElementById('adminBillLink').href        = url;
+    document.getElementById('adminOpenBillBtn').href     = url;
+    var container = document.getElementById('adminQrContainer');
     container.innerHTML = '';
     new QRCode(container, { text: url, width: 200, height: 200, colorDark: '#111827', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
     document.getElementById('adminQrModal').style.display = 'flex';

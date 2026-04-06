@@ -10,13 +10,17 @@ class CookController extends BaseAdminController
 {
     public function index(Request $request)
     {
-        $tenantId = $this->tenantId();
+        $tenantId       = $this->tenantId();
         $selectedBranch = $request->branch_id;
-        $selectedDate   = $request->filled('date') ? $request->date : today()->toDateString();
+        $dateFrom       = $request->filled('date_from') ? $request->date_from : today()->toDateString();
+        $dateTo         = $request->filled('date_to')   ? $request->date_to   : today()->toDateString();
+
+        // Ensure from <= to
+        if ($dateFrom > $dateTo) $dateTo = $dateFrom;
 
         $query = Order::with(['table.category', 'items.menuItem'])
             ->where('tenant_id', $tenantId)
-            ->whereDate('created_at', $selectedDate)
+            ->whereBetween('created_at', [$dateFrom . ' 00:00:00', $dateTo . ' 23:59:59'])
             ->orderBy('created_at', 'asc');
 
         if ($selectedBranch) $query->where('branch_id', $selectedBranch);
@@ -25,25 +29,26 @@ class CookController extends BaseAdminController
         $orders   = $query->get();
         $branches = \App\Models\Branch::where('tenant_id', $tenantId)->where('is_active', true)->get();
 
-        // Day stats
-        $statsQuery = Order::where('tenant_id', $tenantId)->whereDate('created_at', $selectedDate);
+        // Stats for the selected range
+        $statsQuery = Order::where('tenant_id', $tenantId)
+            ->whereBetween('created_at', [$dateFrom . ' 00:00:00', $dateTo . ' 23:59:59']);
         if ($selectedBranch) $statsQuery->where('branch_id', $selectedBranch);
-        $allToday = $statsQuery->get();
+        $allInRange = $statsQuery->get();
 
         $stats = [
-            'total'     => $allToday->count(),
-            'pending'   => $allToday->where('status', 'pending')->count(),
-            'preparing' => $allToday->where('status', 'preparing')->count(),
-            'ready'     => $allToday->where('status', 'ready')->count(),
-            'served'    => $allToday->where('status', 'served')->count(),
-            'paid'      => $allToday->where('status', 'paid')->count(),
-            'cancelled' => $allToday->where('status', 'cancelled')->count(),
-            'revenue'   => $allToday->where('status', 'paid')->sum(fn($o) => $o->grand_total ?? $o->total_amount),
+            'total'     => $allInRange->count(),
+            'pending'   => $allInRange->where('status', 'pending')->count(),
+            'preparing' => $allInRange->where('status', 'preparing')->count(),
+            'ready'     => $allInRange->where('status', 'ready')->count(),
+            'served'    => $allInRange->where('status', 'served')->count(),
+            'paid'      => $allInRange->where('status', 'paid')->count(),
+            'cancelled' => $allInRange->where('status', 'cancelled')->count(),
+            'revenue'   => $allInRange->where('status', 'paid')->sum(fn($o) => $o->grand_total ?? $o->total_amount),
         ];
 
         $paymentOrders = Order::with(['table.category', 'orderItems' => fn($q) => $q->with('menuItem')])
             ->where('tenant_id', $tenantId)
-            ->whereDate('created_at', $selectedDate)
+            ->whereBetween('created_at', [$dateFrom . ' 00:00:00', $dateTo . ' 23:59:59'])
             ->where(function ($q) {
                 $q->where(fn($q2) => $q2->where('is_parcel', false)->whereIn('status', ['served', 'checkout']))
                   ->orWhere(fn($q2) => $q2->where('is_parcel', true)->where('status', 'ready'));
@@ -51,7 +56,15 @@ class CookController extends BaseAdminController
             ->when($selectedBranch, fn($q) => $q->where('branch_id', $selectedBranch))
             ->latest()->get();
 
-        return view('admin.cook.index', compact('orders', 'branches', 'selectedBranch', 'paymentOrders', 'stats', 'selectedDate'));
+        $branchUpiId = null;
+        $branchGst   = ['enabled' => false];
+        if ($selectedBranch) {
+            $branch      = \App\Models\Branch::with('gstSlab')->find($selectedBranch);
+            $branchUpiId = $branch?->upi_id;
+            $branchGst   = $this->computeGst($branch);
+        }
+
+        return view('admin.cook.index', compact('orders', 'branches', 'selectedBranch', 'paymentOrders', 'stats', 'dateFrom', 'dateTo', 'branchUpiId', 'branchGst'));
     }
 
     public function startPreparing($id)
@@ -82,6 +95,7 @@ class CookController extends BaseAdminController
         $request->validate([
             'payment_mode'  => 'required|in:cash,upi,card',
             'cash_received' => 'nullable|numeric|min:0',
+            'grand_total'   => 'nullable|numeric|min:0',
         ]);
 
         $employeeId = auth()->guard('employee')->id();
@@ -102,7 +116,28 @@ class CookController extends BaseAdminController
             return response()->json(['success' => true, 'bill_url' => $billUrl, 'order_id' => $order->id]);
         }
 
-        return redirect('/admin/cook')->with('success', 'Payment received! Order #' . ($order->daily_number ?? $order->id) . ' closed.');
+        $query = array_filter([
+            'branch_id' => $request->branch_id,
+            'date_from'  => $request->date_from,
+            'date_to'    => $request->date_to,
+        ]);
+        return redirect()->route('admin.cook.index', $query)
+            ->with('success', 'Payment received! Order #' . ($order->daily_number ?? $order->id) . ' closed.');
+    }
+
+    private function computeGst(?\App\Models\Branch $branch): array
+    {
+        if (!$branch) return ['enabled' => false];
+        $slab = $branch->gstSlab;
+        $mode = $branch->gst_mode;
+        if (!$slab || !$mode) return ['enabled' => false];
+        return [
+            'enabled'   => true,
+            'mode'      => $mode,
+            'cgst_pct'  => (float) $slab->cgst_rate,
+            'sgst_pct'  => (float) $slab->sgst_rate,
+            'total_pct' => (float) ($slab->cgst_rate + $slab->sgst_rate),
+        ];
     }
 
     public function updateItem(Request $request, $id)
@@ -121,7 +156,7 @@ class CookController extends BaseAdminController
         $oldTotal = $item->price * $item->quantity;
         $item->update(['quantity' => $request->quantity, 'notes' => $request->notes]);
         $item->order->increment('total_amount', ($item->price * $request->quantity) - $oldTotal);
-        return back()->with('success', 'Item updated.');
+        return $this->redirectWithFilters()->with('success', 'Item updated.');
     }
 
     public function cancelOrder($id)
@@ -138,7 +173,7 @@ class CookController extends BaseAdminController
         if (!$order->is_parcel && $order->table) {
             $order->table->update(['is_occupied' => false]);
         }
-        return back()->with('success', 'Order cancelled.');
+        return $this->redirectWithFilters()->with('success', 'Order cancelled.');
     }
 
     public function cancelItem($id)
@@ -150,7 +185,17 @@ class CookController extends BaseAdminController
         $item->update(['status' => 'cancelled']);
         $item->order->decrement('total_amount', $item->price * $item->quantity);
         $this->syncOrderStatus($item->order);
-        return back()->with('success', 'Item cancelled.');
+        return $this->redirectWithFilters()->with('success', 'Item cancelled.');
+    }
+
+    private function redirectWithFilters()
+    {
+        $query = array_filter([
+            'branch_id' => request('branch_id'),
+            'date_from'  => request('date_from'),
+            'date_to'    => request('date_to'),
+        ]);
+        return redirect()->route('admin.cook.index', $query);
     }
 
     private function findTenantItem(int $id): OrderItem

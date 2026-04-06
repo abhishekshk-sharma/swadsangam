@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Waiter;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Order, OrderItem, RestaurantTable, MenuItem, Employee, MenuCategory, OrderAssignmentLog};
+use App\Models\{Order, OrderItem, RestaurantTable, MenuItem, Employee, MenuCategory, OrderAssignmentLog, WaiterCategoryPreference, WaiterCategorySortOrder};
 use Illuminate\Http\Request;
 
 class OrderController extends Controller
@@ -79,14 +79,115 @@ class OrderController extends Controller
 
     public function create()
     {
-        $tables    = $this->sortTables(RestaurantTable::with('category')->where('is_occupied', false)->get())
-                         ->groupBy(fn($t) => $t->category->name ?? 'Uncategorized');
-        $allTables = $this->sortTables(RestaurantTable::with('category')->get())
-                         ->groupBy(fn($t) => $t->category->name ?? 'Uncategorized');
-        $menuItems      = MenuItem::with('menuCategory')->where('is_available', true)->get();
-        $menuCategories = MenuCategory::whereHas('menuItems', fn($q) => $q->where('is_available', true))->get();
+        $branchId = $this->branchId();
 
-        return view('waiter.orders.create', compact('tables', 'allTables', 'menuItems', 'menuCategories'));
+        $tables    = $this->sortTables(RestaurantTable::with('category')
+                         ->where('tenant_id', $this->tenantId())
+                         ->where('is_occupied', false)
+                         ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+                         ->get())
+                         ->groupBy(fn($t) => $t->category->name ?? 'Uncategorized');
+
+        $allTables = $this->sortTables(RestaurantTable::with('category')
+                         ->where('tenant_id', $this->tenantId())
+                         ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+                         ->get())
+                         ->groupBy(fn($t) => $t->category->name ?? 'Uncategorized');
+
+        // Fetch categories ordered by waiter's personal sort, then global sort_order
+        $waiterId   = auth()->guard('employee')->id();
+        $waiterSorts = WaiterCategorySortOrder::where('employee_id', $waiterId)
+            ->pluck('sort_order', 'menu_category_id');
+
+        $menuCategories = MenuCategory::withoutGlobalScopes()
+            ->where(fn($q) => $q->whereNull('tenant_id')->orWhere('tenant_id', $this->tenantId()))
+            ->when($branchId, fn($q) =>
+                $q->where(fn($q2) => $q2->whereNull('branch_id')->orWhere('branch_id', $branchId))
+            )
+            ->whereHas('menuItems', fn($q) => $q->where('is_available', true))
+            ->orderByRaw('COALESCE(sort_order, 9999)')
+            ->get()
+            ->sortBy(function ($cat) use ($waiterSorts) {
+                return $waiterSorts->has($cat->id)
+                    ? $waiterSorts[$cat->id]
+                    : ($cat->sort_order ?? 9999);
+            })->values();
+
+        // Fetch menu items sorted by their category's sort_order
+        $menuItems = MenuItem::with('menuCategory')
+            ->where('tenant_id', $this->tenantId())
+            ->where('is_available', true)
+            ->when($branchId, fn($q) =>
+                $q->where(fn($q2) => $q2->whereNull('branch_id')->orWhere('branch_id', $branchId))
+            )
+            ->get()
+            ->sortBy(fn($i) => $i->menuCategory?->sort_order ?? 9999)
+            ->values();
+
+        $waiterId = auth()->guard('employee')->id();
+        $pref = WaiterCategoryPreference::where('employee_id', $waiterId)->first();
+        $preferredCategoryId = $pref?->menu_category_id;
+
+        return view('waiter.orders.create', compact('tables', 'allTables', 'menuItems', 'menuCategories', 'preferredCategoryId'));
+    }
+
+    public function settings()
+    {
+        $waiterId = auth()->guard('employee')->id();
+        $branchId = $this->branchId();
+
+        // All categories visible to this waiter
+        $categories = MenuCategory::withoutGlobalScopes()
+            ->where(fn($q) => $q->whereNull('tenant_id')->orWhere('tenant_id', $this->tenantId()))
+            ->when($branchId, fn($q) =>
+                $q->where(fn($q2) => $q2->whereNull('branch_id')->orWhere('branch_id', $branchId))
+            )
+            ->whereHas('menuItems', fn($q) => $q->where('is_available', true))
+            ->get();
+
+        // Load waiter's personal sort orders
+        $waiterSorts = WaiterCategorySortOrder::where('employee_id', $waiterId)
+            ->pluck('sort_order', 'menu_category_id');
+
+        // Apply waiter sort if exists, else fall back to global sort_order
+        $categories = $categories->sortBy(function ($cat) use ($waiterSorts) {
+            return $waiterSorts->has($cat->id)
+                ? $waiterSorts[$cat->id]
+                : ($cat->sort_order ?? 9999);
+        })->values();
+
+        return view('waiter.settings', compact('categories'));
+    }
+
+    public function reorderCategories(Request $request)
+    {
+        $request->validate(['ids' => 'required|array', 'ids.*' => 'integer']);
+        $waiterId = auth()->guard('employee')->id();
+
+        if ($request->boolean('reset')) {
+            WaiterCategorySortOrder::where('employee_id', $waiterId)->delete();
+            return response()->json(['success' => true]);
+        }
+
+        foreach ($request->ids as $order => $categoryId) {
+            WaiterCategorySortOrder::updateOrCreate(
+                ['employee_id' => $waiterId, 'menu_category_id' => $categoryId],
+                ['sort_order' => $order + 1]
+            );
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    public function savePreference(Request $request)
+    {
+        $request->validate(['menu_category_id' => 'nullable|integer']);
+        $waiterId = auth()->guard('employee')->id();
+        WaiterCategoryPreference::updateOrCreate(
+            ['employee_id' => $waiterId],
+            ['menu_category_id' => $request->menu_category_id ?: null]
+        );
+        return response()->json(['success' => true]);
     }
 
     public function assign(Request $request, $id)

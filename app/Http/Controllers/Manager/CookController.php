@@ -20,7 +20,17 @@ class CookController extends BaseManagerController
         if ($request->filled('status'))   $query->where('status', $request->status);
 
         $orders = $query->get();
-        return view('manager.cook.index', compact('orders'));
+
+        $branchUpiId = null;
+        $branchGst   = ['enabled' => false];
+        $managerBranchId = auth()->guard('employee')->user()?->branch_id;
+        if ($managerBranchId) {
+            $branch      = \App\Models\Branch::with('gstSlab')->find($managerBranchId);
+            $branchUpiId = $branch?->upi_id;
+            $branchGst   = $this->computeGst($branch);
+        }
+
+        return view('manager.cook.index', compact('orders', 'branchUpiId', 'branchGst'));
     }
 
     public function startPreparing($id)
@@ -47,15 +57,46 @@ class CookController extends BaseManagerController
     public function processPayment(Request $request, $id)
     {
         $order = $this->findForTenant(Order::class, $id);
-        $request->validate(['payment_mode' => 'required|in:cash,upi,card']);
+        $request->validate([
+            'payment_mode'  => 'required|in:cash,upi,card',
+            'cash_received' => 'nullable|numeric|min:0',
+            'grand_total'   => 'nullable|numeric|min:0',
+        ]);
 
-        $order->update(['status' => 'paid', 'payment_mode' => $request->payment_mode, 'paid_at' => now()]);
+        $employeeId = auth()->guard('employee')->id();
+        $order->update([
+            'status'       => 'paid',
+            'payment_mode' => $request->payment_mode,
+            'paid_at'      => now(),
+            'cashier_id'   => $employeeId && \App\Models\Employee::withoutGlobalScopes()->where('id', $employeeId)->exists() ? $employeeId : null,
+        ]);
 
         if (!$order->is_parcel && $order->table) {
             $order->table->update(['is_occupied' => false]);
         }
 
-        return redirect()->route('manager.cook.index')->with('success', 'Payment received! Order closed.');
+        $billUrl = \Illuminate\Support\Facades\URL::signedRoute('bill.show', ['orderId' => $order->id]);
+
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true, 'bill_url' => $billUrl, 'order_id' => $order->id]);
+        }
+
+        return redirect()->route('manager.cook.index')->with('success', 'Payment received! Order #' . ($order->daily_number ?? $order->id) . ' closed.');
+    }
+
+    private function computeGst(?\App\Models\Branch $branch): array
+    {
+        if (!$branch) return ['enabled' => false];
+        $slab = $branch->gstSlab;
+        $mode = $branch->gst_mode;
+        if (!$slab || !$mode) return ['enabled' => false];
+        return [
+            'enabled'   => true,
+            'mode'      => $mode,
+            'cgst_pct'  => (float) $slab->cgst_rate,
+            'sgst_pct'  => (float) $slab->sgst_rate,
+            'total_pct' => (float) ($slab->cgst_rate + $slab->sgst_rate),
+        ];
     }
 
     public function cancelOrder($id)
